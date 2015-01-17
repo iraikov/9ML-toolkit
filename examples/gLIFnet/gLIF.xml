@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.incf.org/9ML/0.3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.incf.org/9ML/0.3 ../NineML_v0.3.xsd">
+
+  <ComponentClass name="gLIF">
+
+    <Parameter name="gL" dimension='conductance'/> <!-- leaky conductance -->
+    <Parameter name="vL" dimension='voltage'/> <!-- leaky rev pot -->
+    <Parameter name="Vthr" dimension='voltage'/>  <!-- firing threshold -->
+    <Parameter name="Vreset" dimension='voltage'/> <!-- reset potential -->
+    <Parameter name="R" dimension='resistance'/>   <!-- membrane resistance -->
+    <Parameter name="C" dimension='capacitance'/>  <!-- membrane capacitance -->
+    <Parameter name="J" />
+
+    <AnalogPort name="gSyn" mode='reduce' dimension='conductance'/>
+    <AnalogPort name="V" mode="send" dimension='voltage'/>
+
+    <EventPort name="spikeOutput" mode="send"/>
+    <EventPort name="refractoryEnd" mode="send"/>
+
+    <Dynamics>
+
+        <StateVariable name="V" dimension="voltage"/>
+        <StateVariable name="t_rpend" dimension="time"/>
+
+        <Regime name="subthresholdRegime">
+          
+          <TimeDerivative variable="V">
+            <MathInline> (-gL * (V - vL) + gSyn + J) / C </MathInline>
+          </TimeDerivative>
+
+          <OnCondition>
+            
+            <Trigger>
+              <MathInline>V &gt;= theta </MathInline>
+            </Trigger>
+            
+            <StateAssignment variable="V" >
+              <MathInline> Vreset </MathInline>
+            </StateAssignment>
+            
+            <EventOut port="spikeOutput" />
+            
+          </OnCondition>
+          
+        </Regime>
+          
+    </Dynamics>
+
+  </ComponentClass>
+</NineML>

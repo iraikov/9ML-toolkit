@@ -1,0 +1,7 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+$(TENSOR_LIB)/sparse.mlb
+$(NINEML_LIB)/graph.mlb
+elecgraph.sml
+elecgraphtest.sml
+

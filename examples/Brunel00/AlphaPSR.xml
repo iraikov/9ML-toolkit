@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.net/9ML/1.0">
+
+  <ComponentClass name="AlphaPSR">
+
+    <Parameter name="tau_syn" dimension='time'/> <!-- synapse time constant -->
+
+    <EventReceivePort name="spike"/>
+
+    <AnalogReducePort name="q" dimension='current'/>
+
+    <AnalogSendPort name="A" dimension='current'/>
+    <AnalogSendPort name="B" dimension='current'/>
+    <AnalogSendPort name="Isyn" dimension='current'/>
+
+    <Dynamics>
+
+        <StateVariable name="A" dimension="current"/>
+        <StateVariable name="B" dimension="current"/>
+        <StateVariable name="Isyn" dimension="current"/>
+
+        <Regime name="default">
+          
+          <TimeDerivative variable="A">
+            <MathInline> (B - A) / tau_syn </MathInline>
+          </TimeDerivative>
+
+          <TimeDerivative variable="B">
+            <MathInline> (- B) / tau_syn </MathInline>
+          </TimeDerivative>
+
+          <StateAssignment variable="Isyn" >
+            <MathInline> A </MathInline>
+          </StateAssignment>
+
+          <OnEvent port="spike">
+            
+            <StateAssignment variable="A" >
+              <MathInline> A * exp (- h / tau_syn) + ((B * h * exp (- h / tau_syn)) / tau_syn)  </MathInline>
+            </StateAssignment>
+
+            <StateAssignment variable="B" >
+              <MathInline> B * exp (- h / tau_syn) + q * h </MathInline>
+            </StateAssignment>
+
+            <StateAssignment variable="Isyn" >
+              <MathInline> A </MathInline>
+            </StateAssignment>
+
+            <StateAssignment variable="t" >
+              <MathInline> t + h </MathInline>
+            </StateAssignment>
+            
+          </OnEvent>
+
+        </Regime>
+
+    </Dynamics>
+
+
+  </ComponentClass>
+</NineML>

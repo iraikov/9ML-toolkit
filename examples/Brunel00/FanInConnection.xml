@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.incf.org/9ML/0.3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.incf.org/9ML/0.3 ../NineML_v0.3.xsd">
+
+  <ComponentClass name="FanInConnection">
+
+    <DiscreteSetPort name="source"/>
+    <DiscreteSetPort name="target"/>
+
+    <!-- Probability of connection -->
+    <Parameter name="epsilon"/>
+
+    <SetComprehension name="cset">
+
+        <For variable="i">
+          <In> <MathInline>source</MathInline> </In>
+          <Body> 
+            <For variable="j">
+              <In> 
+                <Set>
+                  <Interval>
+                    <From>1</From><To><MathInline>epsilon * set.size(target)</MathInline></To>
+                  </Interval>
+                </Set>
+              </In>
+              <Return> 
+                <Concatenate>
+                  <Item><MathInline>i</MathInline></Item>
+                  <Item><MathInline>random.int (0, set.size (target))</MathInline></Item>
+                </Concatenate>
+              </Return>
+            </For>
+          </Body>
+        </For> 
+
+    </SetComprehension>
+
+  </ComponentClass>
+</NineML>

@@ -1,0 +1,49 @@
+
+component S = Signal
+
+component LeakyIAF =
+struct
+
+ binding construct t V gL vL Isyn C theta tspike spike Vreset trefractory refractory_end rst h =
+
+        binding subthreshold_eq       = [ D (V t h) = (((- gL) * (V - vL)) + Isyn) / C ]
+        binding threshold_detect      = [ spike = (V >= theta) ]
+        binding tspike_assignment     = [ tspike = if spike then t else tspike ]
+        binding vreset_assignment     = [ V = Vreset ]
+        binding spike_assignments     = Diagram.SEQUENCE tspike_assignment vreset_assignment
+        binding subthreshold_regime   = Diagram.SEQUENCE subthreshold_eq (Diagram.SEQUENCE threshold_detect (Diagram.ON spike_assignments spike))
+        binding refractory_regime     = [
+                                          [ V = Vreset ]
+                                          [ refractory_end = (t >= (tspike + trefractory)) ]
+                                          [ t = t + h ]
+                                        ] 
+        return Diagram.RTRANSITION subthreshold_regime refractory_regime spike refractory_end rst
+
+
+
+end
+
+component TestLeakyIAF =
+struct
+
+  binding diagram = 
+    LeakyIAF.construct
+        ( S.realsig `t       (S.realconst 0.0 ))
+	( S.realsig `V       (S.realconst -65.0 ))
+        ( S.realsig `gL      (S.realconst 0.2 ))
+        ( S.realsig `vL      (S.realconst -70.0 ))
+        ( S.realsig `Isyn    (S.realconst 20.0 ))
+        ( S.realsig `C       (S.realconst 1.0 ))
+        ( S.realsig `theta   (S.realconst -25.0 ))
+        ( S.realsig `tspike  (S.realconst 0.0 ))
+        ( S.boolsig `spike   (S.boolconst false ))
+        ( S.realsig `Vreset  (S.realconst -65.0 ))
+        ( S.realsig `trefractory (S.realconst 5.0 ))
+        ( S.boolsig `refractory_end (S.boolconst false ))
+        ( S.boolsig `rst     (S.boolconst false ))
+        ( S.realsig `h       (S.realconst 0.001 ))
+
+
+  binding TestLeakyIF = IVP.run diagram `t `h 0.0 100.0 
+
+end

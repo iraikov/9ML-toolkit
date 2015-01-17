@@ -1,0 +1,16 @@
+(* import libraries *)
+
+$(SML_LIB)/basis/basis.mlb
+
+local
+        DynArray.sml
+in
+	structure DynArray
+end
+
+
+(* program files *)
+graph.sig
+graph.sml
+graphimpl.sig
+digraph.sml

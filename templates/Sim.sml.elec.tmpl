@@ -1,0 +1,135 @@
+
+structure Sim{{group.name}} =
+struct
+
+fun putStrLn out str = 
+    (TextIO.output (out, str);
+     TextIO.output (out, "\n"))
+    
+fun putStr out str = 
+    (TextIO.output (out, str))
+    
+    
+fun showBoolean b = (if b then "1" else "0")
+                    
+                    
+fun showReal n = 
+    let open StringCvt
+	open Real
+    in
+	(if n < 0.0 then "-" else "") ^ (fmt (FIX (SOME 12)) (abs n))
+    end
+
+
+exception Index
+
+fun start (tmax, N, S, D, E, Pn, initial_vector, psr_initial_vector, frun, fresponse, ftime, fspikes, finfo, out) =
+
+let
+    val I0 = RTensor.new([N,1],0.0)
+
+    val sub = Unsafe.Real64Array.sub
+    val isub = Unsafe.IntArray.sub
+    val update = Unsafe.Real64Array.update
+
+        
+    fun netrun (I::D,state_vector,psr_state_vector) =
+        let 
+            
+            val (I',psr_state_vector_i)  = fresponse I psr_state_vector
+            
+            val I'' = felec E I' state_vector
+            
+            val state_vector_i = frun I'' state_vector
+
+            val t_i = ftime state_vector_i
+
+            val (spike_i, log_spike_i) = fspikes state_vector_i
+                
+            val _   = finfo (state_vector_i, out)
+                              
+            val I'''  = if (List.null spike_i)
+                        then NONE
+                        else SOME 
+                                 (let
+                                      val T = Real64Array.array (N, 0.0)
+                                  in
+                                      List.app
+                                          (fn (W) =>
+                                              List.app
+                                                  (fn (i,nv) => 
+                                                      let
+                                                          val sl = SparseMatrix.slice (W,1,i)
+                                                      in
+                                                          SparseMatrix.sliceAppi 
+                                                              (fn (i,x) => update (T,i,Real.+ (Real.* (nv,x), sub(T,i))))
+                                                              sl
+                                                      end)
+                                                  spike_i) 
+                                          S;
+                                      RTensor.fromArray ([N,1], T)
+                                  end)
+
+            val _ = if not (List.null log_spike_i)
+                    then (putStr out ((showReal t_i) ^ " ");
+                          TensorFile.intListLineWrite out (List.map (fn (i,n) => (i+1)) log_spike_i))
+                    else (putStrLn out ("# " ^ (showReal t_i)))
+                         
+        in
+            if t_i  > tmax
+            then (putStrLn out "# All done!"; state_vector_i)
+            else netrun (D@[I'''],state_vector_i,psr_state_vector_i)
+        end
+      | netrun ([],state_vector,psr_state_vector) = raise Index
+in
+    netrun (D,initial_vector,psr_initial_vector)
+end
+
+fun timing (action) = 
+    let
+        val timer = Timer.startCPUTimer ()
+        val result = action ()
+        val times = Timer.checkCPUTimer timer
+    in
+        (result, Time.+ (#usr times, #sys times))
+    end
+
+fun main (name,args) =
+    let
+        open {{group.name}}
+        fun finfo (_,out) = ()
+    in
+        (let
+            val     _ = putStrLn TextIO.stdOut ("starting fprojection...")
+            val ((S,E),t) = timing fevent_projection
+            val     _ = putStrLn TextIO.stdOut ("fprojection took " ^ (Time.toString t) ^ " s")
+            val out   = TextIO.openOut (label ^ ".dat")
+        in
+            List.app (fn (s) => putStrLn out ("# " ^ s))
+                     ([
+                         label,
+                         {% for p in dict (group.properties) %}
+                         ("{{p.name}} = {{p.value.exprML}}"){% if not loop.last %},{% endif %}
+                         {% endfor %}
+                     ]);
+            let
+                val _     = putStrLn TextIO.stdOut ("starting simulation...")
+                val (_,t) = timing (fn () => start (1200.0, N, S, E, D, Pn, initial, psr_initial, frun, fresponse, ftime, fspikes, finfo, out))
+            in
+                putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
+            end;
+            
+            TextIO.flushOut (out);
+            TextIO.closeOut (out)
+        end)
+    end
+    
+
+end
+
+val _ = let val name = CommandLine.name()
+	    val args = CommandLine.arguments()
+	    val env  = Posix.ProcEnv.environ()
+	in
+	    Sim{{group.name}}.main (name, args)
+	end

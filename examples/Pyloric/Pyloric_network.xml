@@ -1,0 +1,485 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.org/9ML/1.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://nineml.org/9ML/1.0/NineML_v1.0.xsd"
+        name="Pyloric Network">
+  
+  <!-- tonic bursting AB Cell -->
+  <Component name="AB">
+
+    <Definition>
+      <link> Izhikevich.xml </link>
+    </Definition>
+
+    <properties>
+
+      <Property>
+        <label>a</label>
+        <value>0.02</value>
+      </Property>
+
+      <Property>
+        <label>b</label>
+        <value>0.2</value>
+      </Property>
+
+      <Property>
+        <label>c</label>
+        <value>-50</value>
+      </Property>
+
+      <Property>
+        <label>d</label>
+        <value>2</value>
+      </Property>
+      
+      <Property>
+        <label>Iext</label>
+        <value>30.0</value>
+      </Property>
+
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>V</label>
+        <value><MathInline>randomUniform ()</MathInline></value>
+      </Initial>
+
+      <Initial>
+        <label>U</label>
+        <value>-1.625</value>
+      </Initial>
+
+      <Initial>
+        <label>spikeOutput</label>
+        <value>false</value>
+      </Initial>
+      
+    </properties>
+
+  </Component>
+
+  
+  <!-- tonic spiking PD Cell -->
+  <Component name="PD">
+
+    <Definition>
+      <link> Izhikevich.xml </link>
+    </Definition>
+
+    <properties>
+
+      <Property>
+        <label>a</label>
+        <value>0.02</value>
+      </Property>
+
+      <Property>
+        <label>b</label>
+        <value>0.5</value>
+      </Property>
+
+      <Property>
+        <label>c</label>
+        <value>-65</value>
+      </Property>
+
+      <Property>
+        <label>d</label>
+        <value>6</value>
+      </Property>
+      
+      <Property>
+        <label>Iext</label>
+        <value>30.0</value>
+      </Property>
+
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>V</label>
+        <value><MathInline>randomUniform ()</MathInline></value>
+      </Initial>
+
+      <Initial>
+        <label>U</label>
+        <value>-1.625</value>
+      </Initial>
+
+      <Initial>
+        <label>spikeOutput</label>
+        <value>false</value>
+      </Initial>
+      
+    </properties>
+
+  </Component>
+
+  
+  <!-- rebound spike LP Cell -->
+  <Component name="LP">
+
+    <Definition>
+      <link> Izhikevich.xml </link>
+    </Definition>
+
+    <properties>
+
+      <Property>
+        <label>a</label>
+        <value>0.1</value>
+      </Property>
+
+      <Property>
+        <label>b</label>
+        <value>0.8</value>
+      </Property>
+
+      <Property>
+        <label>c</label>
+        <value>-60</value>
+      </Property>
+
+      <Property>
+        <label>d</label>
+        <value>0</value>
+      </Property>
+      
+      <Property>
+        <label>Iext</label>
+        <value>0.0</value>
+      </Property>
+
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>V</label>
+        <value><MathInline>randomUniform ()</MathInline></value>
+      </Initial>
+
+      <Initial>
+        <label>U</label>
+        <value>-1.625</value>
+      </Initial>
+
+      <Initial>
+        <label>spikeOutput</label>
+        <value>false</value>
+      </Initial>
+      
+    </properties>
+
+  </Component>
+
+
+  <!-- rebound spike PY Cell -->
+  <Component name="PY">
+
+    <Definition>
+      <link> Izhikevich.xml </link>
+    </Definition>
+
+    <properties>
+
+      <Property>
+        <label>a</label>
+        <value>0.03</value>
+      </Property>
+
+      <Property>
+        <label>b</label>
+        <value>0.8</value>
+      </Property>
+
+      <Property>
+        <label>c</label>
+        <value>-60</value>
+      </Property>
+
+      <Property>
+        <label>d</label>
+        <value>4</value>
+      </Property>
+      
+      <Property>
+        <label>Iext</label>
+        <value>0.0</value>
+      </Property>
+
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>V</label>
+        <value><MathInline>randomUniform ()</MathInline></value>
+      </Initial>
+
+      <Initial>
+        <label>U</label>
+        <value>-1.625</value>
+      </Initial>
+
+      <Initial>
+        <label>spikeOutput</label>
+        <value>false</value>
+      </Initial>
+      
+    </properties>
+
+  </Component>
+
+
+  <!-- rebound spike VD Cell -->
+  <Component name="VD">
+
+    <Definition>
+      <link> Izhikevich.xml </link>
+    </Definition>
+
+    <properties>
+
+      <Property>
+        <label>a</label>
+        <value>0.1</value>
+      </Property>
+
+      <Property>
+        <label>b</label>
+        <value>0.5</value>
+      </Property>
+
+      <Property>
+        <label>c</label>
+        <value>-60</value>
+      </Property>
+
+      <Property>
+        <label>d</label>
+        <value>0</value>
+      </Property>
+      
+      <Property>
+        <label>Iext</label>
+        <value>0.0</value>
+      </Property>
+
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>V</label>
+        <value><MathInline>randomUniform ()</MathInline></value>
+      </Initial>
+
+      <Initial>
+        <label>U</label>
+        <value>-1.625</value>
+      </Initial>
+
+      <Initial>
+        <label>spikeOutput</label>
+        <value>false</value>
+      </Initial>
+      
+    </properties>
+
+  </Component>
+
+
+  <!-- rebound spike IC Cell -->
+  <Component name="IC">
+
+    <Definition>
+      <link> Izhikevich.xml </link>
+    </Definition>
+
+    <properties>
+
+      <Property>
+        <label>a</label>
+        <value>0.03</value>
+      </Property>
+
+      <Property>
+        <label>b</label>
+        <value>1</value>
+      </Property>
+
+      <Property>
+        <label>c</label>
+        <value>-60</value>
+      </Property>
+
+      <Property>
+        <label>d</label>
+        <value>4</value>
+      </Property>
+      
+      <Property>
+        <label>Iext</label>
+        <value>0.0</value>
+      </Property>
+
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>V</label>
+        <value><MathInline>randomUniform ()</MathInline></value>
+      </Initial>
+
+      <Initial>
+        <label>U</label>
+        <value>-1.625</value>
+      </Initial>
+
+      <Initial>
+        <label>spikeOutput</label>
+        <value>false</value>
+      </Initial>
+      
+    </properties>
+
+  </Component>
+
+  
+  <Component name="Syn">
+    
+    <Definition>
+      <link> AlphaPSR.xml </link>
+    </Definition>
+    
+    <properties>
+
+      <Property> 
+        <label>tau_syn</label>
+	<value>3.0</value>
+      </Property>
+
+      <Initial>
+        <label>Ispike</label>
+        <value>0.0</value>
+      </Initial>
+      
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+      
+    </properties>
+    
+  </Component>
+
+
+
+  <Component name="Ext">
+    
+    <Definition>
+      <link> http://www.NineML.org/stim/Poisson.9ml </link>
+    </Definition>
+    
+    <properties>
+
+      <Property> 
+        <label>rate</label>
+	<value><MathInline>input_rate</MathInline></value>
+      </Property>
+      
+    </properties>
+    
+  </Component>
+
+
+  <Group name="PyloricNetwork">
+
+    <Population name="AB">
+      <prototype><reference>AB</reference></prototype>
+      <number>1</number>
+    </Population>
+
+    <Population name="PD">
+      <prototype><reference>PD</reference></prototype>
+      <number>2</number>
+    </Population>
+
+    <Population name="LP">
+      <prototype><reference>LP</reference></prototype>
+      <number>1</number>
+    </Population>
+
+    <Population name="PY">
+      <prototype><reference>PY</reference></prototype>
+      <number>8</number>
+    </Population>
+
+    <Population name="VD">
+      <prototype><reference>VD</reference></prototype>
+      <number>1</number>
+    </Population>
+
+    <Population name="IC">
+      <prototype><reference>IC</reference></prototype>
+      <number>1</number>
+    </Population>
+
+    <Population name="Ext"> <!-- External sources definition -->  
+      <prototype><reference>Ext</reference></prototype>
+      <number>14</number>
+    </Population>
+
+    <set name="All neurons"> <!-- The set of all neurons -->  
+      <fromList>
+        <singleton>AB</singleton> 
+        <singleton>PD</singleton>
+        <singleton>LP</singleton> 
+        <singleton>PY</singleton>
+        <singleton>VD</singleton> 
+        <singleton>IC</singleton>
+      </fromList>
+    </set>
+
+    <!-- Projection from external sources to all neurons -->  
+    <Projection name="External" type="event" > 
+      <source><reference>Ext</reference></source>
+      <target><reference>All neurons</reference></target>
+      <rule><reference>one-to-one</reference>
+      <Property name="weight"><value><MathInline>1.0</MathInline></value></Property></rule>
+    </Projection>
+
+    <!-- Pyloric network projection -->  
+    <Projection name="Pyloric" type="event" > 
+      <source><reference>All neurons</reference></source>
+      <target><reference>All neurons</reference></target>
+      <rule><reference>from file</reference>
+      <Property name="filename"><value>Pyloric.dat</value></Property></rule>
+    </Projection>
+
+    <!-- Electrical synapses projection -->  
+    <Projection name="Electrical" type="continuous" > 
+      <source><reference>All neurons</reference></source>
+      <target><reference>All neurons</reference></target>
+      <rule><reference>from file</reference>
+      <Property name="filename"><value>Electrical.dat</value></Property></rule>
+    </Projection>
+
+    <!-- Record spikes from the given set -->
+    <SpikeRecording set="All neurons"/>
+
+  </Group>
+
+</NineML>

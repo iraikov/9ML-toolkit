@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.org/9ML/1.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.org/9ML/1.0/NineML_v0.2.xsd">
+
+  <ComponentClass name="AlphaPSR">
+
+    <Parameter name="tau_syn" dimension='time'/> <!-- synapse time constant -->
+
+    <AnalogPort name="Ispike" mode='reduce' dimension='current'/>
+
+    <AnalogPort name="Isyn" mode="send"/>
+
+    <Dynamics>
+
+        <StateVariable name="Isyn" dimension="current"/>
+
+        <Regime name="subthresholdRegime">
+          
+          <TimeDerivative variable="Isyn">
+            <MathInline> (Ispike - Isyn) / tau_syn </MathInline>
+          </TimeDerivative>
+
+        </Regime>
+
+    </Dynamics>
+
+
+  </ComponentClass>
+</NineML>

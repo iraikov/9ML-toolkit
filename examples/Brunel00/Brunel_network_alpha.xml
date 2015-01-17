@@ -1,0 +1,436 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.net/9ML/1.0"
+        name="Brunel (2000) Model A Network with alpha synapses">
+
+  <Property name="order"><!-- Scales the size of the network (total 5*order neurons) -->
+    <SingleValue>2500</SingleValue>
+  </Property>
+
+  <Property name="Ne"><!-- Number of excitatory neurons -->
+    <SingleValue><MathInline>4 * order</MathInline></SingleValue>
+  </Property>
+
+  <Property name="Ni"><!-- Number of inhibitory neurons -->
+    <SingleValue><MathInline>1 * order</MathInline></SingleValue>
+  </Property>
+
+  <Property name="epsilon"><!-- Connectivity probability -->
+    <SingleValue>0.1</SingleValue>
+  </Property>
+
+  <Property name="Ce"><!-- Total number of excitatory synapses -->
+    <SingleValue><MathInline>epsilon * Ne</MathInline></SingleValue>
+  </Property>
+
+  <Property name="Ci"><!-- Total number of inhibitory synapses -->
+    <SingleValue><MathInline>epsilon * Ni</MathInline></SingleValue>
+  </Property>
+
+  <Property name="Cext"><!-- Total number of external synapses -->
+    <SingleValue><MathInline>Ce</MathInline></SingleValue>
+  </Property>
+
+  <Property name="delay" unit="ms"><!-- Global delay for all neurons in the group -->
+    <SingleValue>1.5</SingleValue>
+  </Property>
+
+  <Property name="J" unit="mV"> <!-- Synaptic weight -->
+    <SingleValue>0.1</SingleValue>
+  </Property>
+
+  <Property name="J_max_unit" unit="mV"> <!-- Synaptic weight -->
+    <SingleValue>1.209</SingleValue>
+  </Property>
+
+  <Property name="g"> <!-- Relative strength of inhibitory synapses -->
+    <SingleValue>4.5</SingleValue>
+  </Property>
+
+  <Property name="eta"> <!-- nu_ext / nu_thr -->
+    <SingleValue>0.9</SingleValue>
+  </Property>
+
+  <Property name="Je"> <!-- Excitatory weights -->
+    <SingleValue><MathInline>J / J_max_unit</MathInline></SingleValue>
+  </Property>
+
+  <Property name="Ji"> <!-- Inhibitory weights -->
+    <SingleValue><MathInline>-g * Je</MathInline></SingleValue>
+  </Property>
+
+  <Property name="Jext"> <!-- External weights -->
+    <SingleValue><MathInline>Je</MathInline></SingleValue>
+  </Property>
+
+  <Property name="theta" unit="mV"> <!-- Firing threshold -->
+    <SingleValue>20.0</SingleValue>
+  </Property>
+
+  <Property name="tau" unit="ms"> <!-- Membrane time constant -->
+    <SingleValue>20.0</SingleValue>
+  </Property>
+
+  <Property name="tau_syn" unit="ms"> <!-- Synaptic time constant -->
+    <SingleValue>0.5</SingleValue>
+  </Property>
+
+  <Property name="nu_thresh"> <!-- Threshold rate -->
+    <SingleValue><MathInline>theta / (Je * Ce * tau * exp (1.0) * tau_syn)</MathInline></SingleValue>
+  </Property>
+
+  <Property name="nu_ext"> <!-- External rate per synapse --> 
+    <SingleValue><MathInline>eta * nu_thresh</MathInline></SingleValue>
+  </Property>
+
+  <Property name="input_rate" unit="Hz"> <!-- Mean input spiking rate -->
+    <SingleValue><MathInline>1000.0 * nu_ext</MathInline></SingleValue>
+  </Property>
+
+  <Property name="timestep">
+    <SingleValue>0.2</SingleValue>
+  </Property>
+  
+  <Component name="E">
+
+    <Definition url="BrunelIaF.xml">BrunelIaF</Definition>
+
+    <Property name="tau">
+      <SingleValue>20.0</SingleValue>
+    </Property>
+
+    <Property name="tau_rp">
+      <SingleValue>2.0</SingleValue>
+    </Property>
+
+    <Property name="Vreset">
+      <SingleValue>10.0</SingleValue>
+    </Property>
+
+    <Property name="R">
+      <SingleValue>100.0</SingleValue>
+    </Property>
+
+    <Initial name="Isyn">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="V">
+      <SingleValue><MathInline> random.uniform ()</MathInline></SingleValue>
+    </Initial>
+
+    <Initial name="t_rpend">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="spikeOutput">
+      <SingleValue>-1.0</SingleValue>
+    </Initial>
+
+    <Initial name="refractoryEnd">
+      <SingleValue>-1.0</SingleValue>
+    </Initial>
+
+    <Field name="theta">
+      <SingleValue><MathInline>theta + random.normal ()</MathInline></SingleValue>
+    </Field>
+    
+  </Component>
+
+  <Component name="I">
+
+    <Definition url="BrunelIaF.xml">BrunelIaF</Definition>
+
+    <Property name="tau">
+      <SingleValue>20.0</SingleValue>
+    </Property>
+
+    <Property name="tau_rp">
+      <SingleValue>2.0</SingleValue>
+    </Property>
+
+    <Property name="Vreset">
+      <SingleValue>10.0</SingleValue>
+    </Property>
+
+    <Property name="R">
+      <SingleValue>100.0</SingleValue>
+    </Property>
+
+    <Initial name="Isyn">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="V">
+      <SingleValue><MathInline> random.uniform ()</MathInline></SingleValue>
+    </Initial>
+
+    <Initial name="t_rpend">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="spikeOutput">
+      <SingleValue>-1.0</SingleValue>
+    </Initial>
+
+    <Initial name="spikeOutput">
+      <SingleValue>-1.0</SingleValue>
+    </Initial>
+
+    <Initial name="refractoryEnd">
+      <SingleValue>-1.0</SingleValue>
+    </Initial>
+
+    <Field name="theta">
+      <SingleValue><MathInline>theta + random.normal ()</MathInline></SingleValue>
+    </Field>
+      
+  </Component>
+
+
+  <Component name="Ext">
+    
+    <Definition url="Poisson.xml">Poisson</Definition>
+    
+    <Property name="rate">
+      <SingleValue><MathInline>input_rate</MathInline></SingleValue>
+    </Property>
+
+    <Initial name="t_next">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="spikeOutput">
+      <SingleValue>-1.0</SingleValue>
+    </Initial>
+      
+  </Component>
+
+  <Component name="ISyn">
+
+    <Definition url="AlphaPSR.xml">AlphaPSR</Definition>
+    
+    <Property name="tau_syn" unit="ms"> <!-- Synaptic time constant -->
+      <SingleValue><MathInline>tau_syn</MathInline></SingleValue>
+    </Property>
+    
+    <Initial name="A">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="B">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="spike">
+      <SingleValue>-1.0</SingleValue>
+    </Initial>
+
+    <Initial name="tspike">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="q">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="Isyn">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+    
+  </Component>
+  
+  <Component name="ESyn">
+    
+    <Definition url="AlphaPSR.xml">AlphaPSR</Definition>
+
+    <Property name="tau_syn" unit="ms"> <!-- Synaptic time constant -->
+      <SingleValue><MathInline>tau_syn</MathInline></SingleValue>
+    </Property>
+    
+    <Initial name="A">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="B">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="spike">
+      <SingleValue>-1.0</SingleValue>
+    </Initial>
+
+    <Initial name="tspike">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="q">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+
+    <Initial name="Isyn">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+      
+  </Component>
+
+
+  <Component name="ExternalPlasticity">
+
+    <Definition url="ConstantPlasticity.xml">ConstantPlasticity</Definition>
+    
+    <Definition>
+      <link> ConstantPlasticity.xml </link>
+    </Definition>
+    
+    <Initial name="weight">
+      <SingleValue><MathInline>Jext</MathInline></SingleValue>
+    </Initial>
+      
+  </Component>
+
+  <Component name="ExcitatoryPlasticity">
+    
+    <Definition url="ConstantPlasticity.xml">ConstantPlasticity</Definition>
+    
+    <Initial name="weight">
+      <SingleValue><MathInline>Je</MathInline></SingleValue>
+    </Initial>
+      
+  </Component>
+
+  <Component name="InhibitoryPlasticity">
+
+    <Definition url="ConstantPlasticity.xml">ConstantPlasticity</Definition>
+    
+    <Initial name="weight">
+      <SingleValue><MathInline>Ji</MathInline></SingleValue>
+    </Initial>
+      
+  </Component>
+
+  <Component name="ExternalConnectivity">
+    <Definition url="OneToOne.xml">OneToOne</Definition>
+  </Component>
+
+  <Component name="ExcitatoryConnectivity">
+    
+    <Definition url="RandomUniformConnection.xml">RandomUniformConnection</Definition>
+    
+    <Initial name="epsilon">
+      <SingleValue><MathInline>epsilon</MathInline></SingleValue>
+    </Initial>
+
+  </Component>
+
+  <Component name="InhibitoryConnectivity">
+    
+    <Definition url="RandomUniformConnection.xml">RandomUniformConnection</Definition>
+    
+    <Initial name="epsilon">
+      <SingleValue><MathInline>epsilon</MathInline></SingleValue>
+    </Initial>
+
+  </Component>
+
+  <Group name="BrunelCaseDalpha">
+
+    <Population name="Exc"> <!-- Excitatory population definition -->  
+      <Cell><Reference>E</Reference></Cell>
+      <Number><SingleValue><MathInline>Ne</MathInline></SingleValue></Number>
+    </Population>
+
+    <Population name="Inh"> <!-- Inhibitory population definition -->  
+      <Cell><Reference>I</Reference></Cell>
+      <Number><SingleValue><MathInline>Ni</MathInline></SingleValue></Number>
+    </Population>
+
+    <Population name="Ext"> <!-- External sources definition -->  
+      <Cell><Reference>Ext</Reference></Cell>
+      <Number><SingleValue><MathInline>Cext</MathInline></SingleValue></Number>
+    </Population>
+
+    <Selection name="All neurons"> <!-- The set of all neurons -->  
+      <Concatenate>
+        <Item index="0">Exc</Item>
+        <Item index="1">Inh</Item>
+      </Concatenate>
+    </Selection>
+
+    <!-- Projection from external sources to all neurons -->  
+    <Projection name="External">
+      <Source><Reference>Ext</Reference></Source>
+
+      <Destination>
+        <Reference>All neurons</Reference>
+        <FromResponse send_port="Isyn" receive_port="Isyn"/>
+      </Destination>
+      
+      <Response>
+        <Reference>ESyn</Reference>
+        <FromPlasticity send_port="weight" receive_port="q"/>
+        <FromSource event_receive_port="spike" event_send_port="spikeOutput"/>
+      </Response>
+
+      <Connectivity><Reference>ExternalConnectivity</Reference></Connectivity>
+      
+      <Plasticity>
+        <Reference>ExternalPlasticity</Reference>
+      </Plasticity>
+      
+      <Delay><SingleValue><MathInline>delay</MathInline></SingleValue></Delay>
+    </Projection>
+
+    <!-- Projection from excitatory neurons to all neurons -->  
+    <Projection name="Excitation">
+
+      <Source><Reference>Exc</Reference></Source>
+
+      <Destination>
+        <Reference>All neurons</Reference>
+        <FromResponse send_port="Isyn" receive_port="Isyn"/>
+      </Destination>
+
+      <Connectivity><Reference>ExcitatoryConnectivity</Reference></Connectivity>
+
+      <Response>
+        <Reference>ESyn</Reference>
+        <FromPlasticity send_port="weight" receive_port="q"/>
+        <FromSource event_receive_port="spike" event_send_port="spikeOutput"/>
+      </Response>
+      <Plasticity><Reference>ExcitatoryPlasticity</Reference></Plasticity>
+
+      <Delay><SingleValue><MathInline>delay</MathInline></SingleValue></Delay>
+
+    </Projection>
+
+    <!-- Projection from inhibitory neurons to all neurons -->  
+    <Projection name="Inhibitory">
+
+      <Source><Reference>Inh</Reference></Source>
+
+      <Destination>
+        <Reference>All neurons</Reference>
+        <FromResponse send_port="Isyn" receive_port="Isyn"/>
+      </Destination>
+
+      <Connectivity><Reference>InhibitoryConnectivity</Reference></Connectivity>
+
+      <Response>
+        <Reference>ISyn</Reference>
+        <FromPlasticity send_port="weight" receive_port="q"/>
+        <FromSource event_receive_port="spike" event_send_port="spikeOutput"/>
+      </Response>
+      <Plasticity><Reference>InhibitoryPlasticity</Reference></Plasticity>
+
+      <Delay><SingleValue><MathInline>delay</MathInline></SingleValue></Delay>
+
+    </Projection>
+
+    <!-- Projection from inhibitory neurons to all neurons -->  
+
+    <!-- Record spikes from the given set -->
+    <SpikeRecording set="All neurons"/>
+
+  </Group>
+
+</NineML>

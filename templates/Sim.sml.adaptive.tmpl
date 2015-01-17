@@ -1,0 +1,130 @@
+
+structure Sim{{group.name}} =
+struct
+
+fun putStrLn out str = 
+    (TextIO.output (out, str);
+     TextIO.output (out, "\n"))
+    
+fun putStr out str = 
+    (TextIO.output (out, str))
+    
+    
+fun showBoolean b = (if b then "1" else "0")
+                    
+                    
+fun showReal n = 
+    let open StringCvt
+	open Real
+    in
+	(if n < 0.0 then "-" else "") ^ (fmt (FIX (SOME 12)) (abs n))
+    end
+
+
+exception Index
+
+fun start (tmax, N, S, D, Pn, pq_vector, initial_vector, psr_initial_vector, frun, fresponse, fspikes, finfo, out) =
+
+let
+    val I0 = RTensor.new([N,1],0.0)
+
+    val synports  = List.tabulate (length S, fn (i) => i)
+    fun showSpikes (sq) =
+        {{group.name}}.SEQ.app (fn (t,{src=i,mul=nv}) => putStrLn out ((showReal t) ^ " " ^ (Int.toString (i+1)))) sq
+
+
+    val sub = Unsafe.Real64Array.sub
+    val isub = Unsafe.IntArray.sub
+    val update = Unsafe.Real64Array.update
+
+    fun netrun (t,state_vector,psr_state_vector) =
+        let 
+            val _ = putStrLn TextIO.stdOut ("# " ^ (showReal (#1(t))) ^ " " ^ (showReal (#2(t))))
+
+            val (spike_i, log_spike_i) = fspikes state_vector
+                
+            val _ = finfo (state_vector, out)
+
+            val _ = showSpikes log_spike_i
+
+            val _ = 
+                {{group.name}}.SEQ.app
+                              (fn (tev,{src=i,mul=nv}) =>
+                                  let
+                                      val psls = ListPair.zip 
+                                                     (synports,
+                                                      List.map (fn (W) => SparseMatrix.slice (W,1,i)) S)
+                                                    
+                                  in
+                                      List.app
+                                          (fn (port,sl) =>
+                                              SparseMatrix.sliceAppi
+                                                  (fn (j,x) => let val pq  = Vector.sub (pq_vector,j)
+                                                               in 
+                                                                   pq := {{group.name}}.TEQ.addEvent ((Real.+ (tev,D),{port=port,weight=x}), !pq)
+                                                               end)
+                                                  sl)
+                                          psls
+                                  end)
+                               spike_i
+
+            val (t_i as (tmin_i,tmax_i),state_vector_i) = frun pq_vector (t, state_vector)
+
+        in
+            if tmin_i  > tmax
+            then (putStrLn out "# All done!"; state_vector_i)
+            else netrun (t_i,state_vector_i,psr_state_vector)
+        end
+in
+    netrun ((0.0,0.0),initial_vector,psr_initial_vector)
+end
+
+fun timing (action) = 
+    let
+        val timer = Timer.startCPUTimer ()
+        val result = action ()
+        val times = Timer.checkCPUTimer timer
+    in
+        (result, Time.+ (#usr times, #sys times))
+    end
+
+fun main (name,args) =
+    let
+        open {{group.name}}
+        fun finfo (_,out) = ()
+    in
+        (let
+            val     _ = putStrLn TextIO.stdOut ("starting fprojection...")
+            val (S,t) = timing fprojection
+            val     _ = putStrLn TextIO.stdOut ("fprojection took " ^ (Time.toString t) ^ " s")
+            val out   = TextIO.openOut (label ^ ".dat")
+        in
+            List.app (fn (s) => putStrLn out ("# " ^ s))
+                     ([
+                         label,
+                         {% for p in dict (group.properties) %}
+                         ("{{p.name}} = {{p.value.exprML}}"){% if not loop.last %},{% endif %}
+                         {% endfor %}
+                     ]);
+            let
+                val _     = putStrLn TextIO.stdOut ("starting simulation...")
+                val pq_vector = Vector.tabulate (N, fn (i) => ref (TEQ.empty))
+                val (_,t) = timing (fn () => start (1200.0, N, S, D, Pn, pq_vector, initial, psr_initial, frun, fresponse, fspikes, finfo, out))
+            in
+                putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
+            end;
+            
+            TextIO.flushOut (out);
+            TextIO.closeOut (out)
+        end)
+    end
+    
+
+end
+
+val _ = let val name = CommandLine.name()
+	    val args = CommandLine.arguments()
+	    val env  = Posix.ProcEnv.environ()
+	in
+	    Sim{{group.name}}.main (name, args)
+	end

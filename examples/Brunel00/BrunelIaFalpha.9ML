@@ -1,0 +1,85 @@
+
+(* Brunel (2000) Model A Integrate-and-fire model with alpha synapse *)
+
+component BrunelIaF =
+struct
+
+  binding construct h t V Vreset tau theta tau_rp spike rpend rpstate tspike Isyn R =
+
+    binding subthreshold_V_eq      = [ D (V t h) = (((- V) + (R * Isyn)) / tau) ]
+
+    binding threshold_detect       = [ spike = (V >= theta) ]
+
+    binding tspike_set             = [ tspike = (if spike then t else tspike) ]
+
+    binding rpend_eq               = [ rpend = false ]
+
+    binding subthreshold_regime    = Diagram.SEQUENCE subthreshold_V_eq
+                                                      (Diagram.UNION
+                                                           (Diagram.SEQUENCE threshold_detect tspike_set)
+                                                           rpend_eq)
+
+    binding refractory_assignments = [
+                                          [ V = Vreset ]
+                                          [ spike = false ]
+                                          [ tspike = tspike ]
+                                          [ rpend = (t >= (tspike + tau_rp)) ]
+                                          [ t = t + h ]
+                                    ] 
+
+    return Diagram.RTRANSITION subthreshold_regime refractory_assignments spike rpend rpstate
+
+
+end
+
+component AlphaSynapse =
+struct
+
+  binding construct h t tau_syn Isyn W =
+
+    binding synapse_eq        = [ D (Isyn t h) = ((W - Isyn) / tau_syn) ]
+
+
+
+    return synapse_eq
+
+
+end
+
+component S = Signal 
+
+component TestBrunelIaFdelta =
+struct
+
+  val h = S.realsig `h (S.realconst 0.01)
+
+  (* Synapse parameters *)
+  val tau_syn  =    S.realsig `tau_syn (S.realconst 0.5)
+  val W        =    S.realsig `W (S.realconst 0.0)
+
+  (* Neuron parameters *)
+  val Vreset  =    S.realsig `Vreset (S.realconst 10.0)
+  val tau     =    S.realsig `tau (S.realconst 20.0)
+  val theta   =    S.realsig `theta (S.realconst 20.0)
+  val tau_rp  =    S.realsig `tau_rp (S.realconst 2.0)
+  val R       =    S.realsig `R (S.realconst 20.0)
+
+
+  (* State initial values *)
+  val t        = S.realsig `t (S.realconst 0.0)
+  val V        = S.realsig `V (S.realconst 0.0)
+  val Isyn     = S.realsig `Isyn (S.realconst 0.0)
+  val tspike   = S.realsig `tspike (S.realconst 0.0)
+  val spike    = S.boolsig `spike (S.boolconst false)
+  val rpend    = S.boolsig `rpend (S.boolconst false)
+  val rpstate  = S.boolsig `rpstate (S.boolconst false)
+
+  val syn      = AlphaSynapse.construct h t tau_syn Isyn W
+  val neuron   = BrunelIaF.construct h t V Vreset tau theta tau_rp spike rpend rpstate tspike Isyn R
+
+  val BrunelIaFalpha_fn  =  Diagram.SEQUENCE syn neuron
+
+  val TestBrunelIaFalpha =  IVP.construct BrunelIaFalpha_fn `t `h 0.0 800.0   
+
+end
+

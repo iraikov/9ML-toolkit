@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.org/9ML/1.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.org/9ML/1.0/NineML_v0.2.xsd">
+
+  <ComponentClass name="Izhikevich">
+
+    <Parameter name="a" dimension='none'/>
+    <Parameter name="b" dimension='none'/>
+    <Parameter name="c" dimension='none'/>
+    <Parameter name="d" dimension='none'/>
+    <Parameter name="Vt" dimension='voltage'/>
+
+    <AnalogPort name="Isyn" mode='reduce' dimension='current'/>
+    <AnalogPort name="Iext" mode='receive' dimension='current'/>
+
+    <AnalogPort name="V" mode="send" dimension='voltage'/>
+    <AnalogPort name="U" mode="send" dimension='none'/>
+
+    <EventPort name="spikeOutput" mode="send"/>
+
+    <Dynamics>
+
+        <StateVariable name="V" dimension="voltage"/>
+        <StateVariable name="U" dimension="none"/>
+
+        <Regime name="subthresholdRegime">
+
+          <TimeDerivative variable="V">
+            <MathInline> (0.04 * V * V) + (5 * V) + 140 - U + Isyn + Iext </MathInline>
+          </TimeDerivative>
+
+          <TimeDerivative variable="U">
+            <MathInline> a * (b * v - U) </MathInline>
+          </TimeDerivative>
+
+          <OnCondition>
+
+            <Trigger>
+              <MathInline>V &gt; Vt </MathInline>
+            </Trigger>
+
+            <StateAssignment variable="V" >
+              <MathInline>c</MathInline>
+            </StateAssignment>
+
+            <TimeDerivative variable="U">
+              <MathInline> U + d </MathInline>
+            </TimeDerivative>
+
+            <EventOut port="spikeOutput" />
+
+          </OnCondition>
+
+        </Regime>
+    </Dynamics>
+
+  </ComponentClass>
+</NineML>

@@ -1,0 +1,304 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.incf.org/9ML/0.3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.incf.org/9ML/0.3 ../NineML_v0.3.xsd"
+    name="STDP and oscillations produce phase-locking (Muller et al., 2011)">
+  
+  <Property><!-- Scales the size of the network (total 5*order neurons) -->
+    <label>N</label>
+    <value>5000</value>
+  </Property>
+
+  <Property><!-- Membrane time constant -->
+    <label>taum</label>
+    <value>33.0</value>
+    <unit>ms</unit>
+  </Property>
+
+  <Property> <!-- Firing threshold -->
+    <label>vr</label>
+    <value>-54.0</value>
+    <unit>mV</unit>
+  </Property>
+
+  <Property> <!-- Reset threshold -->
+    <label>vr</label>
+    <value>-70.0</value>
+    <unit>mV</unit>
+  </Property>
+
+  <Property> <!-- Reset threshold -->
+    <label>El</label>
+    <value>-70.0</value>
+    <unit>mV</unit>
+  </Property>
+  
+  <Property><!-- Synapse time constant -->
+    <label>taue</label>
+    <value>5</value>
+    <unit>ms</unit>
+  </Property>
+
+  <Property>
+    <label>f</label>
+    <value>20</value>
+    <unit>Hz</unit>
+  </Property>
+
+  <Property>
+    <label>Rm</label>
+    <value>200</value>
+    <unit>Mohm</unit>
+  </Property>
+
+  <Property>
+    <label>weight</label>
+    <value>0.001</value>
+  </Property>
+
+  <Property> <!-- Input spiking rate -->
+    <!-- lambda t:((.5-.5*cos(2*pi*f*t)))*10*Hz)            -->
+    <label>input_rate</label>
+    <value><MathInline>1000.0 * nu_ext</MathInline></value>
+    <unit>Hz</unit>
+  </Property>
+  
+  <Component name="Neuron">
+
+    <Definition>
+      <link> IaFneuron.xml </link>
+    </Definition>
+
+    <properties>
+
+      <Property>
+        <label>tau</label>
+        <value>20.0</value>
+      </Property>
+      
+      <Property>
+        <label>theta</label>
+        <value><MathInline>theta</MathInline></value>
+      </Property>
+
+      <Property>
+        <label>tau_rp</label>
+        <value>2.0</value>
+      </Property>
+      
+      <Property>
+        <label>Vreset</label>
+        <value>10.0</value>
+      </Property>
+      
+      <Property>
+        <label>R</label>
+        <value>1.5</value>
+      </Property>
+      
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>V</label>
+        <value><MathInline>randomUniform ()</MathInline></value>
+      </Initial>
+
+      <Initial>
+        <label>t_rpend</label>
+        <value>0.0</value>
+      </Initial>
+      
+      <Initial>
+        <label>spikeOutput</label>
+        <value>false</value>
+      </Initial>
+      
+      <Initial>
+        <label>refractoryEnd</label>
+        <value>false</value>
+      </Initial>
+
+    </properties>
+
+  </Component>
+
+
+  <Component name="Ext">
+    
+    <Definition>
+      <link> http://www.NineML.org/stim/Poisson.9ml </link>
+    </Definition>
+    
+    <properties>
+
+      <Property> 
+        <label>rate</label>
+	<value><MathInline>input_rate</MathInline></value>
+      </Property>
+      
+    </properties>
+    
+  </Component>
+
+
+  <Component name="Synapse">
+    
+    <Definition>
+      <link> AlphaPSR.xml </link>
+    </Definition>
+    
+    <properties>
+
+      <Property> 
+        <label>tau_syn</label>
+	<value><MathInline>tau_syn</MathInline></value>
+      </Property>
+
+      <Initial>
+        <label>Ispike</label>
+        <value>0.0</value>
+      </Initial>
+      
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+      
+    </properties>
+    
+  </Component>
+
+
+  <Component name="ExternalPlasticity">
+    
+    <Definition>
+      <link> ConstantPlasticity.xml </link>
+    </Definition>
+    
+    <properties>
+      
+      <Initial>
+        <label>weight</label>
+        <value><MathInline>Jext</MathInline></value>
+      </Initial>
+      
+    </properties>
+    
+  </Component>
+
+  <Component name="ExcitatoryPlasticity">
+    
+    <Definition>
+      <link> ConstantPlasticity.xml </link>
+    </Definition>
+    
+    <properties>
+      
+      <Initial>
+        <label>weight</label>
+        <value><MathInline>Je</MathInline></value>
+      </Initial>
+      
+    </properties>
+    
+  </Component>
+
+  <Component name="InhibitoryPlasticity">
+    
+    <Definition>
+      <link> ConstantPlasticity.xml </link>
+    </Definition>
+    
+    <properties>
+      
+      <Initial>
+        <label>weight</label>
+        <value><MathInline>Ji</MathInline></value>
+      </Initial>
+      
+    </properties>
+    
+  </Component>
+
+
+  <Component name="RandomUniform">
+    
+    <Definition>
+      <link> RandomUniformConnection.xml </link>
+    </Definition>
+    
+    <properties>
+      <Property>
+        <label>epsilon</label>
+        <value><MathInline>epsilon</MathInline></value>
+      </Property>
+    </properties>
+
+  </Component>
+
+  <Group name="BrunelCaseCalpha">
+
+    <Population name="Exc"> <!-- Excitatory population definition -->  
+      <prototype><reference>E</reference></prototype>
+      <number><MathInline>Ne</MathInline></number>
+    </Population>
+
+    <Population name="Inh"> <!-- Inhibitory population definition -->  
+      <prototype><reference>I</reference></prototype>
+      <number><MathInline>Ni</MathInline></number>
+    </Population>
+
+    <Population name="Ext"> <!-- External sources definition -->  
+      <prototype><reference>Ext</reference></prototype>
+      <number><MathInline>Cext</MathInline></number>
+    </Population>
+
+    <Set name="All neurons"> <!-- The set of all neurons -->  
+      <union>
+        <left><singleton>Exc</singleton></left> 
+        <right><singleton>Inh</singleton></right>
+      </union>
+    </Set>
+
+    <!-- Projection from external sources to all neurons -->  
+    <Projection name="External" > 
+      <source><reference>Ext</reference></source>
+      <target><reference>All neurons</reference></target>
+      <rule operator="all-to-all"/>
+      <response><reference>Syn</reference></response>
+      <plasticity><reference>ExternalPlasticity</reference></plasticity>
+    </Projection>
+
+    <!-- Projection from excitatory neurons to all neurons -->  
+    <Projection name="Excitation" > 
+      <source><reference>Exc</reference></source>
+      <target><reference>All neurons</reference></target>
+      <rule operator="for-each">
+        <reference>RandomUniform</reference>
+        <state>connection</state>
+      </rule>
+      <response><reference>Syn</reference></response>
+      <plasticity><reference>ExcitatoryPlasticity</reference></plasticity>
+    </Projection>
+
+    <!-- Projection from inhibitory neurons to all neurons -->  
+    <Projection name="Inhibition" > 
+      <source><reference>Inh</reference></source>
+      <target><reference>All neurons</reference></target>
+      <rule operator="for-each">
+        <reference>RandomUniform</reference>
+        <state>connection</state>
+      </rule>
+      <response><reference>Syn</reference></response>
+      <plasticity><reference>InhibitoryPlasticity</reference></plasticity>
+    </Projection>
+
+    <!-- Record spikes from the given set -->
+    <SpikeRecording set="All neurons"/>
+
+  </Group>
+
+</NineML>

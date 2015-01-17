@@ -1,0 +1,9 @@
+$(SML_LIB)/basis/basis.mlb
+$(RK_LIB)/rk.mlb
+$(RANDMTZIG_LIB)/randmtzig.mlb
+local 
+    RandomUniform_solver.sml
+in
+    structure Model
+end
+RandomUniform_run.sml

@@ -1,0 +1,32 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/basis/mlton.mlb
+$(RK_LIB)/rk.mlb
+$(RANDMTZIG_LIB)/randmtzig.mlb
+$(TENSOR_LIB)/tensor.mlb
+$(TENSOR_LIB)/sparse.mlb
+$(NINEML_LIB)/priority.mlb
+
+local
+    ivp_E_solver.sml
+in
+    structure Model_Exc = Model
+end
+local
+    ivp_I_solver.sml
+in
+    structure Model_Inh = Model
+end
+local
+    ivp_Ext_solver.sml
+in
+    structure Model_Ext = Model
+end
+local
+    RandomUniform_solver.sml
+in
+    structure Model_RandomUniform = Model
+end
+
+BrunelCaseD.sml
+SimBrunelCaseD.sml
+

@@ -1,0 +1,6 @@
+all: SimBrunelCaseBalpha
+
+SimBrunelCaseBalpha: SimBrunelCaseBalpha.mlb SimBrunelCaseBalpha.sml BrunelCaseBalpha.sml 
+	mlton -cc-opt "-O3" -mlb-path-var "RK_LIB /home/igr/bin/chicken/share/chicken/signal-diagram/sml-lib/rk" -mlb-path-var "RANDMTZIG_LIB /home/igr/bin/chicken/share/chicken/signal-diagram/sml-lib/randmtzig" -mlb-path-var "TENSOR_LIB /home/igr/bin/chicken/share/chicken/signal-diagram/sml-lib/tensor" -mlb-path-var "NINEML_LIB /home/igr/bin/chicken/share/chicken/9ML/sml-lib"   $< /home/igr/bin/chicken/share/chicken/signal-diagram/sml-lib/randmtzig/randmtziglib.c
+
+

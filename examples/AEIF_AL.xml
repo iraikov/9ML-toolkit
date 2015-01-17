@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.incf.org/9ML/1.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.incf.org/9ML/1.0/NineML_v0.3.xsd">
+
+  <ComponentClass name="adExIaF">
+
+    <Parameter name="C_m"/>
+    <Parameter name="g_L"/>
+    <Parameter name="E_L"/>
+    <Parameter name="V_T"/>
+    <Parameter name="V_R"/>
+    <Parameter name="V_peak"/>
+    <Parameter name="Delta"/>
+    <Parameter name="theta"/>
+    <Parameter name="tau_w"/>
+    <Parameter name="tau_rp"/>
+    <Parameter name="a"/>
+    <Parameter name="b"/>
+
+    <AnalogReducePort name="Isyn" dimension='current'/>
+    <AnalogSendPort name="t" dimension='time'/>
+    <AnalogSendPort name="V" dimension='voltage'/>
+    <AnalogSendPort name="W" dimension='none'/>
+    <AnalogSendPort name="t_rpend" dimension='time'/>
+
+    <EventSendPort name="refractoryEnd"/>
+    <EventSendPort name="spikeOutput"/>
+
+    <Dynamics>
+
+        <StateVariable name="V" dimension="voltage"/>
+        <StateVariable name="W" dimension="none"/>
+
+        <Regime name="subthresholdRegime">
+
+          <TimeDerivative variable="V">
+            <MathInline> (- g_L * (V - E_L) + g_L * Delta * exp ((V - V_T) / Delta) - W + Isyn) / C_m </MathInline>
+          </TimeDerivative>
+
+          <TimeDerivative variable="W">
+            <MathInline> (a * (V - E_L) - W) / tau_w </MathInline>
+          </TimeDerivative>
+
+          <OnCondition>
+
+            <Trigger>
+              <MathInline>V &gt; theta </MathInline>
+            </Trigger>
+            
+            <StateAssignment variable="V" >
+              <MathInline> V_peak </MathInline>
+            </StateAssignment>
+
+            <StateAssignment variable="W">
+              <MathInline> W + b </MathInline>
+            </StateAssignment>
+
+            <StateAssignment variable="t_rpend" >
+              <MathInline> t + tau_rp </MathInline>
+            </StateAssignment>
+            
+            <EventOut port="spikeOutput" />
+
+          </OnCondition>
+
+        </Regime>
+
+        <Regime name="refractoryRegime">
+            
+          <StateAssignment variable="V" >
+            <MathInline> V_R </MathInline>
+          </StateAssignment>
+
+          <StateAssignment variable="W" >
+            <MathInline> W </MathInline>
+          </StateAssignment>
+
+          <StateAssignment variable="t" >
+            <MathInline> t + h </MathInline>
+          </StateAssignment>
+
+          <OnCondition>
+            
+            <Trigger>
+              <MathInline>t &gt; t_rpend </MathInline>
+            </Trigger>
+            
+            <EventOut port="refractoryEnd" />
+            
+          </OnCondition>
+          
+        </Regime>
+
+    </Dynamics>
+
+  </ComponentClass>
+</NineML>

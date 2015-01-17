@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.net/9ML/1.0">
+  <ComponentClass name="Poisson">
+    <EventSendPort name="spikeOutput"/>
+    <Parameter dimension="" name="rate"/>
+    <Dynamics>
+      <StateVariable dimension="time" name="t_next"/>
+      <Regime name="default">
+        <StateAssignment variable="t_next">
+            <MathInline> t_next </MathInline>
+        </StateAssignment>
+        <OnCondition target_regime="default">
+          <StateAssignment variable="t_next">
+            <MathInline>t + random.exponential(1000/rate)</MathInline>
+          </StateAssignment>
+          <EventOut port="spikeOutput"/>
+          <Trigger>
+            <MathInline>t &gt; t_next</MathInline>
+          </Trigger>
+        </OnCondition>
+      </Regime>
+    </Dynamics>
+  </ComponentClass>
+</NineML>

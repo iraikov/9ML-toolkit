@@ -1,0 +1,32 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/basis/mlton.mlb
+$(RK_LIB)/rk.mlb
+$(RANDMTZIG_LIB)/randmtzig.mlb
+$(TENSOR_LIB)/tensor.mlb
+$(TENSOR_LIB)/sparse.mlb
+$(NINEML_LIB)/priority.mlb
+
+{% for pop in dict (group.populations) %}
+local
+    {{pop.value.prototype.ivpFn}}_solver.sml
+in
+    structure Model_{{pop.name}} = Model
+end
+{% endfor %}
+{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
+local
+    {{psr.value.ivpFn}}_solver.sml
+in
+    structure Model_{{psr.name}} = Model
+end
+{% endfor %}{% endif %}
+{% if group.conntypes %}{% for conn in dict (group.conntypes) %}
+local
+    {{conn.value.sysFn}}_solver.sml
+in
+    structure Model_{{conn.name}} = Model
+end
+{% endfor %}{% endif %}
+
+{{group.name}}.sml
+Sim{{group.name}}.sml

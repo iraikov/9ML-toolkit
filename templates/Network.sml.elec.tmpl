@@ -1,0 +1,433 @@
+
+structure {{group.name}} =
+struct
+
+  fun putStrLn out str = 
+      (TextIO.output (out, str);
+       TextIO.output (out, "\n"))
+    
+  fun putStr out str = 
+      (TextIO.output (out, str))
+      
+  fun showBoolean b = (if b then "1" else "0")
+                      
+  fun showReal n = 
+      let open StringCvt
+	  open Real
+      in
+	  (if n < 0.0 then "-" else "") ^ (fmt (FIX (SOME 12)) (abs n))
+      end
+      
+  fun foldl1 f lst = let val v = List.hd lst
+                         val lst' = List.tl lst
+                     in
+                         List.foldl f v lst'
+                     end
+
+  fun fromDiag (m, n, a, dflt) =
+      if Index.validShape [m,n]
+      then 
+          (let 
+               val na  = RTensor.Array.length a
+               val na' = na-1
+               val te  = RTensor.new ([m,n], dflt)
+               fun diag (i, j, ia) =
+                   let
+                       val ia' = 
+                           (RTensor.update (te, [i,j], RTensor.Array.sub (a, ia));
+                            if ia = na' then 0 else ia+1)
+                   in
+                       if (i=0) orelse (j=0) 
+                       then te
+                       else diag (i-1, j-1, ia)
+                   end
+           in
+               diag (m-1, n-1, 0)
+           end)
+      else 
+          raise RTensor.Shape
+
+  val RandomInit = RandomMTZig.fromEntropy
+
+  val ZigInit = RandomMTZig.ztnew
+        
+  exception Index        
+
+  val label = "{{group.name}}"
+            
+  val N = {{group.order}}     (* total population size *)
+
+
+  {% for p in dict (group.properties) %}
+  val {{p.name}} = {{p.value.exprML}}
+  {% endfor %}
+
+  {% with timestep = default(group.properties.timestep.exprML, 0.1) %}
+  val h = {{ timestep }}
+  {% endwith %}
+
+  (* delay expressed as # time steps *)
+  val D: (RTensor.tensor option) list  = List.tabulate (Real.round (Real.max (Real./({{group.properties.delay.exprML}},h),1.0)), fn i => NONE)
+
+  val seed_init = RandomInit() (* seed for initial membrane potential *)
+  val zt_init   = ZigInit()
+  fun randomNormal () = RandomMTZig.randNormal(seed_init,zt_init)
+  fun randomUniform () = RandomMTZig.randUniform(seed_init)
+
+{% for pop in dict (group.populations) %}
+
+  val N_{{pop.name}} = {{ pop.value.size }}
+
+  val {{pop.name}}_initial = {{pop.value.prototype.initialExprML}}
+
+{% if pop.value.prototype.fieldExprML %}
+  val {{pop.name}}_field_vector = 
+    Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.fieldExprML}})
+{% endif %}
+
+  val {{pop.name}}_initial_vector = 
+    Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.initialStateExprML}})
+
+  val {{pop.name}}_f = Model_{{pop.name}}.{{pop.value.prototype.ivpFn}}
+
+  fun {{pop.name}}_run (Wnet,n0) (i,input as { {{ join (",", pop.value.prototype.states) }} }) =
+    let 
+        val initial = {{pop.name}}_initial
+{% if pop.value.prototype.fieldExprML %}
+        val fieldV = Vector.sub ({{pop.name}}_field_vector,i)
+{% endif %}
+        val Isyn_i  = case Wnet of SOME W => RTensor.sub(W,[i+n0,0]) | NONE => 0.0
+        (*val _ = putStrLn TextIO.stdOut ("# {{pop.name}}: t = " ^ (showReal t) ^ " Isyn_i = " ^ (showReal Isyn_i) ^ " V = " ^ (showReal V))*)
+        val nstate = {{pop.name}}_f {{ pop.value.prototype.copyStateIsynML }} 
+        val nstate' = {{ pop.value.prototype.copyStateNstateML }} 
+    in 
+        nstate'
+    end
+
+{% endfor %}
+
+{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
+  val {{psr.name}}_initial = {{psr.value.initialExprML}}
+
+  val {{psr.name}}_initial_vector = Vector.tabulate ({{psr.value.range}}, fn (i) => {{psr.value.initialStateExprML}})
+
+  val {{psr.name}}_f = Model_{{psr.name}}.{{psr.value.ivpFn}}
+
+  fun {{psr.name}}_response W (i,input as { {{ join (",", psr.value.states) }} }) =
+    let 
+        val initial = {{psr.name}}_initial
+        val Ispike_i  = RTensor.sub(W,[i,0])
+        (*val _ = putStrLn TextIO.stdOut ("# {{psr.name}}: t = " ^ (showReal t) ^ " Ispike_i = " ^ (showReal Ispike_i)*)
+        val nstate = {{psr.name}}_f {{ psr.value.copyStateIspikeML }} 
+        val nstate' = {{ psr.value.copyStateNstateML }} 
+    in 
+        RTensor.update(W,[i,0],(#Isyn nstate'));
+        nstate'
+    end
+{% endfor %}{% endif %}
+
+    val initial = (
+        {% for pop in dict (group.populations) %}
+        {{pop.name}}_initial_vector{% if not loop.last %},{% endif %}
+        {% endfor %}
+    )
+
+    val psr_initial = (
+        {% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
+        {{psr.name}}_initial_vector{% if not loop.last %},{% endif %}
+        {% endfor %}{% endif %}
+    )
+
+
+    {% for pop in dict (group.populations) %}
+    val {{pop.name}}_n0 = {{pop.value.start}}
+    {% endfor %}
+
+                
+    val Pn = [
+        {% for pop in dict (group.populations) %}
+        {{pop.name}}_n0{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+         
+    fun frun I
+             (
+              {% for pop in dict (group.populations) %}
+              {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
+              {% endfor %} ) =
+        let
+            {% for pop in dict (group.populations) %}
+            val {{pop.name}}_state_vector' = 
+                Vector.mapi ({{pop.name}}_run (I,{{pop.name}}_n0))
+                            {{pop.name}}_state_vector
+
+            {% endfor %}
+        in
+            (
+             {% for pop in dict (group.populations) %}
+             {{pop.name}}_state_vector'{% if not loop.last %},{% endif %}
+             {% endfor %}
+            ) 
+        end
+
+                         
+    fun fresponse I
+             (
+              {% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
+              {{psr.name}}_state_vector{% if not loop.last %},{% endif %}
+              {% endfor %}{% endif %}
+             ) =
+        let
+            {% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
+            val I' = case I of SOME I => I
+                             | NONE => RTensor.new ([N,1],0.0)
+
+            val {{psr.name}}_state_vector' = 
+                Vector.mapi ({{psr.name}}_response I')
+                            {{psr.name}}_state_vector
+
+            {% endfor %}{% endif %}
+        in
+            ({% if group.psrtypes %}SOME I'{% else %}I{% endif %},
+             (
+              {% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
+              {{psr.name}}_state_vector'{% if not loop.last %},{% endif %}
+              {% endfor %}{% endif %}
+             ))
+        end
+                         
+
+    fun felec E I 
+              ({% for pop in dict (group.populations) %}
+              {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
+              {% endfor %} ) =
+        case E of NONE => I
+                | SOME E => 
+                  let
+                    val update = Unsafe.Real64Array.update
+                    val I' = case I of SOME I => I
+                                     | NONE => RTensor.new ([N,1],0.0)
+                  {% for pr in dict (group.projections) %}
+                  {% if pr.value.type == "cvar" %}
+                  {% for spop in pr.value.source %}
+                  {% for tpop in pr.value.destination %}
+                    fun {{spop.name}}_sub i = #({{first (spop.value.prototype.states)}})(Vector.sub ({{spop.name}}_state_vector, i))
+                    fun {{tpop.name}}_sub i = #({{first (tpop.value.prototype.states)}})(Vector.sub ({{tpop.name}}_state_vector, i))
+                    val _ = Loop.app
+                                (0, N_{{spop.name}},
+                                 fn (i) => 
+                                    let
+                                        val Vi = {{spop.name}}_sub i
+                                        val sl = SparseMatrix.slice (#{{spop.name}}(E),1,i)
+                                    in
+                                        SparseMatrix.sliceAppi 
+                                            (fn (j,g) => let val Vj = {{tpop.name}}_sub j
+                                                         in update (I,i,Real.- (sub(I,i), Real.* (g,Real.- (Vi,Vj)))) end)
+                                            sl
+                                    end)
+                                
+                  {% endfor %}
+                  {% endfor %}
+                  {% endif %}
+                  {% endfor %}
+                  in
+                  end
+                         
+    fun ftime (
+              {% for pop in dict (group.populations) %}
+              {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
+              {% endfor %} ) =
+        
+        {% with pop = first (dict (group.populations)) %}
+        let val { {{ join (",", pop.value.prototype.states) }} } = Vector.sub ({{pop.name}}_state_vector,0)
+        in {{pop.value.prototype.ivar}} end
+        {% endwith %}
+    
+        
+    fun fspikes (
+              {% for pop in dict (group.populations) %}
+              {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
+              {% endfor %} ) =
+
+        let
+           {% for pop in dict (group.populations) %}
+            val {{pop.name}}_spike_i = 
+                Vector.foldri (fn (i,v as { {{ join (",", pop.value.prototype.states) }} },ax) => 
+                               {% if not pop.name in group.spikepoplst %}
+                               (if (#{{first (pop.value.prototype.events)}}(v)) then ((i+{{pop.name}}_n0,#{{first (pop.value.prototype.events)}}Count(v)))::ax else ax)) 
+                               {% else %}
+                               (if (#{{first (pop.value.prototype.events)}}(v)) then ((i+{{pop.name}}_n0,1.0))::ax else ax)) 
+                               {% endif %}
+                              [] {{pop.name}}_state_vector
+           {% endfor %}
+
+           val ext_spike_i = List.concat ( {% for pop in dict (group.populations) %}{% if not pop.name in group.spikepoplst %}{{pop.name}}_spike_i ::{% endif %}{% endfor %} [] )
+
+                
+           val neuron_spike_i = List.concat [ 
+                                 {% for name in (group.spikepoplst) %}
+                                 {{name}}_spike_i{% if not loop.last %},{% endif %}
+                                 {% endfor %}
+                                 ]
+
+            val all_spike_i    = List.concat [neuron_spike_i, ext_spike_i]
+        in
+            (all_spike_i, neuron_spike_i)
+        end
+
+{% macro random_divergent(name, sp, tp, epsilon, weight) %}
+             val Pr_{{name}}_seed = RandomInit()
+             val Pr_{{name}} = SparseMatrix.fromGeneratorList [N,N]
+                                  [
+                                    {% for s in sp %}
+                                    {% for t in tp %}
+                                      {offset=[{{t.start}},{{s.start}}],
+                                       fshape=[{{t.size}},{{s.size}}],
+                                       f=(fn (i) => if Real.> ({{epsilon}},
+                                                                RandomMTZig.randUniform Pr_{{name}}_seed)
+                                                    then {{weight}} else 0.0)}{% if not loop.last %},{% endif %}
+                                    {% endfor %}{% if not loop.last %},{% endif %}
+                                    {% endfor %}
+                                 ]
+{% endmacro %}
+
+
+{% macro all_to_all(name, sp, tp, weight) %}
+             val Pr_{{name}} = SparseMatrix.fromTensorList [N,N]
+                                  [
+                                    {% for s in sp %}
+                                    {% for t in tp %}
+                                    {offset=[{{t.start}},{{s.start}}],
+                                     tensor=(RTensor.*> {{weight}} 
+                                                  (RTensor.new ([{{t.size}},{{s.size}}],1.0))),
+                                     sparse=false}{% if not loop.last %},{% endif %}
+                                    {% endfor %}{% if not loop.last %},{% endif %}
+                                    {% endfor %}
+                                 ]
+{% endmacro %}
+
+{% macro one_to_one(name, sp, tp, weight) %}
+             val Pr_{{name}} = SparseMatrix.fromTensorList [N,N]
+                                  [
+                                    {% for s in sp %}
+                                    {% for t in tp %}
+                                    {offset=[{{t.start}},{{s.start}}],
+                                     tensor=(fromDiag ({{t.size}},{{s.size}},Real64Array.fromList [{{weight}}],0.0)),
+                                     sparse=true}{% if not loop.last %},{% endif %}
+                                    {% endfor %}{% if not loop.last %},{% endif %}
+                                    {% endfor %}
+                                 ]
+{% endmacro %}
+
+
+{% macro from_file(name, sp, tp, filename) %}
+             val Pr_{{name}} = let val infile = TextIO.openIn "{{filename}}" 
+                                   val S = TensorFile.realTensorRead (infile) 
+                                   val _ = TextIO.closeIn infile
+                               in 
+                                   SparseMatrix.fromTensorSliceList [N,N]
+                                   [
+                                     {% with %}
+                                     {% set soffset = 0 %}
+                                     {% for s in sp %}
+                                     {% set toffset = 0 %}
+                                     {% for t in tp %}
+                                     {offset=[{{t.start}},{{s.start}}],
+                                      slice=(RTensorSlice.slice ([([{{toffset}},{{soffset}}],[{{toffset}}+{{t.size}}-1,{{soffset}}+{{s.size}}-1])],S)),
+                                      sparse=false}{% if not loop.last %},{% endif %}
+                                     {% set toffset = toffset + t.size %}
+                                     {% endfor %}{% if not loop.last %},{% endif %}
+                                     {% set soffset = soffset + s.size %}
+                                     {% endfor %}
+                                     {% endwith %}
+                                  ]
+                                end
+{% endmacro %}
+
+           
+           
+    fun fprojection () =
+        
+        (let
+             
+             {% for pr in dict (group.projections) %}
+             val _ = putStrLn TextIO.stdOut "constructing {{pr.name}}"
+             {% if pr.value.rule == "random divergent" %}
+             {% call random_divergent(pr.name, 
+                                      pr.value.source.populations, 
+                                      pr.value.destination.populations, 
+                                      pr.value.properties.epsilon.exprML,
+                                      pr.value.properties.weight.exprML) %}
+             {% endcall %}
+             {% else %}
+             {% if pr.value.rule == "one-to-one" %}
+             {% call one_to_one(pr.name, 
+                                pr.value.source.populations,
+                                pr.value.destination.populations,
+                                pr.value.properties.weight.exprML) %}
+             {% endcall %}
+             {% else %}
+             {% if pr.value.rule == "all-to-all" %}
+             {% call all_to_all(pr.name, 
+                                pr.value.source.populations,
+                                pr.value.destination.populations,
+                                pr.value.properties.weight.exprML) %}
+             {% endcall %}
+             {% else %}
+             {% if pr.value.rule == "from file" %}
+             {% call from_file(pr.name, 
+                               pr.value.source.populations,
+                               pr.value.destination.populations,
+                               pr.value.properties.filename.exprML) %}
+             {% endcall %}
+             {% endif %}
+             {% endif %}
+             {% endif %}
+             {% endif %}
+             {% endfor %}
+                
+       
+{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
+             val S_{{psr.name}} = foldl1 SparseMatrix.insert
+                                  ([ 
+                                    {% for pr in psr.value.projections %}
+                                    {% if pr.value.type == "event" %}
+                                    Pr_{{pr}}{% if not loop.last %},{% endif %}
+                                    {% endif %}
+                                    {% endfor %}
+                                   ])
+{% endfor %}{% else %}
+             val S = foldl1 SparseMatrix.insert
+                     ([ 
+                           {% for pr in dict (group.projections) %}
+                               {% if pr.value.type == "event" %}
+                               Pr_{{pr.name}}{% if not loop.last %},{% endif %}
+                               {% endif %}
+                           {% endfor %}
+                     ])
+{% endif %}
+
+             val Elst = 
+                      [ 
+                           {% for pr in dict (group.projections) %}
+                               {% if pr.value.type == "cvar" %}
+                               Pr_{{pr.name}}{% if not loop.last %},{% endif %}
+                               {% endif %}
+                           {% endfor %}
+                     ]
+
+             val E = if List.null Elst then NONE else SOME Elst
+
+             in
+              ([
+{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
+               S_{{ psr.name }}{% if not loop.last %},{% endif %}
+{% endfor %}{% else %}
+               S
+{% endif %}
+              ], E)
+             end)
+
+
+end
+        

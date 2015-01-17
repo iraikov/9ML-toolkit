@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.incf.org/9ML/0.3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.incf.org/9ML/0.3 ../NineML_v0.3.xsd">
+
+  <ComponentClass name="AlphaPSR">
+
+    <Parameter name="gs" dimension='conductance'/> 
+    <Parameter name="alpha" dimension='conductance'/> 
+
+    <EventPort name="spike"/>
+
+    <AnalogPort name="Ispike" mode='reduce' dimension='current'/>
+
+    <AnalogPort name="tspike" mode='recv' dimension='time'/>
+
+    <AnalogPort name="A" mode="send" dimension='conductance'/>
+    <AnalogPort name="B" mode="send" dimension='conductance'/>
+    <AnalogPort name="Isyn" mode="send" dimension='conductance'/>
+
+    <Dynamics>
+
+        <StateVariable name="A" dimension="conductance"/>
+        <StateVariable name="B" dimension="conductance"/>
+
+        <StateVariable name="gSyn" dimension="conductance"/>
+
+        <Regime name="default">
+          
+          <TimeDerivative variable="A">
+            <MathInline> (B - A) * alpha </MathInline>
+          </TimeDerivative>
+
+          <TimeDerivative variable="B">
+            <MathInline> - alpha * B </MathInline>
+          </TimeDerivative>
+
+          <StateAssignment variable="gSyn" >
+            <MathInline> gs * A </MathInline>
+          </StateAssignment>
+
+          <OnEvent src_port="spike">
+            
+            <StateAssignment variable="A" >
+              <MathInline> A </MathInline>
+            </StateAssignment>
+
+            <StateAssignment variable="B" >
+              <MathInline> B + alpha </MathInline>
+            </StateAssignment>
+
+            <StateAssignment variable="gSyn" >
+              <MathInline> gs * A </MathInline>
+            </StateAssignment>
+
+            <StateAssignment variable="t" >
+              <MathInline> t + h </MathInline>
+            </StateAssignment>
+            
+          </OnEvent>
+
+        </Regime>
+
+    </Dynamics>
+
+
+  </ComponentClass>
+</NineML>

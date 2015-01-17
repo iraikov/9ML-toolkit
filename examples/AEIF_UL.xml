@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.incf.org/9ML/1.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.incf.org/9ML/1.0/NineML_v0.3.xsd">
+
+    <Component name="TestAdEx1">
+
+        <Definition url="AEIF_AL.xml">adExIaF</Definition>
+
+          <Property>
+            <label>C_m</label>
+            <value>200.0</value>
+          </Property>
+
+          <Property>
+            <label>g_L</label>
+            <value>10.0</value>
+          </Property>
+
+          <Property>
+            <label>E_L</label>
+            <value>-58.0</value>
+          </Property>
+
+          <Property>
+            <label>Delta</label>
+            <value>2.0</value>
+          </Property>
+
+          <Property>
+            <label>V_T</label>
+            <value>-50.0</value>
+          </Property>
+
+          <Property>
+            <label>theta</label>
+            <value>-45.0</value>
+          </Property>
+
+          <Property>
+            <label>V_R</label>
+            <value>-46.0</value>
+          </Property>
+
+          <Property>
+            <label>V_peak</label>
+            <value>20.0</value>
+          </Property>
+
+          <Property>
+            <label>tau_w</label>
+            <value>120.0</value>
+          </Property>
+
+          <Initial>
+            <label>tau_rp</label>
+            <value>0.25</value>
+          </Initial>
+
+          <Property>
+            <label>a</label>
+            <value>2.0</value>
+          </Property>
+
+          <Property>
+            <label>b</label>
+            <value>100.0</value>
+          </Property>
+
+          <Initial>
+            <label>V</label>
+            <value>-65.0</value>
+          </Initial>
+
+          <Initial>
+            <label>W</label>
+            <value>0.0</value>
+          </Initial>
+          
+          <Initial>
+            <label>spikeOutput</label>
+            <value>false</value>
+          </Initial>
+
+          <Initial>
+            <label>refractoryEnd</label>
+            <value>false</value>
+          </Initial>
+
+          <Initial>
+            <label>Isyn</label>
+            <value>210.0</value>
+          </Initial>
+
+          <Initial>
+            <label>tspike</label>
+            <value>0.0</value>
+          </Initial>
+
+          <Initial>
+            <label>t_rpend</label>
+            <value>0.0</value>
+          </Initial>
+
+        <ivp name="TestAdExRB">
+          <timestep>1e-2</timestep>
+          <duration>1000.0</duration>
+        </ivp>
+
+    </Component>
+
+</NineML>

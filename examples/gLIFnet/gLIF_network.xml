@@ -1,0 +1,238 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.incf.org/9ML/0.3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.incf.org/9ML/0.3 ../NineML_v0.3.xsd"
+    name="Two synaptically coupled conductance based leaky integrate-and-fire neurons">
+
+  
+  <Component name="N1">
+
+    <Definition>
+      <link> gLIF.xml </link>
+    </Definition>
+
+      <Property>
+        <label>C</label>
+        <value>1.0</value>
+      </Property>
+
+      <Property>
+        <label>vL</label>
+        <value>-65.0</value>
+      </Property>
+
+      <Property>
+        <label>gL</label>
+        <value>0.3</value>
+      </Property>
+      
+      <Property>
+        <label>Vreset</label>
+        <value>-70.0</value>
+      </Property>
+
+      <Property>
+        <label>Vthr</label>
+        <value>-70.0</value>
+      </Property>
+      
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>V</label>
+        <value>-65.0</value>
+      </Initial>
+      
+      <Initial>
+        <label>spikeOutput</label>
+        <value>false</value>
+      </Initial>
+
+  </Component>
+
+  
+  <Component name="N2">
+
+    <Definition>
+      <link> gLIF.xml </link>
+    </Definition>
+
+      <Property>
+        <label>C</label>
+        <value>1.0</value>
+      </Property>
+
+      <Property>
+        <label>vL</label>
+        <value>-65.0</value>
+      </Property>
+
+      <Property>
+        <label>gL</label>
+        <value>0.3</value>
+      </Property>
+      
+      <Property>
+        <label>Vreset</label>
+        <value>-70.0</value>
+      </Property>
+
+      <Property>
+        <label>Vthr</label>
+        <value>-70.0</value>
+      </Property>
+      
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>V</label>
+        <value>-65.0</value>
+      </Initial>
+      
+      <Initial>
+        <label>spikeOutput</label>
+        <value>false</value>
+      </Initial>
+
+  </Component>
+
+
+  <Component name="Syn1">
+    
+    <Definition>
+      <link> AlphaPSR.xml </link>
+    </Definition>
+    
+      <Property> 
+        <label>tau_syn</label>
+	<value><MathInline>tau_syn</MathInline></value>
+      </Property>
+
+      <Initial>
+        <label>A</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>B</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>spike</label>
+        <value>false</value>
+      </Initial>
+
+      <Initial>
+        <label>tspike</label>
+        <value>0.0</value>
+      </Initial>
+
+      <Initial>
+        <label>Ispike</label>
+        <value>0.0</value>
+      </Initial>
+      
+      <Initial>
+        <label>Isyn</label>
+        <value>0.0</value>
+      </Initial>
+      
+  </Component>
+
+  <Component name="Plasticity">
+    
+    <Definition>
+      <link> ConstantPlasticity.xml </link>
+    </Definition>
+    
+      <Initial>
+        <label>weight</label>
+        <value>1.0</value>
+      </Initial>
+      
+  </Component>
+
+
+  <Component name="RandomUniform">
+    
+    <Definition>
+      <link> RandomUniformConnection.xml </link>
+    </Definition>
+    
+      <Property>
+        <label>epsilon</label>
+        <value><MathInline>epsilon</MathInline></value>
+      </Property>
+
+  </Component>
+
+  <Group name="BrunelCaseAalpha">
+
+    <Population name="Exc"> <!-- Excitatory population definition -->  
+      <prototype><reference>E</reference></prototype>
+      <number><MathInline>Ne</MathInline></number>
+    </Population>
+
+    <Population name="Inh"> <!-- Inhibitory population definition -->  
+      <prototype><reference>I</reference></prototype>
+      <number><MathInline>Ni</MathInline></number>
+    </Population>
+
+    <Population name="Ext"> <!-- External sources definition -->  
+      <prototype><reference>Ext</reference></prototype>
+      <number><MathInline>Cext</MathInline></number>
+    </Population>
+
+    <Set name="All neurons"> <!-- The set of all neurons -->  
+      <union>
+        <left><singleton>Exc</singleton></left> 
+        <right><singleton>Inh</singleton></right>
+      </union>
+    </Set>
+
+    <!-- Projection from external sources to all neurons -->  
+    <Projection name="External" > 
+      <source><reference>Ext</reference></source>
+      <target><reference>All neurons</reference></target>
+      <rule operator="all-to-all"/>
+      <response><reference>ESyn</reference></response>
+      <plasticity><reference>ExternalPlasticity</reference></plasticity>
+    </Projection>
+
+    <!-- Projection from excitatory neurons to all neurons -->  
+    <Projection name="Excitation" > 
+      <source><reference>Exc</reference></source>
+      <target><reference>All neurons</reference></target>
+      <rule operator="for-each">
+        <reference>RandomUniform</reference>
+        <state>connection</state>
+      </rule>
+      <response><reference>ESyn</reference></response>
+      <plasticity><reference>ExcitatoryPlasticity</reference></plasticity>
+    </Projection>
+
+    <!-- Projection from inhibitory neurons to all neurons -->  
+    <Projection name="Inhibition" > 
+      <source><reference>Inh</reference></source>
+      <target><reference>All neurons</reference></target>
+      <rule operator="for-each">
+        <reference>RandomUniform</reference>
+        <state>connection</state>
+      </rule>
+      <response><reference>ISyn</reference></response>
+      <plasticity><reference>InhibitoryPlasticity</reference></plasticity>
+    </Projection>
+
+    <!-- Record spikes from the given set -->
+    <SpikeRecording set="All neurons"/>
+
+  </Group>
+
+</NineML>

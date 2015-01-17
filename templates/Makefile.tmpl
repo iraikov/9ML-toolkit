@@ -1,0 +1,6 @@
+all: Sim{{group.name}}
+
+
+Sim{{group.name}}: Sim{{group.name}}.mlb Sim{{group.name}}.sml {{group.name}}.sml 
+	mlton -cc-opt "-O3" -mlb-path-var "RK_LIB {{sml_lib_home}}/rk" -mlb-path-var "RANDMTZIG_LIB {{sml_lib_home}}/randmtzig" -mlb-path-var "TENSOR_LIB {{sml_lib_home}}/tensor" -mlb-path-var "NINEML_LIB {{nineml_lib_home}}"   $< {{sml_lib_home}}/randmtzig/randmtziglib.c
+

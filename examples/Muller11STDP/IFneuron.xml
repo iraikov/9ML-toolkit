@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<NineML xmlns="http://nineml.incf.org/9ML/0.3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://nineml.incf.org/9ML/0.3 ../NineML_v0.3.xsd">
+
+  <ComponentClass name="IFneuron">
+
+    <Parameter name="taum" dimension='time'/> <!-- membrane constant -->
+    <Parameter name="vt" dimension='voltage'/> <!-- firing threshold -->
+    <Parameter name="vr" dimension='voltage'/> <!-- reset potential -->
+
+    <Parameter name="El" dimension='voltage'/> <!-- leak potential -->
+    <Parameter name="Ee" dimension='voltage'/> <!-- synaptic rev potential -->
+    <Parameter name="Rm" dimension='resistance'/>
+
+    <AnalogPort name="ge" mode='reduce' dimension='conductance'/>
+    <AnalogPort name="V" mode="send" dimension='voltage'/>
+    <AnalogPort name="I" mode='receive' dimension='current'/>
+
+    <EventPort name="spikeOutput" mode="send"/>
+
+    <Dynamics>
+
+        <StateVariable name="V" dimension="voltage"/>
+
+        <Regime name="subthresholdRegime">
+          
+          <TimeDerivative variable="V">
+            <MathInline> ((ge * (Ee - vr)) + Rm * I + (El - V)) / taum </MathInline>
+          </TimeDerivative>
+
+          <OnCondition>
+            
+            <Trigger>
+              <MathInline>V &gt;= vt </MathInline>
+            </Trigger>
+            
+            <StateAssignment variable="V" >
+              <MathInline> vr </MathInline>
+            </StateAssignment>
+            
+            <EventOut port="spikeOutput" />
+            
+          </OnCondition>
+          
+        </Regime>
+          
+    </Dynamics>
+
+  </ComponentClass>
+</NineML>
