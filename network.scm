@@ -2,7 +2,7 @@
 ;; NineML network level descriptions.
 ;;
 ;;
-;; Copyright 2010-2014 Ivan Raikov
+;; Copyright 2010-2015 Ivan Raikov
 ;;
 ;; This program is free software: you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -1098,6 +1098,7 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
   
 
 (define (make-projection-tenv name type source destination connectivity response response-ports plasticity del properties)
+    (d "make-projection-tenv: connectivity = ~A~%" connectivity)
     (alist->tenv
      `((name          . ,name)
        (type          . ,type)
@@ -1129,6 +1130,8 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
             (plasticity-ports (lookup-def 'plasticity-ports ports))
             (destination-ports (lookup-def 'destination-ports ports))
             )
+        (d "NineML make-response-tenv: plasticity-ports = ~A destination-ports = ~A~%" 
+           plasticity-ports destination-ports)
         (let* ((ivpFn                (lookup-def 'ivp-id sdinfo))
                (states               (cons ivar dvars))
                (outstates            (filter (lambda (x) (member x outputs)) states))
@@ -1196,35 +1199,48 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
   )
 
 
-(define (make-connection-tenv prefix name env)
-  (let ((alsys-name ($ (->string name))))
-    (let ((sdinfo (lookup-def alsys-name env)))
-      (if (not sdinfo) 
+(define (make-connection-tenv prefix name stdlib-env alsys-env)
 
-          (alist->tenv
-           `((name  . ,name)))
+  (let ((sys-name ($ (->string name))))
 
-          (let ((dvars   (lookup-def 'dvars sdinfo))
-                (ic      (lookup-def 'initial-conditions sdinfo))
-                (params  (lookup-def 'params sdinfo))
-                (sysFn   (lookup-def 'sys-id sdinfo)))
-            (let* (
-                   (states               dvars)
-                   (icstates             (filter (lambda (x) (member (car x) states)) ic))
-                   (initialExpr/ML       (mlton-initial (append ic params)))
-                   (initialStateExpr/ML  (and (not (null? icstates)) (mlton-initial icstates)))
-                   )
-              (d "NineML make-connection-tenv: states = ~A ics = ~A~%" states (map car ic))
+  (cond
+
+   ((lookup-def sys-name stdlib-env) =>
+    (lambda (stdlib)
+      (match stdlib
+             (('Tuple ('left _) ('right ('Tuple ('left ('Const ('string stdlib-name))) _)))
               (alist->tenv
-               `((name               . ,name)
-                 (sysFn              . ,sysFn)
-                 (states             . ,states)
-                 (initialExprML      . ,initialExpr/ML)
-                 (initialStateExprML . ,initialStateExpr/ML)
-                 ))
-              ))
+               `((name  . ,sys-name)
+                 (stdlib . ,stdlib-name))))
+             (else (error 'make-connection-tenv "unknown stdlib connection")))))
+
+   ((lookup-def sys-name alsys-env) =>
+    (lambda (sdinfo)
+
+      (let ((dvars   (lookup-def 'dvars sdinfo))
+            (ic      (lookup-def 'initial-conditions sdinfo))
+            (params  (lookup-def 'params sdinfo))
+            (sysFn   (lookup-def 'sys-id sdinfo)))
+        (let* (
+               (states               dvars)
+               (icstates             (filter (lambda (x) (member (car x) states)) ic))
+               (initialExpr/ML       (mlton-initial (append ic params)))
+               (initialStateExpr/ML  (and (not (null? icstates)) (mlton-initial icstates)))
+               )
+          (d "NineML make-connection-tenv: states = ~A ics = ~A~%" states (map car ic))
+          (alist->tenv
+           `((name               . ,name)
+             (sysFn              . ,sysFn)
+             (states             . ,states)
+             (initialExprML      . ,initialExpr/ML)
+             (initialStateExprML . ,initialStateExpr/ML)
+             ))
           ))
-    ))
+      ))
+   (else
+    (error 'make-connection-tenv "unknown connection equation system" name))
+   ))
+  )
 
 
 (define (make-group-tenv name order populations sets projections 
@@ -1249,7 +1265,7 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
     (alist->tenv alst)))
 
 
-(define (eval-ul-group prefix ul-properties node ivp-env alsys-env)
+(define (eval-ul-group prefix ul-properties node ivp-env alsys-env stdlib-env)
 
   (define (projections-range projections)
     (let ((destination-union
@@ -1342,8 +1358,6 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
                            (and response-node
                                 (let ((from-source
                                        (sxml:kidn* 'nml:FromSource response-node )))
-                                  (print "response-node = " response-node)
-                                  (print "from-source = " from-source)
                                   (list ($ (sxml:attr from-source 'event_send_port))
                                         ($ (sxml:attr from-source 'event_receive_port)))
                                   )))
@@ -1369,8 +1383,10 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
                           (connectivity-port (let ((st (sxml:kidn* 'nml:Port connectivity))) 
                                                (and st (sxml:text st))))
                           (del  (cdr (eval-ul-property name (sxml:kidn* 'nml:Delay node))))
-                          (properties      (parse-ul-properties name (append (sxml:kidsn 'nml:property connectivity)
-                                                                             (sxml:kidsn 'nml:Property connectivity))))
+                          (properties      (parse-ul-properties 
+                                            name
+                                            (append (sxml:kidsn 'nml:property connectivity)
+                                                    (sxml:kidsn 'nml:Property connectivity))))
                           )
 
                      (d "group-ul-eval: projection node = ~A~%" node)
@@ -1379,16 +1395,18 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
                      (d "group-ul-eval: type = ~A ~%" type)
                      (d "group-ul-eval: plasticity = ~A plasticity-name = ~A~%" plasticity-node plasticity-name)
                      (d "group-ul-eval: properties = ~A ~%" properties)
-                     (d "group-ul-eval: alsys-env = ~A ~%" alsys-env)
+                     (d "group-ul-eval: connectivity-name = ~A ~%" connectivity-name)
+                     (d "group-ul-eval: connectivity-port = ~A ~%" connectivity-port)
 
                      (let* (
                             (source (lookup-def source-name sets))
                             (destination (lookup-def destination-name sets))
                             (response (and response-name (make-response-tenv prefix response-name response-ports ivp-env)))
                             (plasticity (and plasticity-name (make-plasticity-tenv prefix plasticity-name ivp-env)))
-                            (connection (and connectivity-name (make-connection-tenv prefix connectivity-name alsys-env)))
+                            (connection (and connectivity-name (make-connection-tenv prefix connectivity-name stdlib-env alsys-env)))
                            )
 
+                       (d "group-ul-eval: plasticity tenv = ~A~%" plasticity)
                        (d "group-ul-eval: plasticity tenv = ~A~%" plasticity)
                        
                        (if (not source)
@@ -1403,6 +1421,7 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
                                         `(
                                           (name . ,connectivity-name) 
                                           (port . ,connectivity-port)
+                                          (type . ,connection)
                                           )
                                         response-name response-ports
                                         plasticity-name
@@ -1492,6 +1511,7 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
 
       (d "group-ul-eval: order = ~A~%" order)
 
+      (d "group-ul-eval: projections = ~A~%" projections)
       (d "group-ul-eval: psr-types = ~A~%" psr-types)
 
       (let* (
@@ -1598,6 +1618,26 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
     ))
   
 
+
+(define (make-stdlib-hook stdlib-env)
+
+  (lambda (prefix name label value)
+
+    (print "name = " name " label = " label " value = " value)
+
+    (cond
+
+     ((or (and (string? label) (string=? label "stdlib"))
+          (and (pair? label) (string=? (car label) "stdlib"))) ;; value is string reference to stdlib connectivity
+
+        (stdlib-env (cons `(,(string->symbol name) . ,value) (stdlib-env)))
+	)
+     
+     (else #f)
+     ))
+  )
+
+
 (define (main options operands)
 
   (if (options 'help) (network:usage))
@@ -1652,6 +1692,7 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
                     
                     (ivp-node-env (make-parameter '()))
                     (alsys-node-env (make-parameter '()))
+                    (stdlib-env (make-parameter '()))
 		    )
 
                (d "ul-sxml = ~A~%" ul-sxml)
@@ -1659,6 +1700,7 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
                (d "ul-properties = ~A~%" ul-properties)
                (d "ul-groups = ~A~%" ul-groups)
                (d "ul-components = ~A~%" ul-components)
+               (d "ul-component-uenvs = ~A~%" ul-component-uenvs)
 
 	       (for-each
 		(lambda (uenv) 
@@ -1696,6 +1738,7 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
                             (begin
                               (traverse-definitions operand uenv value-hook: (make-ivp-cgen-hook ivp-node-env))
                               (traverse-definitions operand uenv value-hook: (make-alsys-cgen-hook alsys-node-env))
+                              (traverse-definitions operand uenv value-hook: (make-stdlib-hook stdlib-env))
                               )))
 
 		    ))
@@ -1703,9 +1746,10 @@ TODO: use term rewriting rules for eval-ul-component, e.g.:
 
                (d "ivp-node-env = ~A~%" (ivp-node-env))
                (d "alsys-node-env = ~A~%" (alsys-node-env))
+               (d "stdlib-env = ~A~%" (stdlib-env))
 
                (for-each (lambda (x) (eval-ul-group operand ul-properties x 
-                                                    (ivp-node-env) (alsys-node-env))) 
+                                                    (ivp-node-env) (alsys-node-env) (stdlib-env)))
                          ul-groups)
 
                ))

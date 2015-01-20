@@ -1168,8 +1168,11 @@
   )
 
 
+
 (define (parse-al-sxml-component sxml)
-  
+
+  (define pair (Longid (Pident (ident-create "pair"))))
+
   (let* (
          (name         (sxml:attr sxml 'name))
          (dynamics     (safe-car ((sxpath `(// nml:Dynamics)) sxml)))
@@ -1190,14 +1193,17 @@
          (connection-rule (safe-car ((sxpath `(// nml:ConnectionRule)) sxml)))
          )
 
-    (print "connection-rule = " connection-rule)
-
     (cond
 
      (connection-rule 
 
       (let ((connection-body
-             (Const `(string ,(sxml:attr connection-rule 'standardLibrary))))
+             (Apply
+              (Apply pair (Const `(label stdlib)))
+              (Apply
+               (Apply pair
+                      (Const `(string ,(sxml:attr connection-rule 'standardLibrary))))
+               (Longid (Pident (ident-create "empty"))))))
             (connection-args
              (map (lambda (x) (sxml:attr x 'name)) 
                   (append (reverse ports)

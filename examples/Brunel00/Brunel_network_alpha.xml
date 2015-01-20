@@ -65,8 +65,7 @@
   <Property name="theta" unit="mV"> <!-- Firing threshold -->
     <SingleValue>20.0</SingleValue>
   </Property>
-
-  <Property name="tau" unit="ms"> <!-- Membrane time constant -->
+   <Property name="tau" unit="ms"> <!-- Membrane time constant -->
     <SingleValue>20.0</SingleValue>
   </Property>
 
@@ -87,7 +86,7 @@
   </Property>
 
   <Property name="timestep">
-    <SingleValue>0.2</SingleValue>
+    <SingleValue>0.5</SingleValue>
   </Property>
   
   <Component name="E">
@@ -107,7 +106,7 @@
     </Property>
 
     <Property name="R">
-      <SingleValue>100.0</SingleValue>
+      <SingleValue>20.0</SingleValue>
     </Property>
 
     <Initial name="Isyn">
@@ -115,7 +114,7 @@
     </Initial>
 
     <Initial name="V">
-      <SingleValue><MathInline> random.uniform ()</MathInline></SingleValue>
+      <SingleValue><MathInline> 0.0 </MathInline></SingleValue>
     </Initial>
 
     <Initial name="t_rpend">
@@ -130,9 +129,9 @@
       <SingleValue>-1.0</SingleValue>
     </Initial>
 
-    <Field name="theta">
-      <SingleValue><MathInline>theta + random.normal ()</MathInline></SingleValue>
-    </Field>
+    <Property name="theta">
+      <SingleValue><MathInline>theta</MathInline></SingleValue>
+    </Property>
     
   </Component>
 
@@ -153,7 +152,7 @@
     </Property>
 
     <Property name="R">
-      <SingleValue>100.0</SingleValue>
+      <SingleValue>20.0</SingleValue>
     </Property>
 
     <Initial name="Isyn">
@@ -161,7 +160,7 @@
     </Initial>
 
     <Initial name="V">
-      <SingleValue><MathInline> random.uniform ()</MathInline></SingleValue>
+      <SingleValue><MathInline> 0.0 </MathInline></SingleValue>
     </Initial>
 
     <Initial name="t_rpend">
@@ -180,9 +179,9 @@
       <SingleValue>-1.0</SingleValue>
     </Initial>
 
-    <Field name="theta">
-      <SingleValue><MathInline>theta + random.normal ()</MathInline></SingleValue>
-    </Field>
+    <Property name="theta">
+      <SingleValue><MathInline>theta</MathInline></SingleValue>
+    </Property>
       
   </Component>
 
@@ -309,7 +308,7 @@
   </Component>
 
   <Component name="ExternalConnectivity">
-    <Definition url="OneToOne.xml">OneToOne</Definition>
+    <Definition url="AllToAll.xml">AllToAll</Definition>
   </Component>
 
   <Component name="ExcitatoryConnectivity">
@@ -320,6 +319,8 @@
       <SingleValue><MathInline>epsilon</MathInline></SingleValue>
     </Initial>
 
+    <Port>c</Port>
+    
   </Component>
 
   <Component name="InhibitoryConnectivity">
@@ -329,6 +330,8 @@
     <Initial name="epsilon">
       <SingleValue><MathInline>epsilon</MathInline></SingleValue>
     </Initial>
+
+    <Port>c</Port>
 
   </Component>
 
@@ -371,7 +374,9 @@
         <FromSource event_receive_port="spike" event_send_port="spikeOutput"/>
       </Response>
 
-      <Connectivity><Reference>ExternalConnectivity</Reference></Connectivity>
+      <Connectivity>
+        <Reference>ExternalConnectivity</Reference>
+      </Connectivity>
       
       <Plasticity>
         <Reference>ExternalPlasticity</Reference>
@@ -390,7 +395,10 @@
         <FromResponse send_port="Isyn" receive_port="Isyn"/>
       </Destination>
 
-      <Connectivity><Reference>ExcitatoryConnectivity</Reference></Connectivity>
+      <Connectivity>
+        <Reference>ExcitatoryConnectivity</Reference>
+        <Port>connection</Port>
+      </Connectivity>
 
       <Response>
         <Reference>ESyn</Reference>
@@ -404,7 +412,7 @@
     </Projection>
 
     <!-- Projection from inhibitory neurons to all neurons -->  
-    <Projection name="Inhibitory">
+    <Projection name="Inhibition">
 
       <Source><Reference>Inh</Reference></Source>
 
@@ -413,7 +421,10 @@
         <FromResponse send_port="Isyn" receive_port="Isyn"/>
       </Destination>
 
-      <Connectivity><Reference>InhibitoryConnectivity</Reference></Connectivity>
+      <Connectivity>
+        <Reference>InhibitoryConnectivity</Reference>
+        <Port>connection</Port>
+      </Connectivity>
 
       <Response>
         <Reference>ISyn</Reference>

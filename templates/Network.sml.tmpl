@@ -168,17 +168,19 @@ struct
         val nstate  = {{psr.name}}_f {{psr.value.updateStateML}} 
         val nstate' = {{psr.value.copyStateML}} 
     in 
-        RTensor.update(W,[i,0],Real.+(RTensor.sub(W,[i,0]),(#{{psr.outputState}}(nstate))));
+        RTensor.update(W,[i,0],Real.+(RTensor.sub(W,[i,0]),(#{{psr.value.outputState}}(nstate))));
         nstate'
     end
 {% endfor %}{% endif %}
 
 
 {% if group.conntypes %}{% for conn in dict (group.conntypes) %}
+{% if conn.value.sysFn %}
   val {{conn.name}}_initial = {{conn.value.initialExprML}}
 
   val {{conn.name}}_f = Model_{{conn.name}}.{{conn.value.sysFn}}
 
+{% endif %}
 {% endfor %}{% endif %}
 
     val initial = (
@@ -399,7 +401,7 @@ struct
                                   SparseMatrix.fromTensorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
-                                     tensor=(fromDiag ({{t.size}},{{s.size}},Real64Array.fromList [{{weight}}],0.0)),
+                                     tensor=(fromDiag ({{t.size}},{{s.size}},Real64Array.fromList [weight],0.0)),
                                      sparse=true}{% endcall %}
                                   ]
                                end
@@ -512,33 +514,33 @@ struct
 {% for pr in dict (group.projections) %}
              val _ = putStrLn TextIO.stdOut "constructing {{pr.name}}"
 
-{% if pr.value.connectivity.name == "ForEach" %}
+{% if pr.value.connectivity.type.sysFn %}
 {% call for_each(pr.name, 
                  pr.value.source.populations, 
                  pr.value.destination.populations, 
                  pr.value.plasticity,
-                 pr.value.rule.component,
-                 pr.value.rule.cstate) %}
+                 pr.value.connectivity.name,
+                 pr.value.connectivity.port) %}
 {% endcall %}
-{% elseif pr.value.connectivity.name == "OneToOne" %}
+{% elseif pr.value.connectivity.type.stdlib == "OneToOne" %}
 {% call one_to_one(pr.name, 
                    pr.value.source.populations,
                    pr.value.destination.populations,
                    pr.value.plasticity) %}
 {% endcall %}
-{% elseif pr.value.connectivity.name == "AllToAll" %}
+{% elseif pr.value.connectivity.type.stdlib == "AllToAll" %}
 {% call all_to_all(pr.name, 
                    pr.value.source.populations,
                    pr.value.destination.populations,
                    pr.value.plasticity) %}
 {% endcall %}
-{% elseif pr.value.connectivity.name == "FromFile" %}
+{% elseif pr.value.connectivity.type.stdlib == "FromFile" %}
 {% call from_file(pr.name, 
                   pr.value.source.populations,
                   pr.value.destination.populations,
                   pr.value.rule.properties.filename.exprML) %}
 {% endcall %}
-{% elseif pr.value.connectivity.name == "FanIn" %}
+{% elseif pr.value.connectivity.type.stdlib == "FanIn" %}
 {% call fan_in(pr.name, 
                pr.value.source.populations,
                pr.value.destination.populations,
@@ -546,7 +548,7 @@ struct
                pr.value.rule.component,
                pr.value.rule.cstate) %}
 {% endcall %}
-{% elseif pr.value.connectivity.name == "FanOut" %}
+{% elseif pr.value.connectivity.type.stdlib == "FanOut" %}
 {% call fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,

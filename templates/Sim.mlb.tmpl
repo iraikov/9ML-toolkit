@@ -21,11 +21,13 @@ in
 end
 {% endfor %}{% endif %}
 {% if group.conntypes %}{% for conn in dict (group.conntypes) %}
+{% if conn.value.sysFn %}
 local
     {{conn.value.sysFn}}_solver.sml
 in
     structure Model_{{conn.name}} = Model
 end
+{% endif %}
 {% endfor %}{% endif %}
 
 {{group.name}}.sml

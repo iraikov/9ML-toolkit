@@ -1487,6 +1487,7 @@
 			 (let ((sxml-value (MLvalue->sxml v)))
 			   (let* ((value (sxml:kid* sxml-value))
 				  (tuple-label (and value ((sxpath '(Tuple left Const label *text*)) `(*TOP* ,sxml-value)))))
+                             (print "name = " name " value = " value " tuple-label = " tuple-label)
 			     (if (pair? tuple-label)
 				 (value-hook prefix name (car tuple-label) sxml-value)))))
 			(else
