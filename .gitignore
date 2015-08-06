@@ -1,3 +1,6 @@
+# Emacs backup files
+*~
+
 # Compiled Object files
 *.so
 
@@ -6,4 +9,12 @@
 
 # lalr-generated grammar files
 *.grm.scm
+
+# generated data files
+*.dat
+
+# generated code from examples
+examples/*/*.sml
+examples/*/*.mlb
+examples/*/Makefile.*
 
