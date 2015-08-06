@@ -1,0 +1,9 @@
+# Compiled Object files
+*.so
+
+# Generated import files
+*.import.scm
+
+# lalr-generated grammar files
+*.grm.scm
+

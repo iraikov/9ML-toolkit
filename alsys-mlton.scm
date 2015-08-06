@@ -2,7 +2,7 @@
 ;; NineML algebraic system code generator for MLton.
 ;;
 ;;
-;; Copyright 2010-2014 Ivan Raikov
+;; Copyright 2010-2015 Ivan Raikov
 ;;
 ;; This program is free software: you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -33,10 +33,27 @@
 	(only data-structures conc alist-ref intersperse)
 	(only srfi-13 string-concatenate)
         (only srfi-1 delete-duplicates))
-(require-extension make datatype algebraic-system 9ML-eval setup-api)
+(require-extension make datatype setup-api salt)
 
 
 (define nl "\n")
+
+;; based on SRV:send-reply by Oleg Kiselyov
+(define (print-fragments b #!key (out (current-output-port)))
+  (let loop ((fragments b) (result #f))
+    (cond
+      ((null? fragments) result)
+      ((not (car fragments)) (loop (cdr fragments) result))
+      ((null? (car fragments)) (loop (cdr fragments) result))
+      ((eq? #t (car fragments)) (loop (cdr fragments) #t))
+      ((pair? (car fragments))
+        (loop (cdr fragments) (loop (car fragments) result)))
+      ((procedure? (car fragments))
+        ((car fragments))
+        (loop (cdr fragments) #t))
+      (else
+       (display (car fragments) out)
+       (loop (cdr fragments) #t)))))
 
 
 (define (mlton-value v)
@@ -142,7 +159,7 @@ EOF
 
     (make (
 	   (solver-path (prefix)
-			(with-output-to-file solver-path (lambda () (codegen/ML alsys-id sd random: random))))
+			(with-output-to-file solver-path (lambda () (codegen-ODE/ML alsys-id sd random: random))))
 	   
 	   (run-path (prefix)
 		     (with-output-to-file run-path 

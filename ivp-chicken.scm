@@ -2,7 +2,7 @@
 ;; NineML IVP code generator for Chicken Scheme.
 ;;
 ;;
-;; Copyright 2010-2014 Ivan Raikov
+;; Copyright 2010-2015 Ivan Raikov
 ;;
 ;; This program is free software: you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -27,7 +27,7 @@
 
 (import (only files make-pathname pathname-directory pathname-file)
 	(only data-structures conc))
-(require-extension make datatype signal-diagram 9ML-eval setup-api)
+(require-extension make datatype setup-api)
 
 
 (define nl "\n")
