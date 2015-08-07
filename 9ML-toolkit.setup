@@ -12,7 +12,7 @@
        ("expr.grm.scm" ("expr.grm")
 	(run (csi -s expr.grm)))
 
-       ((dynld-name "9ML-parse") ("parse.scm" "NineML.l.scm" "NineML.grm.scm" "expr.grm.scm" "expr-parser.scm")
+       ((dynld-name "9ML-parse") ("parse.scm" "expr.grm.scm" "expr-parser.scm")
 	(compile -O -d2 -S -s parse.scm -o ,(dynld-name "9ML-parse") -j 9ML-parse))
 
        ((dynld-name "9ML-parse.import") ("9ML-parse.import.scm")
