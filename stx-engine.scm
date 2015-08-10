@@ -20,6 +20,10 @@
 		   (warn "Unrecognized input element:" node)
 		   '()))))
 
+(define identity-template 
+  `(*default* ,(lambda (node bindings root env) 
+                 node)))
+
 
 (define-syntax  sxml:make-null-ss
    (syntax-rules  ()
@@ -27,6 +31,16 @@
        (list 
 	; default handler
 	null-template
+	; handler for textual nodes
+	(list '*text*  (lambda (text) text)) 
+	rule ...))))
+
+(define-syntax  sxml:make-identity-ss
+   (syntax-rules  ()
+      ((stx rule ...)
+       (list 
+	; default handler
+	identity-template
 	; handler for textual nodes
 	(list '*text*  (lambda (text) text)) 
 	rule ...))))

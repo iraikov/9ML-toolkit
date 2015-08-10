@@ -20,8 +20,8 @@
 
 
 (require-extension extras posix utils files data-structures tcp srfi-1 srfi-13 irregex)
-(require-extension datatype matchable)
-(require-extension make ssax sxml-transforms sxpath sxpath-lolevel object-graph ersatz-lib uri-generic getopt-long )
+(require-extension datatype matchable salt make ssax sxml-transforms sxpath sxpath-lolevel 
+                   object-graph ersatz-lib uri-generic getopt-long )
 (require-extension 9ML-parse 9ML-ivp-mlton)
 
 (require-library ersatz-lib)
@@ -45,6 +45,9 @@
 
 (define (safe-car x) (and (pair? x) (car x)))
 
+(define (sxml-singleton x)
+  (and (pair? x) (car x)))
+
 (define $ string->symbol)
 (define (s+ . rest) (string-concatenate (map ->string rest)))
 
@@ -59,6 +62,10 @@
 (include "SXML.scm")
 (include "SXML-to-XML.scm")
 (include "stx-engine.scm")
+
+(define ivp-simulation-platform (make-parameter 'mlton))
+(define alsys-simulation-platform (make-parameter 'mlton))
+(define ivp-simulation-method (make-parameter 'rkfe))
 
 (define opt-defaults
   `(
@@ -924,74 +931,77 @@
 
            (sets
             (append 
-             (map (lambda (x) 
-                    (let ((name (car x)))
-                      `(,name . ((name . ,name) 
-                                 (populations . ,(ersatz:sexpr->tvalue (list (cdr x))))
-                                 (size . ,(alist-ref 'size (cdr x))))
-                              )
-                      ))
-                  populations)
-             (map (lambda (node)
-                    (let* ((name (sxml:attr node 'name))
-                           (set (make-population-set (sxml:kid node) populations)))
-                      `(,($ name) . ,(make-population-set-tenv ($ name) set))))
-                  selections-sxml)))
+             (map
+              (lambda (x) 
+                (let ((name (car x)))
+                  `(,name . ((name . ,name) 
+                             (populations . ,(ersatz:sexpr->tvalue (list (cdr x))))
+                             (size . ,(alist-ref 'size (cdr x))))
+                          )
+                  ))
+              populations)
+             (map
+              (lambda (node)
+                (let* ((name (sxml:attr node 'name))
+                       (set (make-population-set (sxml:kid node) populations)))
+                  `(,($ name) . ,(make-population-set-tenv ($ name) set))))
+              selections-sxml)))
 
            (projections+types
-            (map (lambda (node)
-                   (let* (
-                          (name          (sxml:attr node 'name))
-                          (type          ($ (or (sxml:attr node 'type) "event")))
-                          (source-node   (sxml:kidn* 'nml:Source node))
-                          (source-name   ($ (sxml:text (sxml:kidn* 'nml:Reference source-node))))
+            (map
+             (lambda (node)
+               (let* (
+                      (name          (sxml:attr node 'name))
+                      (type          ($ (or (sxml:attr node 'type) "event")))
+                      (source-node   (sxml:kidn* 'nml:Source node))
+                      (source-name   ($ (sxml:text (sxml:kidn* 'nml:Reference source-node))))
+                      
+                      (destination-node   (sxml:kidn* 'nml:Destination node))
+                      (destination-name   ($ (sxml:text (sxml:kidn* 'nml:Reference destination-node))))
+                      (destination-response-ports
+                       (let ((from-response
+                              (sxml:kidn* 'nml:FromResponse destination-node)))
+                         (list ($ (sxml:attr from-response 'send_port))
+                               ($ (sxml:attr from-response 'receive_port)))
+                         ))
+                      
+                      (response-node (sxml:kidn* 'nml:Response node))
+                      (response-name (and response-node (sxml:text (sxml:kidn* 'nml:Reference response-node ))))
+                      
+                      (response-event-ports 
+                       (and response-node
+                            (let ((from-source
+                                   (sxml:kidn* 'nml:FromSource response-node )))
+                              (list ($ (sxml:attr from-source 'event_send_port))
+                                    ($ (sxml:attr from-source 'event_receive_port)))
+                              )))
+                      (response-plasticity-ports 
+                       (and response-node
+                            (let ((from-plasticity
+                                   (sxml:kidn* 'nml:FromPlasticity response-node )))
+                              (list ($ (sxml:attr from-plasticity 'send_port))
+                                    ($ (sxml:attr from-plasticity 'receive_port)))
+                              )))
+                      (response-ports `(
+                                        (event-ports . ,response-event-ports)
+                                        (plasticity-ports . ,response-plasticity-ports)
+                                        (destination-ports . ,destination-response-ports)
+                                        ))
+                      
+                      (plasticity-node (sxml:kidn* 'nml:Plasticity node))
+                      (plasticity-name (sxml:text (sxml:kidn* 'nml:Reference plasticity-node)))
 
-                          (destination-node   (sxml:kidn* 'nml:Destination node))
-                          (destination-name   ($ (sxml:text (sxml:kidn* 'nml:Reference destination-node))))
-                          (destination-response-ports
-                           (let ((from-response
-                                  (sxml:kidn* 'nml:FromResponse destination-node)))
-                             (list ($ (sxml:attr from-response 'send_port))
-                                   ($ (sxml:attr from-response 'receive_port)))
-                             ))
-
-                          (response-node (sxml:kidn* 'nml:Response node))
-                          (response-name (and response-node (sxml:text (sxml:kidn* 'nml:Reference response-node ))))
-                           
-                          (response-event-ports 
-                           (and response-node
-                                (let ((from-source
-                                       (sxml:kidn* 'nml:FromSource response-node )))
-                                  (list ($ (sxml:attr from-source 'event_send_port))
-                                        ($ (sxml:attr from-source 'event_receive_port)))
-                                  )))
-                          (response-plasticity-ports 
-                           (and response-node
-                                 (let ((from-plasticity
-                                        (sxml:kidn* 'nml:FromPlasticity response-node )))
-                                   (list ($ (sxml:attr from-plasticity 'send_port))
-                                         ($ (sxml:attr from-plasticity 'receive_port)))
-                                 )))
-                          (response-ports `(
-                                            (event-ports . ,response-event-ports)
-                                            (plasticity-ports . ,response-plasticity-ports)
-                                            (destination-ports . ,destination-response-ports)
-                                            ))
-
-                          (plasticity-node (sxml:kidn* 'nml:Plasticity node))
-                          (plasticity-name (sxml:text (sxml:kidn* 'nml:Reference plasticity-node)))
-
-                          (connectivity   (sxml:kidn* 'nml:Connectivity node))
-                          (connectivity-name (let ((ref (sxml:kidn* 'nml:Reference connectivity))) 
-                                               (and ref (sxml:text ref))))
-                          (connectivity-port (let ((st (sxml:kidn* 'nml:Port connectivity))) 
-                                               (and st (sxml:text st))))
-                          (del  (cdr (eval-ul-property name (sxml:kidn* 'nml:Delay node))))
-                          (properties      (parse-ul-properties 
-                                            name
-                                            (append (sxml:kidsn 'nml:property connectivity)
-                                                    (sxml:kidsn 'nml:Property connectivity))))
-                          )
+                      (connectivity   (sxml:kidn* 'nml:Connectivity node))
+                      (connectivity-name (let ((ref (sxml:kidn* 'nml:Reference connectivity))) 
+                                           (and ref (sxml:text ref))))
+                      (connectivity-port (let ((st (sxml:kidn* 'nml:Port connectivity))) 
+                                           (and st (sxml:text st))))
+                      (del  (cdr (eval-ul-property name (sxml:kidn* 'nml:Delay node))))
+                      (properties      (parse-ul-properties 
+                                        name
+                                        (append (sxml:kidsn 'nml:property connectivity)
+                                                (sxml:kidsn 'nml:Property connectivity))))
+                      )
 
                      (d "group-ul-eval: projection node = ~A~%" node)
                      (d "group-ul-eval: response = ~A response-name = ~A~%" response-node response-name)
@@ -1222,7 +1232,83 @@
     ))
   
 
+(define (resolve-ul-components node)
 
+  (let ((components-list (make-parameter '())))
+
+    (let
+        (
+         (population-template 
+          (sxml:match 'nml:Population
+                      (lambda (node bindings root env) 
+                        (let ((name (sxml:attr node 'name))
+                              (number (sxml:kidn 'nml:Number node))
+                              (cell-component ((sxpath `(// nml:Cell nml:Component)) node)))
+                          (if (null? cell-component) node
+                              (let ((component-name (sxml:attr (sxml-singleton cell-component) 'name)))
+                                (components-list (cons (sxml-singleton cell-component) (components-list)))
+                                `(nml:Population (@ (name ,name))
+                                                 ,number (nml:Cell (nml:Reference ,component-name)))
+                                ))
+                          ))
+                      ))
+         (projection-template 
+          (sxml:match 'nml:Projection
+                      (lambda (node bindings root env) 
+                        (let* (
+                               (name (sxml:attr node 'name))
+                               (src  ((sxpath `(// nml:Source)) node))
+                               (dest ((sxpath `(// nml:Destination)) node))
+                               (del  ((sxpath `(// nml:Delay)) node))
+                               (connectivity ((sxpath `(// nml:Connectivity)) node))
+                               (connectivity-component ((sxpath `(// nml:Connectivity nml:Component)) node))
+                               (response ((sxpath `(// nml:Response)) node))
+                               (response-component ((sxpath `(// nml:Response nml:Component)) node))
+                               (plasticity ((sxpath `(// nml:Plasticity)) node))
+                               (plasticity-component ((sxpath `(// nml:Plasticity nml:Component)) node))
+                              )
+                          (if (not (null? connectivity-component))
+                              (components-list (cons (sxml-singleton connectivity-component) (components-list))))
+                          (if (not (null? response-component))
+                              (components-list (cons (sxml-singleton response-component) (components-list))))
+                          (if (not (null? plasticity-component))
+                              (components-list (cons (sxml-singleton plasticity-component) (components-list))))
+                          
+                          `(nml:Projection (@ (name ,name))
+                                           ,(sxml-singleton src)
+                                           ,(sxml-singleton dest)
+                                           ,(sxml-singleton del)
+                                           ,(if (null? connectivity-component)
+                                                (sxml-singleton connectivity)
+                                                (let ((component-name (sxml:attr (sxml-singleton connectivity-component) 'name)))
+                                                  `(nml:Connectivity (nml:Reference ,component-name))))
+                                           ,(if (null? response-component)
+                                                (sxml-singleton response)
+                                                (let ((component-name (sxml:attr (sxml-singleton response-component) 'name)))
+                                                  `(nml:Response (nml:Reference ,component-name))))
+                                           ,(if (null? plasticity-component)
+                                                (sxml-singleton plasticity)
+                                                (let ((component-name (sxml:attr (sxml-singleton plasticity-component) 'name)))
+                                                  `(nml:Plasticity (nml:Reference ,component-name))))
+                                           )
+                                ))
+                          ))
+         )
+
+          (let ((result 
+                 (stx:apply-templates 
+                  node
+                  (sxml:make-identity-ss 
+                   population-template
+                   projection-template
+                   )
+                  node (list))))
+            
+            (values (components-list) result)
+
+            ))
+    ))
+         
 
 (define (main options operands)
 
@@ -1236,12 +1322,13 @@
 			       ((options 'output-sxml) 'sxml)
 			       (else #f))))
 
-	(if (options 'verbose) (begin (eval-verbose 1) (ivp-verbose 1) 
-                                      (alsys-verbose 1) (network-verbose 1)))
+	(if (options 'verbose) 
+            (begin
+              (verbose 1)
+              (network-verbose 1)))
 
 	(simulation-platform (or (options 'platform) (defopt 'platform) ))
 	(simulation-method (or (options 'method) (defopt 'method) ))
-
 
         (ivp-simulation-platform (simulation-platform))
         (alsys-simulation-platform (simulation-platform))
@@ -1252,37 +1339,38 @@
 	 (lambda (operand)
 
 	   (let* (
-                  (ul-sxml (parse-xml (read-all operand)))
-		  (ul-imports ((sxpath `(// nml:NineML nml:import))  ul-sxml))
+                  (nineml-sxml ((sxpath `(// nml:NineML)) (parse-xml (read-all operand))))
+                  (model-sxml (sxml:kids nineml-sxml))
+		  (ul-imports ((sxpath `(// (*or* nml:Import nml:import)))  model-sxml))
 		  (ul-import-sxmls (map (lambda (x) (parse-xml (fetch (sxml-string->uri (sxml:text x))))) ul-imports))
                   )
 
-	     (let* (
-                    (ul-sxml (fold append ul-sxml ul-import-sxmls))
-		    (ul-properties  (parse-ul-properties
-                                     operand ((sxpath `(// nml:NineML (*or* nml:Property nml:property)))  ul-sxml)))
-		    (ul-groups ((sxpath `(// nml:NineML (*or* nml:Group nml:group)))  ul-sxml))
+             (let-values (((component-env ul-sxml) (resolve-ul-components (fold append model-sxml ul-import-sxmls))))
 
-		    (ul-components ((sxpath `(// nml:NineML (*or* nml:Component nml:component)))  ul-sxml))
-		    (ul-component-uenvs (map eval-ul-component ul-components))
-                    
-		    )
+               (pp `(ul-sxml . ,ul-sxml) (current-error-port))
+               (pp `(component-env . ,component-env) (current-error-port))
 
-               (d "ul-sxml = ~A~%" ul-sxml)
+               (let* (
+                      (ul-properties  (parse-ul-properties
+                                       operand ((sxpath `(// nml:NineML (*or* nml:Property nml:property)))  ul-sxml)))
+                      
+                      (ul-components (append ((sxpath `(// (*or* nml:Component nml:component)))  model-sxml)
+                                             component-env))
+                      (ul-component-uenvs (map eval-ul-component ul-components))
+                      
+                      )
 
-               (d "ul-properties = ~A~%" ul-properties)
-               (d "ul-groups = ~A~%" ul-groups)
-               (d "ul-components = ~A~%" ul-components)
 
-               (for-each (lambda (x) 
-                           (eval-ul-group operand ul-properties x 
-                                          (ivp-node-env) (alsys-node-env) (stdlib-env)))
-                         ul-groups)
+                 (d "ul-properties = ~A~%" ul-properties)
+                 (d "ul-components = ~A~%" ul-components)
+                 
+                 #;(eval-ul-group operand ul-properties ul-sxml)
+                 
+                 ))
+             ))
 
-               ))
-           )
-
-	 operands))))
+	 operands))
+      ))
 
 (main opt (opt '@))
 
