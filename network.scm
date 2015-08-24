@@ -54,6 +54,11 @@
 (define (alist->tenv xs)
   (map (lambda (x) (cons (car x) (ersatz:sexpr->tvalue (cdr x)))) xs))
 
+(define (string->bool x)
+  (cond ((string=? x "true") #t)
+        ((string=? x "false") #f)
+        (else (error 'string->bool "invalid boolean string" x))))
+
 (define (warn port message . specialising-msgs)
   (print-error-message message (current-output-port) "Warning")
   (print (string-concatenate (map ->string specialising-msgs))))

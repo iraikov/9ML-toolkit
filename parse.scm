@@ -188,13 +188,14 @@
           (regimes-decls 
            (map
             (lambda (regime)
+              (print "regime = ") (pp regime)
               (let (
                     (regime-name       (string->symbol (sxml:attr regime 'name )))
-                    (time-derivatives  (map (sxpath `(nml:TimeDerivative)) regime))
-                    (on-events         (map (sxpath `(nml:OnEvent)) regime))
-                    (on-conditions     (map (sxpath `(nml:OnCondition)) regime))
+                    (time-derivatives  ((sxpath `(nml:TimeDerivative)) regime))
+                    (on-events         ((sxpath `(nml:OnEvent)) regime))
+                    (on-conditions     ((sxpath `(nml:OnCondition)) regime))
                     )
-                
+                (print "time-derivatives = ") (pp time-derivatives)
                 (let (
                       (ode-decls
                        (map (lambda (x) 
@@ -235,16 +236,20 @@
                         (lambda (c)
                           (let (
                                 ( trigger (sxml:kidn-cadr 'nml:Trigger c))
-                                ( event-out (sxml:kidn 'nml:EventOut c))
+                                ( event-output (or ((lambda (x) (and x (sxml:attr x 'port)))
+                                                    (sxml:kidn 'nml:OutputEvent c))
+                                                   (gensym 'event)))
                                 )
                             
                             (if (not trigger) 
                                 (error 'parse-al-sxml-dynamics "on-condition without trigger" c))
                             
-                            (if (not event-out) 
-                                (error 'parse-al-sxml-dynamics "on-condition without event-out" c))
+                            (if (not event-output) 
+                                (error 'parse-al-sxml-dynamics "on-condition without output event" c))
                             
-                            (let* ((trigger-name (string->symbol (sxml:attr event-out 'port )))
+                            (let* ((trigger-name (if (string? event-output)
+                                                     (string->symbol event-output)
+                                                     event-output))
                                    
                                    (trigger-rhs (parse-string-expr 
                                                  (sxml:text trigger) 
@@ -262,7 +267,7 @@
                                                                'parse-al-sxml-dynamics))
                                                             c-state-assignments))
                                    )
-                              `(,event-out ,trigger-rhs . ,(map (lambda (var rhs) `(,var := ,rhs))
+                              `(,event-output ,trigger-rhs . ,(map (lambda (var rhs) `(,var := ,rhs))
                                                                 c-assign-variables c-assign-rhss))
                               
                               ))
