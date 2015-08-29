@@ -20,12 +20,13 @@
 
 
 (require-extension extras posix utils files data-structures tcp srfi-1 srfi-13 irregex)
-(require-extension datatype matchable salt make ssax sxml-transforms sxpath sxpath-lolevel 
+(require-extension datatype matchable make ssax sxml-transforms sxpath sxpath-lolevel 
                    object-graph ersatz-lib uri-generic getopt-long )
 (require-extension 9ML-parse 9ML-ivp-mlton)
 
-(require-library ersatz-lib)
-(import (prefix ersatz-lib ersatz: ))
+(require-library ersatz-lib salt)
+(import (prefix ersatz-lib ersatz: )
+        (prefix salt salt: ))
 
 
 (define (string-match rx str)
@@ -365,30 +366,40 @@
     (if (null? definition)
 	(error 'eval-ul-component "component without definition" x))
 
-    (let ((al-entry-name (string->symbol (sxml:text (safe-car definition))))
+    (let ((al-definition-name (string->symbol (sxml:text (safe-car definition))))
           (uri (sxml-string->uri (sxml:attr (safe-car definition) 'url))))
 
       (d "NineML abstraction layer URI: ~A~%" uri)
+      (d "NineML abstraction layer definition name: ~A~%" al-definition-name)
       (d "NineML component propns: ~A~%" propns)
       (d "NineML component propvs: ~A~%" propvs)
       (d "NineML component fieldns: ~A~%" fieldns)
       (d "NineML component fieldvs: ~A~%" fieldvs)
       
       (let* (
-             (models
+             (model-srcs
               (let ((src (fetch uri)))
-                (d "NineML abstraction layer source: ~A~%" src)
                 (if (not src)
                     (error 'eval-ul-component "resource not found" (uri->string uri))
-                    (parse-al-sxml (parse-xml src)))
-                ))
-             
-             (dd    (d "NineML abstraction layer models: ~A~%" models))
+                    (parse-al-sxml (parse-xml src))
+                    )))
+
+             (models (map (match-lambda ((model-name model-formals model-decls) 
+                                         (list model-name model-formals (salt:parse model-decls))))
+                          model-srcs))
+             (dd     (d "NineML abstraction layer models: ~A~%" models))
+             (model  (alist-ref al-definition-name models))
+             (dd     (d "NineML abstraction layer model intermediate form: ~A~%" model))
              )
+
+        (if (not model)
+            (error 'eval-ul-component "cannot find definition named" al-definition-name))
         
         (let* (
-               
-                 (property-values
+               (al-definition-formals (car model))
+               (al-definition (salt:elaborate (cadr model)))
+
+               (property-values
                   (map (lambda (n v) 
                          (let ((vtext (sxml:text v))
                                (name (sxml:text n)))
@@ -436,7 +447,7 @@
                                     ))
 
                  (node `(,(string->symbol node-name) 
-                         ,al-entry-name
+                         ,al-definition-name
                          ,(let ((pfi-alst
                                  (append property-values 
                                          field-values
@@ -449,9 +460,9 @@
                                                  (else
                                                   (error 'eval-ul-component 
                                                          "value for quantity not found" x
-                                                         al-entry-name)))
+                                                         al-definition-name)))
                                                v)))
-                             al-entry-formals))
+                             al-definition-formals))
                          )
                        )
                  
@@ -1304,7 +1315,7 @@
 
 	(if (options 'verbose) 
             (begin
-              (verbose 1)
+              (salt:verbose 1)
               (network-verbose 1)))
 
 	(simulation-platform (or (options 'platform) (defopt 'platform) ))
