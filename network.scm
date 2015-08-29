@@ -392,33 +392,23 @@
                   (map (lambda (n v) 
                          (let ((vtext (sxml:text v))
                                (name (sxml:text n)))
-                           (let ((nv (string->number vtext))
-                                 (bv (string->bool vtext)))
-                             (cons ($ name)
-                                   (or (and nv (make-real-parameter name nv))
-                                       (and bv (make-bool-parameter name bv))
-                                       `(signal.realparam
-                                         ,(make-signal-expr
-                                           (parse-string-expr (->string (sxml:kidn-cadr 'nml:MathInline v )))
-                                           '()))
-                                        ))
-                             )))
+                           (cons ($ name)
+                                 `(signal.realparam
+                                   ,(make-signal-expr
+                                     (parse-string-expr vtext))
+                                     '())
+                                 )))
                        propns propvs))
                  
                  (field-values
                   (map (lambda (n v) 
                          (let ((vtext (sxml:text v))
                                (name (sxml:text n)))
-                           (let ((nv (string->number vtext))
-                                 (bv (string->bool vtext)))
-                             (cons ($ name)
-                                   (or (and nv (make-real-signal name nv))
-                                       (and bv (make-bool-signal name bv))
-                                       `(signal.realfield
-                                         ,(make-signal-expr
-                                           (parse-string-expr (->string (sxml:kidn-cadr 'nml:MathInline v )))
-                                           '()))
-                                       ))
+                           (cons ($ name)
+                                 `(signal.realfield
+                                   ,(make-signal-expr
+                                     (parse-string-expr vtext)
+                                     '()))
                              )))
                        fieldns fieldvs))
                  
@@ -426,18 +416,12 @@
                   (map (lambda (n v) 
                          (let ((name (sxml:text n))
                                (vtext (sxml:text v)))
-                           (let ((nv (string->number vtext))
-                                 (bv (string->bool vtext)))
-                             (cons ($ name)
-                                   (or (and nv (make-real-signal name nv))
-                                       (and bv (make-bool-signal name bv))
-                                       `(signal.realsig
-                                         ,(make-signal-expr
-                                           (parse-string-expr (->string (sxml:kidn-cadr 'nml:MathInline v )))
-                                           '())
-                                         ))
-                                   ))
-                             ))
+                           (cons ($ name)
+                                 `(signal.realsig
+                                   ,(make-signal-expr
+                                     (parse-string-expr vtext ))
+                                     '()))
+                                 ))
                        initialns initialvs))
                  
                  
@@ -456,12 +440,7 @@
                          ,(let ((pfi-alst
                                  (append property-values 
                                          field-values
-                                         initial-values
-                                         (if (type-diagram? al-return-type)
-                                             `((t . ,(make-real-signal "t" 0.0))
-                                               (h . ,(make-real-signal "h" (or ivp-timestep 0.1))))
-                                             '()))
-                                 ))
+                                         initial-values)))
                             (map
                              (lambda (x) (let ((v (alist-ref x pfi-alst)))
                                            (if (not v) 
@@ -499,10 +478,8 @@
                (d "parse-ul-properties: name = ~A sxml-value = ~A~%" 
                   name sxml-value)
 
-               (let ((n (string->number vtext))
-                     (b (string->bool vtext)))
+               (let ((n (string->number vtext)))
                  (or (and n (make-real-signal name n))
-                     (and b (make-bool-signal name b))
                      (and
                       (sxml:kidn 'nml:MathInline sxml-value)
                       (make-signal-expr
@@ -538,10 +515,8 @@
          )
     `(,name 
       ,(let ((vtext (sxml:text sxml-value)))
-         (let ((n (string->number vtext))
-               (b (string->bool vtext)))
+         (let ((n (string->number vtext)))
            (or (and n (make-real-signal name n))
-               (and b (make-bool-signal name b))
                (make-signal-expr
                 (or (string->number (sxml:text sxml-value))
                     (parse-string-expr (->string (sxml:kidn-cadr 'nml:MathInline sxml-value ))))
