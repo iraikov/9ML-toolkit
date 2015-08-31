@@ -397,80 +397,58 @@
         
         (let* (
                (al-definition-formals (car model))
-               (al-definition (salt:elaborate (cadr model)))
+               (al-definition (cadr model))
 
-               (property-values
+               (parameter-decls
                   (map (lambda (n v) 
                          (let ((vtext (sxml:text v))
                                (name (sxml:text n)))
-                           (cons ($ name)
-                                 `(signal.realparam
-                                   ,(make-signal-expr
-                                     (parse-string-expr vtext))
-                                     '())
-                                 )))
+                           `(define ,($ name) = parameter ,(parse-string-expr vtext))
+                           ))
                        propns propvs))
                  
-                 (field-values
-                  (map (lambda (n v) 
-                         (let ((vtext (sxml:text v))
-                               (name (sxml:text n)))
-                           (cons ($ name)
-                                 `(signal.realfield
-                                   ,(make-signal-expr
-                                     (parse-string-expr vtext)
-                                     '()))
-                             )))
-                       fieldns fieldvs))
+               (field-decls
+                (map (lambda (n v) 
+                       (let ((vtext (sxml:text v))
+                             (name (sxml:text n)))
+                         (cons ($ name)
+                               `(signal.realfield
+                                 ,(make-signal-expr
+                                   (parse-string-expr vtext)
+                                   '()))
+                               )))
+                     fieldns fieldvs))
                  
-                 (initial-values
-                  (map (lambda (n v) 
-                         (let ((name (sxml:text n))
-                               (vtext (sxml:text v)))
-                           (cons ($ name)
-                                 `(signal.realsig
-                                   ,(make-signal-expr
-                                     (parse-string-expr vtext ))
-                                     '()))
-                                 ))
-                       initialns initialvs))
+               (state-decls
+                (map (lambda (n v) 
+                       (let ((name (sxml:text n))
+                             (vtext (sxml:text v)))
+                         `(define ,($ name) = unknown ,(parse-string-expr vtext))
+                         ))
+                     initialns initialvs))
                  
                  
-                 (ivp-duration (and ivp
-                                    (car ((sxpath `(// nml:duration))  ivp))
-                                    ))
-                 
-                 (ivp-timestep (and ivp
-                                    (string->number
-                                     (sxml:text
-                                      (car ((sxpath `(// nml:timestep))  ivp))))
-                                    ))
+               (ivp-duration (and ivp
+                                  (car ((sxpath `(// nml:duration))  ivp))
+                                  ))
+               
+               (ivp-timestep (and ivp
+                                  (string->number
+                                   (sxml:text
+                                    (car ((sxpath `(// nml:timestep))  ivp))))
+                                  ))
 
-                 (node `(,(string->symbol node-name) 
-                         ,al-definition-name
-                         ,(let ((pfi-alst
-                                 (append property-values 
-                                         field-values
-                                         initial-values)))
-                            (map
-                             (lambda (x) (let ((v (alist-ref x pfi-alst)))
-                                           (if (not v) 
-                                               (case x
-                                                 ((_) (Const '(bool #f)))
-                                                 (else
-                                                  (error 'eval-ul-component 
-                                                         "value for quantity not found" x
-                                                         al-definition-name)))
-                                               v)))
-                             al-definition-formals))
-                         )
-                       )
-                 
-                 )
-          node)
-        ))
-    ))
+               )
 
+          `(,(string->symbol node-name) .
+            ,(salt:elaborate
+              (salt:parse
+               (append parameter-decls
+                       state-decls
+                       (list al-definition)))))
+          ))
+      ))
+  )
 
 
 (define (parse-ul-properties prefix sxml-properties) 

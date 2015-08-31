@@ -173,7 +173,9 @@
         (aliases          ((sxpath `(// nml:Alias)) sxml))
         )
 
-    (let (
+    (let* (
+          (state-names (map (lambda (x) (string->symbol (sxml:attr x 'name))) state-variables))
+
           (relations-decls
            (map (lambda (x)
                   (let ((quantity (sxml:attr x 'name))
@@ -186,25 +188,35 @@
                 relations))
            
           (regimes-decls 
-           (map
-            (lambda (regime)
-              (print "regime = ") (pp regime)
+           (fold
+            (lambda (regime lst)
               (let (
                     (regime-name       (string->symbol (sxml:attr regime 'name )))
                     (time-derivatives  ((sxpath `(nml:TimeDerivative)) regime))
                     (on-events         ((sxpath `(nml:OnEvent)) regime))
                     (on-conditions     ((sxpath `(nml:OnCondition)) regime))
                     )
-                (print "time-derivatives = ") (pp time-derivatives)
                 (let (
                       (ode-decls
-                       (map (lambda (x) 
-                              (let ((var (string->symbol (sxml:attr x 'variable )))
-                                    (rhs (parse-string-expr 
-                                          (sxml:kidn-cadr 'nml:MathInline x )
-                                          'parse-al-sxml-dynamics)))
-                                `((der (,var)) = ,rhs)))
-                            time-derivatives))
+                       (match-let (((vars decls)
+                                    (fold (match-lambda*
+                                           ((x (vars decls))
+                                            (let ((var (string->symbol (sxml:attr x 'variable )))
+                                                  (rhs (parse-string-expr 
+                                                        (sxml:kidn-cadr 'nml:MathInline x )
+                                                        'parse-al-sxml-dynamics)))
+                                              (list (cons var vars)
+                                                    (cons `((der (,var)) = ,rhs) decls)))))
+                                          '(() ()) time-derivatives)))
+                                  (match-let (((vars decls)
+                                               (fold (match-lambda*
+                                                      ((var (vars decls))
+                                                       (if (member var vars)
+                                                           (list vars decls)
+                                                           (list (cons var vars)
+                                                                 (cons `((der (,var)) = 0.0) decls)))))
+                                                     `(,vars ,decls) state-names)))
+                                             decls)))
                       
                       (event-decls 
                        (map (lambda (e)
@@ -236,9 +248,10 @@
                         (lambda (c)
                           (let (
                                 ( trigger (sxml:kidn-cadr 'nml:Trigger c))
-                                ( event-output (or ((lambda (x) (and x (sxml:attr x 'port)))
+                                ( event-output (or ((lambda (x) (and x (string->symbol (sxml:attr x 'port))))
                                                     (sxml:kidn 'nml:OutputEvent c))
                                                    (gensym 'event)))
+                                ( target-regime (string->symbol (sxml:attr c 'target_regime)) )
                                 )
                             
                             (if (not trigger) 
@@ -247,10 +260,7 @@
                             (if (not event-output) 
                                 (error 'parse-al-sxml-dynamics "on-condition without output event" c))
                             
-                            (let* ((trigger-name (if (string? event-output)
-                                                     (string->symbol event-output)
-                                                     event-output))
-                                   
+                            (let* (
                                    (trigger-rhs (parse-string-expr 
                                                  (sxml:text trigger) 
                                                  'parse-al-sxml-dynamics))
@@ -267,8 +277,10 @@
                                                                'parse-al-sxml-dynamics))
                                                             c-state-assignments))
                                    )
-                              `(,event-output ,trigger-rhs . ,(map (lambda (var rhs) `(,var := ,rhs))
-                                                                c-assign-variables c-assign-rhss))
+                              `(,event-output 
+                                ,target-regime ,trigger-rhs 
+                                ,(map (lambda (var rhs) `(,var := ,rhs))
+                                      c-assign-variables c-assign-rhss))
                               
                               ))
                           )
@@ -276,15 +288,16 @@
                       
                       )
                   
-                  (if (null? on-conditions)
-                      (append time-derivatives event-decls)
-                      (cons `(structural-event ,regime-name
-                                               ,ode-decls
-                                               ,transition-decls)
-                            event-decls))
+                  (append 
+                   (if (null? on-conditions)
+                       (append time-derivatives event-decls)
+                       (cons `(structural-event ,regime-name
+                                                ,ode-decls
+                                                . ,transition-decls)
+                             event-decls)) lst)
                   ))
               )
-            regimes))
+            '() regimes))
           )
                                  
       (append relations-decls regimes-decls)
@@ -342,7 +355,7 @@
 (define (parse-al-sxml-component sxml)
 
   (let* (
-         (name         (sxml:attr sxml 'name))
+         (name         (string->symbol (sxml:attr sxml 'name)))
          (dynamics     (safe-car ((sxpath `(// nml:Dynamics)) sxml)))
          (alsys        (safe-car ((sxpath `(// nml:AlgebraicSystem)) sxml)))
          (parameters   ((sxpath `(// nml:Parameter))  sxml))
@@ -372,7 +385,7 @@
                   (append (reverse ports)
                           (reverse parameters))))
             )
-        `(,connection-body . ,connection-args)
+        (list name connection-args connection-body)
         ))
         
 
@@ -385,7 +398,7 @@
                           (reverse ports)
                           (reverse parameters))))
             )
-        (append dynamics-args dynamics-body)
+        (list name dynamics-args dynamics-body)
         ))
      
      (alsys
@@ -398,7 +411,7 @@
                           (reverse parameters))))
             )
         
-        (append alsys-args alsys-body)
+        (list name alsys-args alsys-body)
         ))
      
      (else
