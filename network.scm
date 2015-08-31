@@ -22,7 +22,7 @@
 (require-extension extras posix utils files data-structures tcp srfi-1 srfi-13 irregex)
 (require-extension datatype matchable make ssax sxml-transforms sxpath sxpath-lolevel 
                    object-graph ersatz-lib uri-generic getopt-long )
-(require-extension 9ML-parse 9ML-ivp-mlton)
+(require-extension 9ML-types 9ML-parse 9ML-ivp-mlton)
 
 (require-library ersatz-lib salt)
 (import (prefix ersatz-lib ersatz: )
@@ -369,7 +369,7 @@
     (let ((al-definition-name (string->symbol (sxml:text (safe-car definition))))
           (uri (sxml-string->uri (sxml:attr (safe-car definition) 'url))))
 
-      (d "NineML abstraction layer URI: ~A~%" uri)
+      (d "NineML abstraction layer URI: ~A~%" (uri->string uri))
       (d "NineML abstraction layer definition name: ~A~%" al-definition-name)
       (d "NineML component propns: ~A~%" propns)
       (d "NineML component propvs: ~A~%" propvs)
@@ -779,7 +779,7 @@
   )
 
 
-(define (make-connection-tenv prefix name stdlib-env alsys-env)
+(define (make-connection-tenv prefix name node-env)
 
   (let ((sys-name ($ (->string name))))
 
@@ -794,7 +794,7 @@
                  (stdlib . ,stdlib-name))))
              (else (error 'make-connection-tenv "unknown stdlib connection")))))
 
-   ((lookup-def sys-name alsys-env) =>
+   ((lookup-def sys-name node-env) =>
     (lambda (sdinfo)
 
       (let ((dvars   (lookup-def 'dvars sdinfo))
@@ -845,7 +845,7 @@
     (alist->tenv alst)))
 
 
-(define (eval-ul-group prefix ul-properties node ivp-env alsys-env stdlib-env)
+(define (eval-ul-group prefix ul-properties node ul-node-env)
 
   (define (projections-range projections)
     (let ((destination-union
@@ -984,9 +984,9 @@
                      (let* (
                             (source (lookup-def source-name sets))
                             (destination (lookup-def destination-name sets))
-                            (response (and response-name (make-response-tenv prefix response-name response-ports ivp-env)))
-                            (plasticity (and plasticity-name (make-plasticity-tenv prefix plasticity-name ivp-env)))
-                            (connection (and connectivity-name (make-connection-tenv prefix connectivity-name stdlib-env alsys-env)))
+                            (response (and response-name (make-response-tenv prefix response-name response-ports node-env)))
+                            (plasticity (and plasticity-name (make-plasticity-tenv prefix plasticity-name node-env)))
+                            (connection (and connectivity-name (make-connection-tenv prefix connectivity-name node-env)))
                            )
 
                        (d "group-ul-eval: plasticity tenv = ~A~%" plasticity)
@@ -1320,12 +1320,16 @@
                (pp `(component-env . ,component-env) (current-error-port))
 
                (let* (
-                      (ul-properties  (parse-ul-properties
-                                       operand ((sxpath `(// nml:NineML (*or* nml:Property nml:property)))  ul-sxml)))
+                      (ul-properties
+                       (parse-ul-properties
+                        operand ((sxpath `(// nml:NineML (*or* nml:Property nml:property)))  ul-sxml)))
                       
-                      (ul-components (append ((sxpath `(// (*or* nml:Component nml:component)))  model-sxml)
-                                             component-env))
-                      (ul-component-uenvs (map eval-ul-component ul-components))
+                      (ul-components
+                       (append ((sxpath `(// (*or* nml:Component nml:component)))  model-sxml)
+                               component-env))
+
+                      (ul-component-eval-env
+                       (map eval-ul-component ul-components))
                       
                       )
 
@@ -1333,7 +1337,7 @@
                  (d "ul-properties = ~A~%" ul-properties)
                  (d "ul-components = ~A~%" ul-components)
                  
-                 #;(eval-ul-group operand ul-properties ul-sxml)
+                 (eval-ul-group operand ul-properties ul-sxml ul-component-eval-env)
                  
                  ))
              ))

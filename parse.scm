@@ -1,5 +1,5 @@
 ;;
-;;  A parser for NineML + syntactic sugar.
+;; A parser for NineML.
 ;;
 ;; Copyright 2010-2015 Ivan Raikov
 ;;
@@ -38,6 +38,7 @@
 
 	(include "SXML.scm")
 
+        (require-extension 9ML-types)
 
 (define (safe-car x) (and (pair? x) (car x)))
 
@@ -376,42 +377,42 @@
 
     (cond
 
-     (connection-rule 
-      (let (
-            (connection-body
-             (string->symbol (sxml:attr connection-rule 'standardLibrary)))
-            (connection-args
-             (map (lambda (x) (string->symbol (sxml:attr x 'name)))
-                  (append (reverse ports)
-                          (reverse parameters))))
-            )
-        (list name connection-args connection-body)
-        ))
-        
-
      (dynamics 
       (let (
             (dynamics-body (parse-al-sxml-dynamics dynamics))
-            (dynamics-args
+            (dynamics-formals
              (map (lambda (x) (string->symbol (sxml:attr x 'name)))
                   (append (reverse states)
                           (reverse ports)
                           (reverse parameters))))
             )
-        (list name dynamics-args dynamics-body)
+        (make-dynamics-node name dynamics-formals dynamics-body)
         ))
      
+     (connection-rule 
+      (let (
+            (connection-stdlib
+             (string->symbol (sxml:attr connection-rule 'standardLibrary)))
+            (connection-formals
+             (map (lambda (x) (string->symbol (sxml:attr x 'name)))
+                  (append (reverse ports)
+                          (reverse parameters))))
+            )
+        (make-connection-rule-node name connection-formals connection-body)
+        ))
+        
+
      (alsys
       (let (
             (alsys-body (parse-al-sxml-alsys alsys))
             
-            (alsys-args
+            (alsys-formals
              (map (lambda (x) (string->symbol (sxml:attr x 'name)))
                   (append (reverse ports)
                           (reverse parameters))))
             )
         
-        (list name alsys-args alsys-body)
+        (make-alsys-node name alsys-formals alsys-body)
         ))
      
      (else

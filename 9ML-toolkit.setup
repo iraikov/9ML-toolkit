@@ -12,6 +12,12 @@
        ("expr.grm.scm" ("expr.grm")
 	(run (csi -s expr.grm)))
 
+       ((dynld-name "9ML-types") ("types.scm")
+	(compile -O -d2 -S -s types.scm -o ,(dynld-name "9ML-types") -j 9ML-types))
+
+       ((dynld-name "9ML-parse.import") ("9ML-parse.import.scm")
+	(compile  -s 9ML-parse.import.scm))
+
        ((dynld-name "9ML-parse") ("parse.scm" "expr.grm.scm" "expr-parser.scm")
 	(compile -O -d2 -S -s parse.scm -o ,(dynld-name "9ML-parse") -j 9ML-parse))
 
@@ -39,6 +45,7 @@
        )
 
   (list
+	(dynld-name "9ML-types")       (dynld-name "9ML-types.import") 
 	(dynld-name "9ML-parse")       (dynld-name "9ML-parse.import") 
 	;(dynld-name "9ML-ivp-chicken") (dynld-name "9ML-ivp-chicken.import") 
 	(dynld-name "9ML-ivp-mlton")   (dynld-name "9ML-ivp-mlton.import") 
@@ -46,6 +53,19 @@
         )
 
   )
+
+
+(install-extension
+
+  ; Name of your extension:
+  '9ML-type
+
+  ; Files to install for your extension:
+  `(,(dynld-name "9ML-types") ,(dynld-name "9ML-types.import") )
+
+  ; Assoc list with properties for your extension:
+  `((version ,version)
+    ))
 
 
 (install-extension
