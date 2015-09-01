@@ -15,8 +15,8 @@
        ((dynld-name "9ML-types") ("types.scm")
 	(compile -O -d2 -S -s types.scm -o ,(dynld-name "9ML-types") -j 9ML-types))
 
-       ((dynld-name "9ML-parse.import") ("9ML-parse.import.scm")
-	(compile  -s 9ML-parse.import.scm))
+       ((dynld-name "9ML-types.import") ("9ML-types.import.scm")
+	(compile  -s 9ML-types.import.scm))
 
        ((dynld-name "9ML-parse") ("parse.scm" "expr.grm.scm" "expr-parser.scm")
 	(compile -O -d2 -S -s parse.scm -o ,(dynld-name "9ML-parse") -j 9ML-parse))

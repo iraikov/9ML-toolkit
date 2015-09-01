@@ -21,9 +21,9 @@
 (module 9ML-types
 
 	(
-         make-dynamics-node
-         make-alsys-node
-         make-connection-rule-node
+         make-dynamics-node dynamics-node?
+         make-alsys-node alsys-node?
+         make-connection-rule-node connection-rule-node?
          )
 
 	(import scheme chicken)

@@ -384,11 +384,18 @@
                     (parse-al-sxml (parse-xml src))
                     )))
 
-             (models (map (match-lambda ((model-name model-formals model-decls) 
-                                         (list model-name model-formals (salt:parse model-decls))))
-                          model-srcs))
-             (dd     (d "NineML abstraction layer models: ~A~%" models))
-             (model  (alist-ref al-definition-name models))
+             (model-env (map (match-lambda
+                              (($ dynamics-node model-name model-formals model-decls) 
+                               (cons model-name (make-dynamics-node model-name model-formals 
+                                                                    (salt:parse model-decls))))
+                              ((and ($ alsys-node model-name model-formals model-decls) node)
+                               (cons model-name node))
+                              ((and ($ connection-rule-node model-name model-formals model-decls) node)
+                               (cons model-name node))
+                              (node (error 'eval-ul-component "unknown node type" node)))
+                             model-srcs))
+             (dd     (d "NineML abstraction layer models: ~A~%" model-env))
+             (model  (alist-ref al-definition-name model-env))
              (dd     (d "NineML abstraction layer model intermediate form: ~A~%" model))
              )
 
@@ -396,9 +403,6 @@
             (error 'eval-ul-component "cannot find definition named" al-definition-name))
         
         (let* (
-               (al-definition-formals (car model))
-               (al-definition (cadr model))
-
                (parameter-decls
                   (map (lambda (n v) 
                          (let ((vtext (sxml:text v))
@@ -440,12 +444,24 @@
 
                )
 
-          `(,(string->symbol node-name) .
-            ,(salt:elaborate
-              (salt:parse
-               (append parameter-decls
-                       state-decls
-                       (list al-definition)))))
+          (match model
+                 (($ dynamics-node model-name model-formals model-decls) 
+                  (cons (string->symbol node-name)
+                        (make-dynamics-node 
+                         model-name  
+                         model-formals
+                         (salt:elaborate
+                          (salt:parse
+                           (append parameter-decls
+                                   state-decls
+                                   model-decls))))
+                        ))
+                 
+                 ((and ($ alsys-node model-name model-formals model-decls) node)
+                  (cons node-name node))
+                 ((and ($ connection-rule-node model-name model-formals model-decls) node)
+                  (cons node-name node))
+                 )
           ))
       ))
   )

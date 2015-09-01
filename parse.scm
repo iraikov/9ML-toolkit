@@ -239,8 +239,8 @@
                                     (string->symbol (or (sxml:attr e 'src_port)
                                                         (sxml:attr e 'port))))
                                    )
-                                `(event ,e-port . ,(map (lambda (var rhs) `(,var := ,rhs))
-                                                        e-assign-variables e-assign-rhss))
+                                `(event ,e-port ,(map (lambda (var rhs) `(,var := ,rhs))
+                                                      e-assign-variables e-assign-rhss))
                                 ))
                             on-events))
                       
@@ -288,10 +288,10 @@
                         on-conditions))
                       
                       )
-                  
+
                   (append 
                    (if (null? on-conditions)
-                       (append time-derivatives event-decls)
+                       (append ode-decls event-decls)
                        (cons `(structural-event ,regime-name
                                                 ,ode-decls
                                                 . ,transition-decls)
@@ -386,6 +386,7 @@
                           (reverse ports)
                           (reverse parameters))))
             )
+        (print "dynamics-body = " dynamics-body)
         (make-dynamics-node name dynamics-formals dynamics-body)
         ))
      
@@ -398,7 +399,7 @@
                   (append (reverse ports)
                           (reverse parameters))))
             )
-        (make-connection-rule-node name connection-formals connection-body)
+        (make-connection-rule-node name connection-formals connection-stdlib)
         ))
         
 
