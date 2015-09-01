@@ -515,42 +515,47 @@
   (d "eval-ul-property: node = ~A~%" node)
 
   (let* (
-         (sxml-value (car ((sxpath `(// nml:SingleValue)) (list node))))
+         (sxml-single-value (sxml:kidn 'nml:SingleValue node))
+         (sxml-math-expr (sxml:kidn 'nml:MathInline node))
          (name (gensym 'prop))
          )
-    `(,name 
-      ,(let ((vtext (sxml:text sxml-value)))
-         (let ((n (string->number vtext)))
-           (or (and n (make-real-signal name n))
-               (make-signal-expr
-                (or (string->number (sxml:text sxml-value))
-                    (parse-string-expr (->string (sxml:kidn-cadr 'nml:MathInline sxml-value ))))
-                '())
-               )
-           ))
+    `(,name .
+      ,(let* ((vtext (sxml:text node))
+              (n (string->number vtext)))
+         (cond
+          (n n)
+          (sxml-single-value
+           (make-signal-expr
+            (string->number (sxml:text sxml-value))))
+          (sxml-math-expr
+           (parse-string-expr (sxml:text sxml-math-expr)))
+          (else (error 'eval-ul-property "unknown property format" node))
+          ))
       ))
   )
 
 
 
 (define (make-prototype-tenv prefix name env)
-  (let ((ivp-name ($ (string-append "ivp_" (->string name)))))
-    (d "NineML make-prototype-tenv: ivp-name = ~A~%" ivp-name)
-    (let ((sdinfo (lookup-def ivp-name env)))
-      (if (not sdinfo) (error 'make-prototype "unable to find prototype" name))
-      (let (
-            (ivar    (lookup-def 'ivar sdinfo))
-            (dvars   (lookup-def 'dvars sdinfo))
-            (hvar    (lookup-def 'hvar sdinfo))
-            (params  (lookup-def 'params sdinfo))
-            (events  (lookup-def 'events sdinfo))
-            (ic      (lookup-def 'initial-conditions sdinfo))
-            (fields  (lookup-def 'fields sdinfo))
-            (inputs  (lookup-def 'inputs sdinfo))
-            (outputs (lookup-def 'outputs sdinfo))
-            (ivpFn   (lookup-def 'ivp-id sdinfo))
-            )
+    (let ((node (lookup-def name env)))
 
+      (if (not node) (error 'make-prototype "unable to find prototype" name))
+
+      (match-let* ((($ dynamics-node name formals eqset) node))
+
+         (let* (
+                (sim     (salt:simcreate eqset))
+                (hvar    'h)
+                (ivar    salt:model-time)
+                (dvars   (salt:equation-set-definitions eqset))
+                (params  (salt:equation-set-parameters eqset))
+                (events  (salt:equation-set-conditions eqset))
+                (ic      (salt:equation-set-initial eqset))
+                (fields  (salt:equation-set-fields eqset))
+                (inputs  (append dvars params fields))
+                (outputs dvars)
+               )
+                  
         (d "NineML make-prototype-tenv: ic = ~A params = ~A inputs = ~A~%" 
            ic params inputs)
 
@@ -582,7 +587,7 @@
                )
           (alist->tenv
            `((name               . ,name)
-             (ivpFn              . ,ivpFn)
+             (ivpFn              . ,name)
              (ivar               . ,ivar)
              (hvar               . ,hvar)
              (states             . ,states)
@@ -596,7 +601,7 @@
              ))
           ))
       ))
-  )
+    )
   
 
 (define (make-population-tenv name prototype size order)
@@ -711,8 +716,7 @@
   
 
 (define (make-response-tenv prefix name ports env)
-  (let ((ivp-name ($ (string-append "ivp_" (->string name)))))
-    (let ((sdinfo (lookup-def ivp-name env)))
+    (let ((sdinfo (lookup-def name env)))
       (if (not sdinfo) (error 'make-response "unable to find prototype" name))
       (let (
             (ivar    (lookup-def 'ivar sdinfo))
@@ -763,12 +767,11 @@
              ))
           ))
       ))
-  )
+
 
 
 (define (make-plasticity-tenv prefix name env)
-  (let ((ivp-name ($ (string-append "ivp_" (->string name)))))
-    (let ((sdinfo (lookup-def ivp-name env)))
+    (let ((sdinfo (lookup-def name env)))
       (if (not sdinfo) (error 'make-plasticity "unable to find prototype" name))
       (let ((ivar    (lookup-def 'ivar sdinfo))
             (dvars   (lookup-def 'dvars sdinfo))
@@ -792,7 +795,6 @@
              ))
           ))
       ))
-  )
 
 
 (define (make-connection-tenv prefix name node-env)
@@ -873,14 +875,16 @@
             '() projections)))
       (fold (lambda (x ax) (+ (alist-ref 'size x) ax)) 0 destination-union)
       ))
-         
+
+  (pp `("UL node" . ,node) (current-error-port))
+
   (let (
-        (group-name       (sxml:attr node 'name))
-	(populations-sxml ((sxpath `(// nml:Population))  node))
-	(selections-sxml  ((sxpath `(// nml:Selection))  node))
+        (group-name       (or (sxml:attr node 'name) (gensym 'group)))
+	(populations-sxml (sxml:kidsn 'nml:Population node))
+	(selections-sxml  (sxml:kidsn 'nml:Selection  node))
 	(projections-sxml ((sxpath `(// nml:Projection)) node))
         (properties-sxml  ((sxpath `(// nml:Property)) node))
-        (spikerecord-sxml ((sxpath `(nml:SpikeRecording)) node))
+        (spikerecord-sxml ((sxpath `(// nml:SpikeRecording)) node))
         )
 
     (d "UL group: ~A properties: ~A populations: ~A selections: ~A projections: ~A~%" 
@@ -902,7 +906,7 @@
                         (size-val (inexact->exact (cdr size))))
                    (list
                     (cons
-                     `(,($ name) . ,(make-population-tenv ($ name) (make-prototype-tenv prefix prototype-name ivp-env) 
+                     `(,($ name) . ,(make-population-tenv ($ name) (make-prototype-tenv prefix prototype-name ul-node-env) 
                                                           size-val order))
                      populations)
                     (+ size-val order)
@@ -981,7 +985,7 @@
                                            (and ref (sxml:text ref))))
                       (connectivity-port (let ((st (sxml:kidn* 'nml:Port connectivity))) 
                                            (and st (sxml:text st))))
-                      (del  (cdr (eval-ul-property name (sxml:kidn* 'nml:Delay node))))
+                      (del (cdr (eval-ul-property name (sxml:kidn* 'nml:Delay node))))
                       (properties      (parse-ul-properties 
                                         name
                                         (append (sxml:kidsn 'nml:property connectivity)
@@ -1000,9 +1004,9 @@
                      (let* (
                             (source (lookup-def source-name sets))
                             (destination (lookup-def destination-name sets))
-                            (response (and response-name (make-response-tenv prefix response-name response-ports node-env)))
-                            (plasticity (and plasticity-name (make-plasticity-tenv prefix plasticity-name node-env)))
-                            (connection (and connectivity-name (make-connection-tenv prefix connectivity-name node-env)))
+                            (response (and response-name (make-response-tenv prefix response-name response-ports ul-node-env)))
+                            (plasticity (and plasticity-name (make-plasticity-tenv prefix plasticity-name ul-node-env)))
+                            (connection (and connectivity-name (make-connection-tenv prefix connectivity-name ul-node-env)))
                            )
 
                        (d "group-ul-eval: plasticity tenv = ~A~%" plasticity)
@@ -1353,7 +1357,7 @@
                  (d "ul-properties = ~A~%" ul-properties)
                  (d "ul-components = ~A~%" ul-components)
                  
-                 (eval-ul-group operand ul-properties ul-sxml ul-component-eval-env)
+                 (eval-ul-group operand ul-properties `(nml:Group . ,ul-sxml) ul-component-eval-env)
                  
                  ))
              ))

@@ -386,7 +386,6 @@
                           (reverse ports)
                           (reverse parameters))))
             )
-        (print "dynamics-body = " dynamics-body)
         (make-dynamics-node name dynamics-formals dynamics-body)
         ))
      
