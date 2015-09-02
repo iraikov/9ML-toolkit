@@ -109,9 +109,9 @@ struct
   val {{pop.name}}_initial_vector = 
     Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.initialStateExprML}})
 
-  val {{pop.name}}_f = Model_{{pop.name}}.{{pop.value.prototype.ivpFn}}
+  val {{pop.name}}_run = Model_{{pop.name}}.{{pop.value.prototype.runExprML}}
 
-  fun {{pop.name}}_run (Wnet,n0) (i,input as { {{ join (",", pop.value.prototype.states) }} }) =
+  fun {{pop.name}}_run (Wnet,n0) (i,input) =
     let 
         val initial = {{pop.name}}_initial
 {% if pop.value.prototype.fieldExprML %}

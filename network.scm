@@ -543,18 +543,7 @@
 
       (match-let* ((($ dynamics-node name formals eqset) node))
 
-         (let* (
-                (sim     (salt:simcreate eqset))
-                (hvar    'h)
-                (ivar    salt:model-time)
-                (dvars   (salt:equation-set-definitions eqset))
-                (params  (salt:equation-set-parameters eqset))
-                (events  (salt:equation-set-conditions eqset))
-                (ic      (salt:equation-set-initial eqset))
-                (fields  (salt:equation-set-fields eqset))
-                (inputs  (append dvars params fields))
-                (outputs dvars)
-               )
+         (let ((sim     (salt:simcreate eqset)))
                   
         (d "NineML make-prototype-tenv: ic = ~A params = ~A inputs = ~A~%" 
            ic params inputs)
