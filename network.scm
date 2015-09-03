@@ -458,9 +458,9 @@
                         ))
                  
                  ((and ($ alsys-node model-name model-formals model-decls) node)
-                  (cons node-name node))
+                  (cons (string->symbol node-name) node))
                  ((and ($ connection-rule-node model-name model-formals model-decls) node)
-                  (cons node-name node))
+                  (cons (string->symbol node-name) node))
                  )
           ))
       ))
@@ -526,7 +526,7 @@
           (n n)
           (sxml-single-value
            (make-signal-expr
-            (string->number (sxml:text sxml-value))))
+            (string->number (sxml:text sxml-single-value))))
           (sxml-math-expr
            (parse-string-expr (sxml:text sxml-math-expr)))
           (else (error 'eval-ul-property "unknown property format" node))
@@ -535,63 +535,6 @@
   )
 
 
-
-(define (make-prototype-tenv prefix name env)
-    (let ((node (lookup-def name env)))
-
-      (if (not node) (error 'make-prototype "unable to find prototype" name))
-
-      (match-let* ((($ dynamics-node name formals eqset) node))
-
-         (let ((sim     (salt:simcreate eqset)))
-                  
-        (d "NineML make-prototype-tenv: ic = ~A params = ~A inputs = ~A~%" 
-           ic params inputs)
-
-        (let* (
-               (states               (cons ivar dvars))
-               (icstates             (filter (lambda (x) (member (car x) states)) ic))
-               (outstates            (filter (lambda (x) (member x outputs)) states))
-               (initialExpr/ML       (mlton-initial (append params ic) update: '((h . h))))
-               (fieldExpr/ML         (and (not (null? fields)) (mlton-initial fields)))
-               (initialStateExpr/ML  (mlton-initial icstates))
-               (updateState/ML       (mlton-state-update 
-                                      (append (map car ic) (map car params))
-                                      nstate: "input" 
-                                      input: "initial" 
-                                      field-input: "fieldV"
-                                      states: states 
-                                      fields: (map car fields)
-                                      update: (case (simulation-method)
-                                                ((rkfe rk3 rk4a rk4b)
-                                                 (map (lambda (x) `(,x . ,($ (s+ x "_i")))) inputs))
-                                                ((rkoz rkdp)
-                                                 (cons '(h . h_i) 
-                                                       (map (lambda (x) `(,x . ,($ (s+ x "_i")))) inputs)))
-                                                (else
-                                                 (map (lambda (x) `(,x . ,($ (s+ x "_i")))) inputs)))))
-               (copyState/ML          (mlton-state-update states 
-                                                          input: "input" 
-                                                          states: outstates))
-               )
-          (alist->tenv
-           `((name               . ,name)
-             (ivpFn              . ,name)
-             (ivar               . ,ivar)
-             (hvar               . ,hvar)
-             (states             . ,states)
-             (events             . ,(if (null? events) '(tnull) events))
-             (inputs             . ,inputs)
-             (initialExprML      . ,initialExpr/ML)
-             (fieldExprML        . ,fieldExpr/ML)
-             (initialStateExprML . ,initialStateExpr/ML)
-             (updateStateML      . ,updateState/ML)
-             (copyStateML        . ,copyState/ML)
-             ))
-          ))
-      ))
-    )
-  
 
 (define (make-population-tenv name prototype size order)
   (alist->tenv
@@ -656,7 +599,9 @@
        (singleton-template 
 	(sxml:match 'nml:Item
 		    (lambda (node bindings root env) 
-		      (let ((name ($ (sxml:text node))))
+		      (let* ((ref (sxml:kidn* 'nml:Reference node))
+                             (name ($ (sxml:text ref))))
+                        (d "Item: node = ~A name = ~A~%" node name)
                         (let ((population (lookup-def name populations)))
                           (if population
                               `((,name . ,population))
@@ -704,86 +649,7 @@
   
   
 
-(define (make-response-tenv prefix name ports env)
-    (let ((sdinfo (lookup-def name env)))
-      (if (not sdinfo) (error 'make-response "unable to find prototype" name))
-      (let (
-            (ivar    (lookup-def 'ivar sdinfo))
-            (dvars   (lookup-def 'dvars sdinfo))
-            (hvar    (lookup-def 'hvar sdinfo))
-            (params  (lookup-def 'params sdinfo))
-            (events  (lookup-def 'events sdinfo))
-            (outputs (lookup-def 'outputs sdinfo))
-            (ic      (lookup-def 'initial-conditions sdinfo))
-            (event-ports (lookup-def 'event-ports ports))
-            (plasticity-ports (lookup-def 'plasticity-ports ports))
-            (destination-ports (lookup-def 'destination-ports ports))
-            )
-        (d "NineML make-response-tenv: plasticity-ports = ~A destination-ports = ~A~%" 
-           plasticity-ports destination-ports)
-        (let* ((ivpFn                (lookup-def 'ivp-id sdinfo))
-               (states               (cons ivar dvars))
-               (outstates            (filter (lambda (x) (member x outputs)) states))
-               (icstates             (filter (lambda (x) (member (car x) states)) ic))
-               (initialExpr/ML       (mlton-initial (append params ic) update: '((h . h))))
-               (initialStateExpr/ML  (mlton-initial icstates))
-               (updateState/ML       (mlton-state-update
-                                      (append (map car ic) (map car params))
-                                      nstate: "input" 
-                                      input:  "initial" 
-                                      states: states 
-                                      update: `(
-                                                (,(cadr event-ports) . spike_i) 
-                                                (,(cadr plasticity-ports) . weight_i)
-                                                )
-                                      ))
-               (copyState/ML         (mlton-state-update
-                                      states 
-                                      input: "input" 
-                                      states: outstates ))
-               )
-          (d "NineML make-response-tenv: ic = ~A states = ~A~%" ic states)
-          (alist->tenv
-           `((name               . ,name)
-             (ivpFn              . ,ivpFn)
-             (states             . ,states)
-             (ics                . ,(map car ic))
-             (initialExprML      . ,initialExpr/ML)
-             (initialStateExprML . ,initialStateExpr/ML)
-             (updateStateML      . ,updateState/ML)
-             (copyStateML        . ,copyState/ML)
-             (outputState        . ,(cadr destination-ports))
-             ))
-          ))
-      ))
 
-
-
-(define (make-plasticity-tenv prefix name env)
-    (let ((sdinfo (lookup-def name env)))
-      (if (not sdinfo) (error 'make-plasticity "unable to find prototype" name))
-      (let ((ivar    (lookup-def 'ivar sdinfo))
-            (dvars   (lookup-def 'dvars sdinfo))
-            (hvar    (lookup-def 'hvar sdinfo))
-            (events  (lookup-def 'events sdinfo))
-            (ic      (lookup-def 'initial-conditions sdinfo)))
-        (let* ((ivpFn                (lookup-def 'ivp-id sdinfo))
-               (states               (cons ivar dvars))
-               (icstates             (filter (lambda (x) (member (car x) states)) ic))
-               (initialExpr/ML       (mlton-initial ic update: '((h . h))))
-               (initialStateExpr/ML  (mlton-initial icstates))
-               )
-          (d "NineML make-plasticity-tenv: states = ~A ics = ~A~%" states (map car ic))
-          (alist->tenv
-           `((name               . ,name)
-             (ivpFn              . ,ivpFn)
-             (states             . ,states)
-             (ics                . ,(map car ic))
-             (initialExprML      . ,initialExpr/ML)
-             (initialStateExprML . ,initialStateExpr/ML)
-             ))
-          ))
-      ))
 
 
 (define (make-connection-tenv prefix name node-env)
@@ -792,14 +658,12 @@
 
   (cond
 
-   ((lookup-def sys-name stdlib-env) =>
-    (lambda (stdlib)
-      (match stdlib
-             (('Tuple ('left _) ('right ('Tuple ('left ('Const ('string stdlib-name))) _)))
-              (alist->tenv
-               `((name  . ,sys-name)
-                 (stdlib . ,stdlib-name))))
-             (else (error 'make-connection-tenv "unknown stdlib connection")))))
+   ((lookup-def sys-name node-env) =>
+    (match-lambda (($ connection-rule-node name connection-formals connection-stdlib)
+                   (alist->tenv
+                    `((name  . ,sys-name)
+                      (stdlib . ,connection-stdlib))))
+                  (else (error 'make-connection-tenv "unknown stdlib connection"))))
 
    ((lookup-def sys-name node-env) =>
     (lambda (sdinfo)
@@ -895,8 +759,7 @@
                         (size-val (inexact->exact (cdr size))))
                    (list
                     (cons
-                     `(,($ name) . ,(make-population-tenv ($ name) (make-prototype-tenv prefix prototype-name ul-node-env) 
-                                                          size-val order))
+                     `(,($ name) . ,(make-population-tenv ($ name) `((name . ,prototype-name)) size-val order))
                      populations)
                     (+ size-val order)
                     ))
@@ -946,22 +809,17 @@
                       (response-node (sxml:kidn* 'nml:Response node))
                       (response-name (and response-node (sxml:text (sxml:kidn* 'nml:Reference response-node ))))
                       
-                      (response-event-ports 
-                       (and response-node
-                            (let ((from-source
-                                   (sxml:kidn* 'nml:FromSource response-node )))
-                              (list ($ (sxml:attr from-source 'event_send_port))
-                                    ($ (sxml:attr from-source 'event_receive_port)))
-                              )))
                       (response-plasticity-ports 
                        (and response-node
                             (let ((from-plasticity
                                    (sxml:kidn* 'nml:FromPlasticity response-node )))
+                              (d "response-node: response-node = ~A from-plasticity = ~A~%" 
+                                 response-node from-plasticity)
                               (list ($ (sxml:attr from-plasticity 'send_port))
                                     ($ (sxml:attr from-plasticity 'receive_port)))
                               )))
+
                       (response-ports `(
-                                        (event-ports . ,response-event-ports)
                                         (plasticity-ports . ,response-plasticity-ports)
                                         (destination-ports . ,destination-response-ports)
                                         ))
@@ -993,14 +851,9 @@
                      (let* (
                             (source (lookup-def source-name sets))
                             (destination (lookup-def destination-name sets))
-                            (response (and response-name (make-response-tenv prefix response-name response-ports ul-node-env)))
-                            (plasticity (and plasticity-name (make-plasticity-tenv prefix plasticity-name ul-node-env)))
                             (connection (and connectivity-name (make-connection-tenv prefix connectivity-name ul-node-env)))
                            )
 
-                       (d "group-ul-eval: plasticity tenv = ~A~%" plasticity)
-                       (d "group-ul-eval: plasticity tenv = ~A~%" plasticity)
-                       
                        (if (not source)
                            (error 'eval-ul-group "invalid projection source" source))
 
@@ -1109,20 +962,8 @@
       (let* (
              (shared-dir    (chicken-home))
              (template-dir  (make-pathname (make-pathname shared-dir "9ML") "templates"))
-             (network-tmpl  (case (simulation-method)
-                              ((rkfe rk3 rk4a rk4b)
-                               "Network.sml.tmpl")
-                              ((rkoz rkdp)
-                               "Network.sml.adaptive.tmpl")
-                              (else
-                               "Network.sml.tmpl")))
-             (sim-tmpl      (case (simulation-method)
-                              ((rkfe rk3 rk4a rk4b)
-                               "Sim.sml.tmpl")
-                              ((rkoz rkdp)
-                               "Sim.sml.adaptive.tmpl")
-                              (else
-                               "Sim.sml.tmpl")))
+             (network-tmpl  "Network.sml.tmpl")
+             (sim-tmpl      "Sim.sml.tmpl")
              (mlb-tmpl      "Sim.mlb.tmpl")
              (makefile-tmpl "Makefile.tmpl")
              (group-path    (make-pathname (pathname-directory prefix)
@@ -1259,15 +1100,19 @@
                                            ,(if (null? connectivity-component)
                                                 (sxml-singleton connectivity)
                                                 (let ((component-name (sxml:attr (sxml-singleton connectivity-component) 'name)))
-                                                  `(nml:Connectivity (nml:Reference ,component-name))))
+                                                  `(nml:Connectivity (nml:Reference ,component-name)
+                                                                     . ,((select-kids (lambda (x) (not (eq? (car x) 'nml:Component)))) connectivity))))
                                            ,(if (null? response-component)
                                                 (sxml-singleton response)
                                                 (let ((component-name (sxml:attr (sxml-singleton response-component) 'name)))
-                                                  `(nml:Response (nml:Reference ,component-name))))
+                                                  `(nml:Response (nml:Reference ,component-name)
+                                                                 . ,((select-kids (lambda (x) (not (eq? (car x) 'nml:Component)))) response))
+                                                  ))
                                            ,(if (null? plasticity-component)
                                                 (sxml-singleton plasticity)
                                                 (let ((component-name (sxml:attr (sxml-singleton plasticity-component) 'name)))
-                                                  `(nml:Plasticity (nml:Reference ,component-name))))
+                                                  `(nml:Plasticity (nml:Reference ,component-name)
+                                                                   . ,((select-kids (lambda (x) (not (eq? (car x) 'nml:Component)))) plasticity))))
                                            )
                                 ))
                           ))

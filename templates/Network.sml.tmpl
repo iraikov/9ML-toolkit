@@ -2,6 +2,8 @@
 structure {{group.name}} =
 struct
 
+  structure D = Dynamics
+
   fun putStrLn out str = 
       (TextIO.output (out, str);
        TextIO.output (out, "\n"))
@@ -51,6 +53,30 @@ struct
 
   val ZigInit = RandomMTZig.ztnew
 
+  fun optApply fopt args =
+      case fopt of SOME f => SOME (f args) | NONE => NONE
+
+  fun make_initial_vector (N,initial,SOME evinitial,SOME dinitial,SOME rinitial,extinitial) =
+      Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial, rinitial, extinitial))
+   |  make_initial_vector (initial,SOME evinitial,NONE,NONE,extinitial) =
+      Vector.tabulate (N, fn (i) => D.EventState (0.0, initial, evinitial, extinitial))
+   |  make_initial_vector (initial,NONE,NONE,NONE,extinitial) =
+      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial, extinitial))
+
+  fun update_external_state (D.RegimeState (x, y, ev, d, r, _), ext) =
+      D.RegimeState (x, y, ev, d, r, ext)
+   |  update_external_state (D.EventState (x, y, ev, _)) =
+      D.EventState (x, y, ev, ext)
+   |  update_external_state (D.ContState (x, y, _), ext) =
+      D.ContState (x, y, ext)
+
+  fun state_sub (D.RegimeState (x, y, ev, d, r, ext), i) =
+      Vector.sub(y, i)
+   |  update_external_state (D.EventState (x, y, ev, ext), i) =
+      Vector.sub(y, i)
+   |  update_external_state (D.ContState (x, y, ext), i) =
+      Vector.sub(y, i)
+
         
   exception Index        
 
@@ -99,48 +125,65 @@ struct
 
   val N_{{pop.name}} = {{ pop.value.size }}
 
-  val {{pop.name}}_initial = {{pop.value.prototype.initialExprML}}
+  val {{pop.name}}_parameters = {{pop.value.prototype.name}}.paramfun()
 
-{% if pop.value.prototype.fieldExprML %}
+(*
   val {{pop.name}}_field_vector = 
-    Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.fieldExprML}})
-{% endif %}
+    Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.name}}.fieldfun({{pop.name}}_parameters))
+*)
 
   val {{pop.name}}_initial_vector = 
-    Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.initialStateExprML}})
-
-  val {{pop.name}}_run = Model_{{pop.name}}.{{pop.value.prototype.runExprML}}
+      let
+          val initial     = {{pop.value.prototype.name}}.initfun({{pop.name}}_parameters)
+          val evinitial   = optApply {{pop.value.prototype.name}}.initcondfun ()
+          val dinitial    = optApply {{pop.value.prototype.name}}.dinitfun ()
+          val rinitial    = optApply {{pop.value.prototype.name}}.initregfun ()
+          val extinitial  = {{pop.value.prototype.name}}.initextfun ()
+      in
+          make_initial_vector (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial)
+      end
+                           
+  val {{pop.name}}_f = 
+      let
+          val p = {{pop.name}}_parameters 
+      in 
+          D.integral({{pop.value.prototype}}.odefun(),
+                     optApply {{pop.value.prototype}}.condfun p,
+                     optApply {{pop.value.prototype}}.posfun p,
+                     optApply {{pop.value.prototype}}.negfun p,
+                     optApply {{pop.value.prototype}}.dposfun p,
+                     optApply {{pop.value.prototype}}.regfun (),h)
+      end
 
   fun {{pop.name}}_run (Wnet,n0) (i,input) =
     let 
-        val initial = {{pop.name}}_initial
+(*
 {% if pop.value.prototype.fieldExprML %}
         val fieldV = Vector.sub ({{pop.name}}_field_vector,i)
 {% endif %}
+*)
 
-{% if (not (pop.value.prototype.inputs == [])) %}
 {% if group.psrtypes %}
         val W = case Wnet of SOME W' => W'
                         | NONE => (List.tabulate ({{length (dict (group.psrtypes))}}, 
                                                   fn (i) => (RTensor.new ([N,1],0.0))))
         val [{% for psr in dict (group.psrtypes) %}{{psr.name}}_i{% if not loop.last %},{% endif %}{% endfor %}] =
             map (fn (W) => RTensor.sub(W,[i+n0,0])) W
-        val {{first(pop.value.prototype.inputs)}}_i  = 
-            foldl Real.+ 0.0 [{% for psr in dict (group.psrtypes) %}{{psr.name}}_i{% if not loop.last %},{% endif %}{% endfor %}] 
-{% else %}
-        val {{first(pop.value.prototype.inputs)}}_i  = 
-            case Wnet of 
-                SOME W => foldl (fn (W,ax) => Real.+ (RTensor.sub(W,[i+n0,0]), ax)) 0.0 W
-              | NONE => 0.0
+        val ext_i  = 
+            Vector.fromList [{% for psr in dict (group.psrtypes) %}{{psr.name}}_i{% if not loop.last %},{% endif %}{% endfor %}] 
 
-{% endif %}
+{% else %}
+        val ext_i  = 
+            case Wnet of 
+                SOME W => Vector.fromList (map (fn (W) => RTensor.sub(W,[i+n0,0])) W
+              | NONE => Vector.fromList []
+
 {% endif %}
 
         (*val _ = putStrLn TextIO.stdOut ("# {{pop.name}}: t = " ^ (showReal t) ^ " Isyn_i = " ^ (showReal Isyn_i) ^ " V = " ^ (showReal V))*)
-        val nstate = {{pop.name}}_f {{ pop.value.prototype.updateStateML }} 
-        val nstate' = {{ pop.value.prototype.copyStateML }} 
+        val nstate = {{pop.name}}_f (update_external_state (input, ext_i))
     in 
-        nstate'
+        nstate
     end
 
 {% endfor %}
@@ -148,29 +191,6 @@ struct
 {% if group.plastypes %}{% for pl in dict (group.plastypes) %}
   val {{pl.name}}_initial = {{pl.value.initialExprML}}
 
-{% endfor %}{% endif %}
-
-
-{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
-  val {{psr.name}}_initial = {{psr.value.initialExprML}}
-
-  val {{psr.name}}_initial_vector = Vector.tabulate ({{psr.value.range}}, 
-                                                     fn (i) => {{psr.value.initialStateExprML}})
-
-  val {{psr.name}}_f = Model_{{psr.name}}.{{psr.value.ivpFn}}
-                             
-  fun {{psr.name}}_response W (i,input as { {{ join (",", psr.value.states) }} }) =
-    let 
-        val initial   = {{psr.name}}_initial
-        val weight_i  = RTensor.sub(W,[i,0])
-        val spike_i   = if Real.!= (weight_i, 0.0) then 1.0 else ~1.0
-        (*val _ = putStrLn TextIO.stdOut ("# {{psr.name}}: t = " ^ (showReal t) ^ " weight_i = " ^ (showReal weight_i)*)
-        val nstate  = {{psr.name}}_f {{psr.value.updateStateML}} 
-        val nstate' = {{psr.value.copyStateML}} 
-    in 
-        RTensor.update(W,[i,0],Real.+(RTensor.sub(W,[i,0]),(#{{psr.value.outputState}}(nstate))));
-        nstate'
-    end
 {% endfor %}{% endif %}
 
 
@@ -188,13 +208,6 @@ struct
         {{pop.name}}_initial_vector{% if not loop.last %},{% endif %}
 
 {% endfor %}
-    )
-
-    val psr_initial = (
-{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
-        {{psr.name}}_initial_vector{% if not loop.last %},{% endif %}
-
-{% endfor %}{% endif %}
     )
 
 
@@ -232,86 +245,6 @@ struct
 {% endfor %}
             ) 
         end
-
-                         
-    fun fresponse I
-             (
-{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
-              {{psr.name}}_state_vector{% if not loop.last %},{% endif %}
-
-{% endfor %}{% endif %}
-             ) =
-        let
-            val sub = Unsafe.Real64Array.sub
-            val update = Unsafe.Real64Array.update
-
-{% if group.psrtypes %}
-            val W = List.tabulate ({{length (dict (group.psrtypes))}}, 
-                                   fn (i) => (RTensor.new ([N,1],0.0)))
-            val _ = app (fn(wi,w) => 
-                            let 
-                                val A = RTensor.toArray (List.nth (W,wi))
-                            in
-                                SparseMatrix.appi (fn([i,_],v) => update (A,i,Real.+ (v, sub(A,i)))) w
-                            end) I
-{% for psr in dict (group.psrtypes) %}
-            val {{psr.name}}_W' = List.nth (W,{{loop.index0}})
-            val {{psr.name}}_state_vector' = Vector.mapi ({{psr.name}}_response {{psr.name}}_W') {{psr.name}}_state_vector
-
-{% endfor %}{% else %}
-            val W = [RTensor.new ([N,1],0.0)]
-            val A = RTensor.toArray (hd(W))
-
-            val _ = app (fn(_,w) => SparseMatrix.appi (fn([i,_],v) => update (A,i,Real.+ (v, sub(A,i)))) w) I
-{% endif %}
-        in
-            (SOME W,
-             (
-{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
-              {{psr.name}}_state_vector'{% if not loop.last %},{% endif %}
-
-{% endfor %}{% endif %}
-             ))
-        end
-
-
-    fun felec E I 
-              ({% for pop in dict (group.populations) %}
-              {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
-              {% endfor %}) =
-        case E of NONE => I
-                | SOME E => 
-                  let
-                    val update = Unsafe.Real64Array.update
-                    val I' = case I of SOME I => I
-                                     | NONE => RTensor.new ([N,1],0.0)
-                    
-{% for pr in dict (group.projections) %}
-{% if pr.value.type == "continuous" %}
-{% for spop in pr.value.source %}
-{% for tpop in pr.value.destination %}
-                    fun {{spop.name}}_sub i = #({{first (spop.value.prototype.states)}})(Vector.sub ({{spop.name}}_state_vector, i))
-                    fun {{tpop.name}}_sub i = #({{first (tpop.value.prototype.states)}})(Vector.sub ({{tpop.name}}_state_vector, i))
-                    val _ = Loop.app
-                                (0, N_{{spop.name}},
-                                 fn (i) => 
-                                    let
-                                        val Vi = {{spop.name}}_sub i
-                                        val sl = SparseMatrix.slice (#{{spop.name}}(E),1,i)
-                                    in
-                                        SparseMatrix.sliceAppi 
-                                            (fn (j,g) => let val Vj = {{tpop.name}}_sub j
-                                                         in update (I,i,Real.- (sub(I,i), Real.* (g,Real.- (Vi,Vj)))) end)
-                                            sl
-                                    end)
-                                
-{% endfor %}
-{% endfor %}
-{% endif %}
-{% endfor %}
-                  in
-                      SOME I'
-                  end
                          
                          
     fun ftime (
@@ -321,10 +254,7 @@ struct
 {% endfor %} ) =
         
 {% with pop = first (dict (group.populations)) %}
-        let 
-            val { {{ join (",", pop.value.prototype.states) }} } = Vector.sub ({{pop.name}}_state_vector,0)
-        in {{pop.value.prototype.ivar}} end
-
+            state_sub (Vector.sub ({{pop.name}}_state_vector,0), 0)
 {% endwith %}
     
         

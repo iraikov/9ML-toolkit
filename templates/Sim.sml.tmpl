@@ -21,9 +21,19 @@ fun showReal n =
     end
 
 
+fun timing (action) = 
+    let
+        val timer = Timer.startCPUTimer ()
+        val result = action ()
+        val times = Timer.checkCPUTimer timer
+    in
+        (result, Time.+ (#usr times, #sys times))
+    end
+
+
 exception Index
 
-fun start (tmax, N, S, D, DQ, Pn, initial_vector, psr_initial_vector, frun, fresponse, ftime, fspikes, finfo, out) =
+fun start (tmax, N, S, D, DQ, Pn, initial_vector, frun, ftime, fspikes, finfo, out) =
 
 let
     val sub = Unsafe.Real64Array.sub
@@ -31,7 +41,7 @@ let
     val update = Unsafe.Real64Array.update
 
         
-    fun netrun (DQ,state_vector,psr_state_vector) =
+    fun netrun (DQ,state_vector) =
         let 
             val t = ftime state_vector
             val prio = {{group.name}}.TEventPriority.delayPriority t
@@ -41,9 +51,7 @@ let
                                          fn (_,v) => v,
                                          DQ)
             
-            val (W',psr_state_vector_i) = fresponse I psr_state_vector
-            
-            val state_vector_i = frun W' state_vector
+            val state_vector_i = frun I state_vector
 
             val t_i = ftime state_vector_i
 
@@ -96,20 +104,11 @@ let
         in
             if t_i  > tmax
             then (putStrLn out "# All done!"; state_vector_i)
-            else netrun (DQ'',state_vector_i,psr_state_vector_i)
+            else netrun (DQ'',state_vector_i)
         end
 in
-    netrun (DQ,initial_vector,psr_initial_vector)
+    netrun (DQ,initial_vector)
 end
-
-fun timing (action) = 
-    let
-        val timer = Timer.startCPUTimer ()
-        val result = action ()
-        val times = Timer.checkCPUTimer timer
-    in
-        (result, Time.+ (#usr times, #sys times))
-    end
 
 fun main (name,args) =
     let
@@ -132,7 +131,7 @@ fun main (name,args) =
                      ]);
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")
-                val (_,t) = timing (fn () => start (1200.0, N, S, D, DQ, Pn, initial, psr_initial, frun, fresponse, ftime, fspikes, finfo, out))
+                val (_,t) = timing (fn () => start (1200.0, N, S, D, DQ, Pn, initial, frun, ftime, fspikes, finfo, out))
             in
                 putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
             end;
