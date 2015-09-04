@@ -1,5 +1,5 @@
 
-structure Sim{{group.name}} =
+structure Sim_{{group.name}} =
 struct
 
 fun putStrLn out str = 
@@ -124,10 +124,12 @@ fun main (name,args) =
             List.app (fn (s) => putStrLn out ("# " ^ s))
                      ([
                          label,
+                         {% if not (group.properties == []) %}
                          {% for p in dict (group.properties) %}
                          ("{{p.name}} = " ^ (showReal ({{p.value.exprML}}))){% if not loop.last %},{% endif %}
 
                          {% endfor %}
+                         {% endif %}
                      ]);
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")

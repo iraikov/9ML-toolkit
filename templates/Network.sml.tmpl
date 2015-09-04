@@ -77,6 +77,13 @@ struct
    |  update_external_state (D.ContState (x, y, ext), i) =
       Vector.sub(y, i)
 
+  fun event_sub (D.RegimeState (x, y, ev, d, r, ext), i) =
+      Vector.sub(ev, i)
+   |  event_sub (D.EventState (x, y, ev, ext), i) =
+      Vector.sub(ev, i)
+   |  event_sub (D.ContState (x, y, ext), i) =
+      raise InvalidArgument
+
         
   exception Index        
 
@@ -84,11 +91,12 @@ struct
             
   val N = {{group.order}}     (* total population size *)
 
-
+{% if not (group.properties == []) %}
 {% for p in dict (group.properties) %}
   val {{p.name}} = {{p.value.exprML}}
 
 {% endfor %}
+{% endif %}
 
 {% with timestep = default(group.properties.timestep.exprML, 0.1) %}
   val h = {{ timestep }}
@@ -147,12 +155,12 @@ struct
       let
           val p = {{pop.name}}_parameters 
       in 
-          D.integral({{pop.value.prototype}}.odefun(),
-                     optApply {{pop.value.prototype}}.condfun p,
-                     optApply {{pop.value.prototype}}.posfun p,
-                     optApply {{pop.value.prototype}}.negfun p,
-                     optApply {{pop.value.prototype}}.dposfun p,
-                     optApply {{pop.value.prototype}}.regfun (),h)
+          D.integral({{pop.value.prototype.name}}.odefun(),
+                     optApply {{pop.value.prototype.name}}.condfun p,
+                     optApply {{pop.value.prototype.name}}.posfun p,
+                     optApply {{pop.value.prototype.name}}.negfun p,
+                     optApply {{pop.value.prototype.name}}.dposfun p,
+                     optApply {{pop.value.prototype.name}}.regfun (),h)
       end
 
   fun {{pop.name}}_run (Wnet,n0) (i,input) =
@@ -266,8 +274,8 @@ struct
         let
 {% for pop in dict (group.populations) %}
             val {{pop.name}}_spike_i = 
-                Vector.foldri (fn (i,v as { {{ join (",", pop.value.prototype.states) }} },ax) => 
-                               (if (Real.>= (#{{first (pop.value.prototype.events)}}(v), 0.0)) 
+                Vector.foldri (fn (i,v,ax) => 
+                               (if (Real.>= (event_sub(v,0), 0.0))
                                 then ((i+{{pop.name}}_n0,1.0))::ax 
                                 else ax))
                               [] {{pop.name}}_state_vector

@@ -446,16 +446,17 @@
 
           (match model
                  (($ dynamics-node model-name model-formals model-decls) 
-                  (cons (string->symbol node-name)
-                        (make-dynamics-node 
-                         model-name  
-                         model-formals
-                         (salt:elaborate
-                          (salt:parse
-                           (append parameter-decls
-                                   state-decls
-                                   model-decls))))
-                        ))
+                  (let ((decls (append parameter-decls
+                                       state-decls
+                                       (list model-decls))))
+                    (print "decls = " decls)
+                    (print "eqset = " (salt:elaborate (salt:parse decls)))
+                    (cons (string->symbol node-name)
+                          (make-dynamics-node 
+                           model-name model-formals
+                           (salt:elaborate (salt:parse decls))
+                           ))
+                    ))
                  
                  ((and ($ alsys-node model-name model-formals model-decls) node)
                   (cons (string->symbol node-name) node))
@@ -634,6 +635,7 @@
 
 (define (make-projection-tenv name type source destination connectivity response response-ports plasticity del properties)
     (d "make-projection-tenv: connectivity = ~A~%" connectivity)
+    (d "make-projection-tenv: delay = ~A~%" del)
     (alist->tenv
      `((name          . ,name)
        (type          . ,type)
@@ -708,7 +710,7 @@
              (psrtypes    . ,(if (null? psr-types) #f psr-types))
              (plastypes   . ,(if (null? plas-types) #f plas-types))
              (conntypes   . ,(if (null? connection-types) #f connection-types))
-             (properties  . ,(if (null? properties) '(tnull) properties))
+             (properties  . ,(if (null? properties) (ersatz:sexpr->tvalue '()) properties))
              (spikepoplst . ,spikepoplst)
              ))
            ))
@@ -716,7 +718,7 @@
     (alist->tenv alst)))
 
 
-(define (eval-ul-group prefix ul-properties node ul-node-env)
+(define (eval-ul-group operand ul-properties node ul-node-env)
 
   (define (projections-range projections)
     (let ((destination-union
@@ -731,14 +733,16 @@
 
   (pp `("UL node" . ,node) (current-error-port))
 
-  (let (
-        (group-name       (or (sxml:attr node 'name) (gensym 'group)))
-	(populations-sxml (sxml:kidsn 'nml:Population node))
-	(selections-sxml  (sxml:kidsn 'nml:Selection  node))
-	(projections-sxml ((sxpath `(// nml:Projection)) node))
-        (properties-sxml  ((sxpath `(// nml:Property)) node))
-        (spikerecord-sxml ((sxpath `(// nml:SpikeRecording)) node))
-        )
+  (let* (
+         (source-directory (pathname-directory operand))
+         (prefix           (pathname-file operand))
+         (group-name       (or (sxml:attr node 'name) (string->symbol prefix)))
+         (populations-sxml (sxml:kidsn 'nml:Population node))
+         (selections-sxml  (sxml:kidsn 'nml:Selection  node))
+         (projections-sxml ((sxpath `(// nml:Projection)) node))
+         (properties-sxml  ((sxpath `(// nml:Property)) node))
+         (spikerecord-sxml ((sxpath `(// nml:SpikeRecording)) node))
+         )
 
     (d "UL group: ~A properties: ~A populations: ~A selections: ~A projections: ~A~%" 
        group-name properties-sxml populations-sxml selections-sxml projections-sxml)
@@ -766,7 +770,7 @@
                  ))
              (list '() 0)
              populations-sxml))
-
+           
            (populations (reverse (car populations+order)))
            (order (cadr populations+order))
 
@@ -832,7 +836,7 @@
                                            (and ref (sxml:text ref))))
                       (connectivity-port (let ((st (sxml:kidn* 'nml:Port connectivity))) 
                                            (and st (sxml:text st))))
-                      (del (cdr (eval-ul-property name (sxml:kidn* 'nml:Delay node))))
+                      (del (salt:codegen-const-expr (cdr (eval-ul-property name (sxml:kidn* 'nml:Delay node)))))
                       (properties      (parse-ul-properties 
                                         name
                                         (append (sxml:kidsn 'nml:property connectivity)
@@ -870,17 +874,17 @@
                                           )
                                         response-name response-ports
                                         plasticity-name
-                                        `((expr . ,del) (exprML . ,(mlton-value del)))
+                                        `((exprML . ,(salt:value->ML del)))
                                         properties))
                         `(
                           ,(and response-name ($ response-name)) 
                           (type       . ,type)
-                          (response   . ,response) 
+                          (response   . ,response-name) 
                           (ports      . ,response-ports)
                           (projection . ,name)
                           )
                         `(,(and plasticity-name ($ plasticity-name)) 
-                          (plasticity . ,plasticity) )
+                          (plasticity . ,plasticity-name) )
                         `(,($ connectivity-name)
                           (connection . ,connection) )
                         )
@@ -914,15 +918,15 @@
 
                    (if (> (length projection-types) 1)
                        (error 'eval-ul-group "different projection types for synapse model" name))
-                       
-                   `(,name . ,(append response 
-                                      `((projections . ,projection-names)
-                                        (type  . ,(car projection-types))
-                                        (range . ,(projections-range
-                                                   (map (lambda (x) (alist-ref ($ x) projections)) 
-                                                        projection-names)))
-                                        (ports . ,ports)
-                                        )))
+
+                   `(,name . ((response . ,response)
+                              (projections . ,projection-names)
+                              (type  . ,(car projection-types))
+                              (range . ,(projections-range
+                                         (map (lambda (x) (alist-ref ($ x) projections)) 
+                                              projection-names)))
+                              (ports . ,ports)
+                              ))
                    ))
                (delete-duplicates psrs0
                                   (lambda (x y) (eq? (car x) (car y))) ))
@@ -966,16 +970,11 @@
              (sim-tmpl      "Sim.sml.tmpl")
              (mlb-tmpl      "Sim.mlb.tmpl")
              (makefile-tmpl "Makefile.tmpl")
-             (group-path    (make-pathname (pathname-directory prefix)
-                                           (string-append group-name ".sml")))
-             (sim-path      (make-pathname (pathname-directory prefix)
-                                           (string-append "Sim" group-name ".sml")))
-             (mlb-path      (make-pathname (pathname-directory prefix)
-                                           (string-append "Sim" group-name ".mlb")))
-             (exec-path     (make-pathname (pathname-directory prefix)
-                                           (string-append "Sim" group-name)))
-             (makefile-path (make-pathname (pathname-directory prefix) 
-                                           (string-append "Makefile." group-name)))
+             (group-path    (make-pathname source-directory (conc group-name ".sml")))
+             (sim-path      (make-pathname source-directory (conc "Sim_" group-name ".sml")))
+             (mlb-path      (make-pathname source-directory (conc "Sim_" group-name ".mlb")))
+             (exec-path     (make-pathname source-directory (conc "Sim_" group-name)))
+             (makefile-path (make-pathname source-directory (conc "Makefile." group-name)))
              (spikelst      (fold (lambda (node ax)
                                     (let ((set (alist-ref ($ (sxml:attr node 'set)) sets)))
                                       (let ((populations
@@ -991,11 +990,24 @@
 
              )
 
+        (d "group-path = ~A~%" group-path)
         (d "group-tenv = ~A~%" (map (lambda (x) (cons (car x) (ersatz:tvalue->sexpr (cdr x)))) group-tenv))
+
+        (for-each
+         (match-lambda ((name . ($ dynamics-node model-name model-formals model-eqset))
+                        (let* ((sim (salt:simcreate model-eqset))
+                               (code (salt:codegen-ODE sim)))
+                          (d "model-eqset = ~A~%" model-eqset)
+                          (let ((port (open-output-file (make-pathname source-directory (string-append (->string name) ".sml")))))
+                            (salt:codegen-ODE/ML sim out: port solver: 'rk3)
+                            (close-output-port port))
+                          ))
+                       (else (begin)))
+         ul-node-env)
 
         (make (
 
-               (group-path (prefix)
+               (group-path (operand)
                            (with-output-to-file group-path 
                              (lambda ()
                                (print (ersatz:from-file 
@@ -1004,7 +1016,7 @@
                                        models: group-tenv))))
                            )
         
-               (sim-path (prefix)
+               (sim-path (operand)
                          (with-output-to-file sim-path 
                            (lambda ()
                              (print (ersatz:from-file 
@@ -1031,7 +1043,7 @@
                                           models: (append 
                                                    group-tenv
                                                    `((sml_lib_home . ,(Tstr (make-pathname 
-                                                                             (make-pathname shared-dir "signal-diagram")
+                                                                             (make-pathname shared-dir "salt")
                                                                              "sml-lib")))
                                                      (nineml_lib_home . ,(Tstr (make-pathname 
                                                                                 (make-pathname shared-dir "9ML")

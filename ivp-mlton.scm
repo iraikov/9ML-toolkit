@@ -173,7 +173,7 @@ EOF
 (define (ivp-mlton prefix ivp-id ivar dvars pvars start end ic sd solver #!key (random #f))
   (let* ((dir          (or (pathname-directory prefix) "."))
 	 (shared-dir   (chicken-home))
-	 (signal-diagram-dir (make-pathname shared-dir "signal-diagram"))
+	 (salt-dir     (make-pathname shared-dir "salt"))
 	 (solver-path  (make-pathname (pathname-directory prefix) (conc ivp-id "_solver.sml")))
 	 (run-path     (make-pathname (pathname-directory prefix) (conc ivp-id "_run.sml")))
 	 (mlb-path     (make-pathname (pathname-directory prefix) (conc ivp-id "_run.mlb")))
@@ -215,10 +215,10 @@ EOF
 	   
 	   (exec-path (solver-path run-path mlb-path)
 		      (run (,mlton-path -link-opt -s 
-					-mlb-path-var ,(string-append "'RK_LIB " signal-diagram-dir "/sml-lib/rk'") 
-					-mlb-path-var ,(string-append "'RANDMTZIG_LIB " signal-diagram-dir "/sml-lib/randmtzig'") 
+					-mlb-path-var ,(string-append "'RK_LIB " salt-dir "/sml-lib/rk'") 
+					-mlb-path-var ,(string-append "'RANDMTZIG_LIB " salt-dir "/sml-lib/randmtzig'") 
 					,mlb-path
-                                        ,(string-append signal-diagram-dir "/sml-lib/randmtzig/randmtziglib.c")
+                                        ,(string-append salt-dir "/sml-lib/randmtzig/randmtziglib.c")
                                         )))
 	   
 	   (log-path (exec-path)

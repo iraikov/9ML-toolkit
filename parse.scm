@@ -161,10 +161,10 @@
 
   (define (rewrite-trigger rhs)
     (match rhs
-           (('>= x y) `(- ,x ,y))
-           (('> x y)  `(- ,x ,y))
-           (('<= x y) `(- ,y ,x))
-           (('< x y)  `(- ,y ,x))
+           ((x '>= y) `(,x - ,y))
+           ((x '> y)  `(,x - ,y))
+           ((x '<= y) `(,y - ,x))
+           ((x '< y)  `(,y - ,x))
            (else rhs)))
 
   (let (
@@ -262,10 +262,10 @@
                                 (error 'parse-al-sxml-dynamics "on-condition without output event" c))
                             
                             (let* (
-                                   (trigger-rhs (parse-string-expr 
-                                                 (sxml:text trigger) 
-                                                 'parse-al-sxml-dynamics))
-                                   
+                                   (trigger-rhs (rewrite-trigger
+                                                 (parse-string-expr 
+                                                  (sxml:text trigger) 
+                                                  'parse-al-sxml-dynamics)))
                                    (c-state-assignments ((sxpath `(nml:StateAssignment)) c))
                                    
                                    (c-assign-variables (map (lambda (x) 
@@ -292,9 +292,10 @@
                   (append 
                    (if (null? on-conditions)
                        (append ode-decls event-decls)
-                       (cons `(structural-event ,regime-name
-                                                ,ode-decls
-                                                . ,transition-decls)
+                       (cons `(structural-event 
+                               ,regime-name
+                               ,ode-decls
+                               . ,transition-decls)
                              event-decls)) lst)
                   ))
               )
