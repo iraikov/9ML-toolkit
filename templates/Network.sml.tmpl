@@ -57,32 +57,32 @@ struct
       case fopt of SOME f => SOME (f args) | NONE => NONE
 
   fun make_initial_vector (N,initial,SOME evinitial,SOME dinitial,SOME rinitial,extinitial) =
-      Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial, rinitial, extinitial))
-   |  make_initial_vector (initial,SOME evinitial,NONE,NONE,extinitial) =
-      Vector.tabulate (N, fn (i) => D.EventState (0.0, initial, evinitial, extinitial))
-   |  make_initial_vector (initial,NONE,NONE,NONE,extinitial) =
+      Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial, rinitial, extinitial, false))
+   |  make_initial_vector (N,initial,SOME evinitial,NONE,NONE,extinitial) =
+      Vector.tabulate (N, fn (i) => D.EventState (0.0, initial, evinitial, extinitial, false))
+   |  make_initial_vector (N,initial,NONE,NONE,NONE,extinitial) =
       Vector.tabulate (N, fn (i) => D.ContState (0.0, initial, extinitial))
 
-  fun update_external_state (D.RegimeState (x, y, ev, d, r, _), ext) =
-      D.RegimeState (x, y, ev, d, r, ext)
-   |  update_external_state (D.EventState (x, y, ev, _)) =
-      D.EventState (x, y, ev, ext)
+  fun update_external_state (D.RegimeState (x, y, ev, d, r, _, root), ext) =
+      D.RegimeState (x, y, ev, d, r, ext, root)
+   |  update_external_state (D.EventState (x, y, ev, _, root), ext) =
+      D.EventState (x, y, ev, ext, root)
    |  update_external_state (D.ContState (x, y, _), ext) =
       D.ContState (x, y, ext)
 
-  fun state_sub (D.RegimeState (x, y, ev, d, r, ext), i) =
+  fun state_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) =
       Vector.sub(y, i)
-   |  update_external_state (D.EventState (x, y, ev, ext), i) =
+   |  state_sub (D.EventState (x, y, ev, ext, root), i) =
       Vector.sub(y, i)
-   |  update_external_state (D.ContState (x, y, ext), i) =
+   |  state_sub (D.ContState (x, y, ext), i) =
       Vector.sub(y, i)
 
-  fun event_sub (D.RegimeState (x, y, ev, d, r, ext), i) =
+  fun event_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) =
       Vector.sub(ev, i)
-   |  event_sub (D.EventState (x, y, ev, ext), i) =
+   |  event_sub (D.EventState (x, y, ev, ext, root), i) =
       Vector.sub(ev, i)
    |  event_sub (D.ContState (x, y, ext), i) =
-      raise InvalidArgument
+      raise Domain
 
         
   exception Index        
@@ -155,12 +155,12 @@ struct
       let
           val p = {{pop.name}}_parameters 
       in 
-          D.integral({{pop.value.prototype.name}}.odefun(),
+          D.integral({{pop.value.prototype.name}}.odefun p,
                      optApply {{pop.value.prototype.name}}.condfun p,
                      optApply {{pop.value.prototype.name}}.posfun p,
                      optApply {{pop.value.prototype.name}}.negfun p,
                      optApply {{pop.value.prototype.name}}.dposfun p,
-                     optApply {{pop.value.prototype.name}}.regfun (),h)
+                     {{pop.value.prototype.name}}.regfun,h)
       end
 
   fun {{pop.name}}_run (Wnet,n0) (i,input) =

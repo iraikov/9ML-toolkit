@@ -2,7 +2,7 @@
 ;; NineML network level descriptions.
 ;;
 ;;
-;; Copyright 2010-2015 Ivan Raikov
+;; Copyright 2015 Ivan Raikov
 ;;
 ;; This program is free software: you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 
 (require-extension extras posix utils files data-structures tcp srfi-1 srfi-13 irregex)
 (require-extension datatype matchable make ssax sxml-transforms sxpath sxpath-lolevel 
-                   object-graph ersatz-lib uri-generic getopt-long )
+                   object-graph ersatz-lib unitconv uri-generic getopt-long )
 (require-extension 9ML-types 9ML-parse 9ML-ivp-mlton)
 
 (require-library ersatz-lib salt)
@@ -349,6 +349,41 @@
       ))
 
 
+(define-quantity   CurrentPerTime        (/ Current Time))
+
+(salt:model-quantities
+  (append
+   (map cons
+    `(time area volume temperature
+      potential voltage current capacitance conductance resistance
+      per_time current_per_time
+      )
+    (list Time Area Volume Temperature
+          Potential Potential Current Capacitance Conductance Resistance
+          Frequency CurrentPerTime
+          ))
+   (salt:model-quantities)
+   ))
+         
+(define-unit-prefix    mega ohm )
+(define-unit-prefix    nano amp )
+
+(define-unit A_per_s  CurrentPerTime 1.0)
+
+(salt:model-units
+  (append
+   (map cons
+    `(Mohm A_per_s)
+    (list megaohm A_per_s))
+   (salt:model-units)
+   ))
+         
+
+(define default-units
+  `(
+    (current . nA)
+    ))
+
 (define (eval-ul-component x) 
 
   (let (
@@ -356,10 +391,12 @@
         (definition ((sxpath `(// (*or* nml:Definition nml:definition)))  x))
 	(propns     ((sxpath `(// (*or* nml:Property nml:property) @ name))  x))
 	(propvs     ((sxpath `(// (*or* nml:Property nml:property) nml:SingleValue))  x))
+	(propunits  ((sxpath `(// (*or* nml:Property nml:property) @ units))  x))
 	(fieldns    ((sxpath `(// (*or* nml:Field nml:field) @ name))  x))
 	(fieldvs    ((sxpath `(// (*or* nml:Field nml:field) nml:SingleValue))  x))
 	(initialns  ((sxpath `(// (*or* nml:Initial nml:initial) @ name))  x))
 	(initialvs  ((sxpath `(// (*or* nml:Initial nml:initial) nml:SingleValue))  x))
+	(initialunits  ((sxpath `(// (*or* nml:Initial nml:initial) @ units))  x))
         (ivp        (safe-car ((sxpath `(// nml:IVP))  x)))
         )
 
@@ -373,16 +410,21 @@
       (d "NineML abstraction layer definition name: ~A~%" al-definition-name)
       (d "NineML component propns: ~A~%" propns)
       (d "NineML component propvs: ~A~%" propvs)
+      (d "NineML component propunits: ~A~%" propunits)
+      (d "NineML component initialns: ~A~%" initialns)
+      (d "NineML component initialvs: ~A~%" initialvs)
+      (d "NineML component initialunits: ~A~%" initialunits)
       (d "NineML component fieldns: ~A~%" fieldns)
       (d "NineML component fieldvs: ~A~%" fieldvs)
       
       (let* (
-             (model-srcs
-              (let ((src (fetch uri)))
-                (if (not src)
-                    (error 'eval-ul-component "resource not found" (uri->string uri))
-                    (parse-al-sxml (parse-xml src))
-                    )))
+             (model-src (fetch uri))
+             (model-sxml
+              (if (not model-src)
+                  (error 'eval-ul-component "resource not found" (uri->string uri))
+                  (parse-xml model-src)))
+             (model-decls (parse-al-sxml model-sxml))
+             (dd     (d "NineML abstraction layer model declarations: ~A~%" model-decls))
 
              (model-env (map (match-lambda
                               (($ dynamics-node model-name model-formals model-decls) 
@@ -393,10 +435,42 @@
                               ((and ($ connection-rule-node model-name model-formals model-decls) node)
                                (cons model-name node))
                               (node (error 'eval-ul-component "unknown node type" node)))
-                             model-srcs))
+                             model-decls))
              (dd     (d "NineML abstraction layer models: ~A~%" model-env))
              (model  (alist-ref al-definition-name model-env))
              (dd     (d "NineML abstraction layer model intermediate form: ~A~%" model))
+             (model-parameters
+              (map (lambda (x) 
+                     (let ((name (string->symbol (sxml:attr x 'name)))
+                           (dim (sxml:attr x 'dimension)))
+                       (if dim
+                           `(,name . ,(string->symbol dim))
+                           `(,name . Unity))))
+                   ((sxpath `(// nml:Parameter)) model-sxml)))
+             (model-variables
+              (map (lambda (x) 
+                     (let ((name (string->symbol (sxml:attr x 'name)))
+                           (dim (sxml:attr x 'dimension)))
+                       (if dim
+                           `(,name . ,(string->symbol dim))
+                           `(,name . Unity))))
+                   ((sxpath `(// nml:StateVariable)) model-sxml)))
+             (model-receive-ports
+              (map (lambda (x) 
+                     (let ((name (string->symbol (sxml:attr x 'name)))
+                           (dim (sxml:attr x 'dimension)))
+                       (if dim
+                           `(,name . ,(string->symbol dim))
+                           `(,name . Unity))))
+                   ((sxpath `(// (*or* nml:AnalogReceivePort nml:EventReceivePort))) model-sxml)))
+             (model-reduce-ports
+              (map (lambda (x) 
+                     (let ((name (string->symbol (sxml:attr x 'name)))
+                           (dim (sxml:attr x 'dimension)))
+                       (if dim
+                           `(,name . ,(string->symbol dim))
+                           `(,name . Unity))))
+                   ((sxpath `(// nml:AnalogReducePort)) model-sxml)))
              )
 
         (if (not model)
@@ -404,12 +478,16 @@
         
         (let* (
                (parameter-decls
-                  (map (lambda (n v) 
-                         (let ((vtext (sxml:text v))
-                               (name (sxml:text n)))
-                           `(define ,($ name) = parameter ,(parse-string-expr vtext))
+                  (map (lambda (n v u) 
+                         (let* ((vtext (sxml:text v))
+                                (name (string->symbol (sxml:text n)))
+                                (unit (string->symbol (sxml:text u)))
+                                (dim  (alist-ref name model-parameters)))
+                           (if unit
+                               `(define ,name = parameter (dim ,dim) (,(parse-string-expr vtext) * ,unit))
+                               `(define ,name = parameter ,(parse-string-expr vtext)))
                            ))
-                       propns propvs))
+                       propns propvs propunits))
                  
                (field-decls
                 (map (lambda (n v) 
@@ -424,12 +502,42 @@
                      fieldns fieldvs))
                  
                (state-decls
-                (map (lambda (n v) 
-                       (let ((name (sxml:text n))
-                             (vtext (sxml:text v)))
-                         `(define ,($ name) = unknown ,(parse-string-expr vtext))
+                (map (lambda (n v u) 
+                       (let* ((name (string->symbol (sxml:text n)))
+                              (vtext (sxml:text v))
+                              (unit (string->symbol (sxml:text u)))
+                              (dim  (alist-ref name model-variables)))
+                         (if unit
+                             `(define ,name = unknown (dim ,dim) (,(parse-string-expr vtext) * ,unit))
+                             `(define ,name = unknown ,(parse-string-expr vtext)))
                          ))
-                     initialns initialvs))
+                     initialns initialvs initialunits))
+                 
+               (ext-decls
+                (map (match-lambda 
+                      ((name . dim) 
+                       (case dim
+                         ((Unity)
+                          `(define ,name = external 0.0))
+                         (else
+                          (let ((unit (alist-ref dim default-units )))
+                            (if (not unit) 
+                                (error 'eval-ul-component
+                                       "cannot find default unit for dimension in receive port definition"
+                                       dim name))
+                            `(define ,name = external (dim ,dim) (0.0 * ,unit)))))))
+                     model-receive-ports))
+                 
+               (reduce-decls
+                (map (match-lambda 
+                      ((name . dim) 
+                       (let ((unit (alist-ref dim default-units )))
+                         (if (not unit) 
+                             (error 'eval-ul-component
+                                    "cannot find default unit for dimension in reduce port definition"
+                                    dim name))
+                         `(define ,name = unknown (dim ,dim) (0.0 * ,unit)))))
+                     model-reduce-ports))
                  
                  
                (ivp-duration (and ivp
@@ -448,13 +556,14 @@
                  (($ dynamics-node model-name model-formals model-decls) 
                   (let ((decls (append parameter-decls
                                        state-decls
+                                       ext-decls
+                                       reduce-decls
                                        (list model-decls))))
-                    (print "decls = " decls)
-                    (print "eqset = " (salt:elaborate (salt:parse decls)))
+                    (pp `(model-decls = ,decls) (current-error-port))
                     (cons (string->symbol node-name)
                           (make-dynamics-node 
-                           model-name model-formals
-                           (salt:elaborate (salt:parse decls))
+                           model-name model-formals 
+                           (salt:parse decls)
                            ))
                     ))
                  
@@ -720,6 +829,27 @@
 
 (define (eval-ul-group operand ul-properties node ul-node-env)
 
+  (define (update-population-prototype-env
+           population-prototype-env
+           population-names
+           response)
+    (let recur ((prototypes (population-prototype-env))
+                (new-prototypes '()))
+      (if (null? prototypes)
+          (population-prototype-env new-prototypes)
+          (let ((prototype (car prototypes)))
+            (if (member (car prototype) population-names)
+                (recur (cdr prototypes)
+                       (cons (cons (car prototype)
+                                   (cons (cadr prototype)
+                                         (append (cddr prototype) (list response))))
+                             new-prototypes))
+                (recur (cdr prototypes)
+                       (cons prototype new-prototypes)))
+            ))
+      ))
+      
+
   (define (projections-range projections)
     (let ((destination-union
            (fold
@@ -774,7 +904,34 @@
            (populations (reverse (car populations+order)))
            (order (cadr populations+order))
 
+           (population-prototype-env
+            (make-parameter
+             (map (lambda (node)
+                    (let* ((name ($ (sxml:attr node 'name)))
+                           (prototype-name ($ (sxml:text (sxml:kidn* 'nml:Reference (sxml:kidn* 'nml:Cell node))))))
+                      (list name prototype-name)
+                      ))
+                 populations-sxml)))
+
            (sets
+            (append 
+             (map
+              (lambda (x) 
+                (let ((name (car x)))
+                  `(,name . ((name . ,name) 
+                             (populations ,(string->symbol (->string (alist-ref 'name (cdr x))))))))
+                )
+              populations)
+              (map
+               (lambda (node)
+                 (let* ((name (sxml:attr node 'name))
+                        (set (make-population-set (sxml:kid node) populations)))
+                   `(,($ name) . ((name . ,name)
+                                  (populations . ,(map (lambda (x) (string->symbol (->string (alist-ref 'name (cdr x))))) set))))
+                   ))
+               selections-sxml)))
+            
+           (sets-tenv
             (append 
              (map
               (lambda (x) 
@@ -853,8 +1010,8 @@
                      (d "group-ul-eval: connectivity-port = ~A ~%" connectivity-port)
 
                      (let* (
-                            (source (lookup-def source-name sets))
-                            (destination (lookup-def destination-name sets))
+                            (source (lookup-def source-name sets-tenv))
+                            (destination (lookup-def destination-name sets-tenv))
                             (connection (and connectivity-name (make-connection-tenv prefix connectivity-name ul-node-env)))
                            )
 
@@ -863,6 +1020,11 @@
 
                        (if (not destination)
                            (error 'eval-ul-group "invalid projection destination" destination))
+
+                       (update-population-prototype-env
+                        population-prototype-env
+                        (alist-ref 'populations (alist-ref destination-name sets))
+                        (cons source-name (cons response-name response-ports)))
 
                        (list
                         `(,($ name) . ,(make-projection-tenv 
@@ -976,7 +1138,7 @@
              (exec-path     (make-pathname source-directory (conc "Sim_" group-name)))
              (makefile-path (make-pathname source-directory (conc "Makefile." group-name)))
              (spikelst      (fold (lambda (node ax)
-                                    (let ((set (alist-ref ($ (sxml:attr node 'set)) sets)))
+                                    (let ((set (alist-ref ($ (sxml:attr node 'set)) sets-tenv)))
                                       (let ((populations
                                              (let ((poplst (alist-ref 'populations set)))
                                                (ersatz:tvalue->sexpr poplst))))
@@ -984,7 +1146,7 @@
                                          (map (lambda (x) (->string (alist-ref 'name x))) populations)
                                          ax))))
                                   '() spikerecord-sxml))
-             (group-tenv    (make-group-tenv group-name order populations sets projections 
+             (group-tenv    (make-group-tenv group-name order populations sets-tenv projections 
                                              psr-types plas-types connection-types spikelst 
                                              (append properties ul-properties) ))
 
@@ -992,18 +1154,38 @@
 
         (d "group-path = ~A~%" group-path)
         (d "group-tenv = ~A~%" (map (lambda (x) (cons (car x) (ersatz:tvalue->sexpr (cdr x)))) group-tenv))
+        (d "population-prototype-env = ~A~%" (population-prototype-env))
 
         (for-each
-         (match-lambda ((name . ($ dynamics-node model-name model-formals model-eqset))
-                        (let* ((sim (salt:simcreate model-eqset))
-                               (code (salt:codegen-ODE sim)))
-                          (d "model-eqset = ~A~%" model-eqset)
-                          (let ((port (open-output-file (make-pathname source-directory (string-append (->string name) ".sml")))))
-                            (salt:codegen-ODE/ML sim out: port solver: 'rk3)
-                            (close-output-port port))
-                          ))
-                       (else (begin)))
-         ul-node-env)
+         (match-lambda
+          ((population node-name . responses)
+           (match-let
+            (
+             (($ dynamics-node model-name model-formals model-eqset)
+              (alist-ref node-name ul-node-env))
+             )
+            (d "node name = ~A model-eqset = ~A responses = ~A~%" node-name model-eqset responses)
+            (let* ((response-dynamics
+                    (map (match-lambda 
+                          ((source-population response-node . ports)
+                           (match-let (
+                                       (($ dynamics-node model-name model-formals model-eqset)
+                                        (alist-ref (string->symbol response-node) ul-node-env))
+                                       )
+                                      model-eqset)))
+                         responses))
+                   (prototype-decls
+                    (salt:make-astdecls
+                     (append (salt:astdecls-decls model-eqset) response-dynamics))))
+              (d "prototype-decls = ~A~%" prototype-decls)
+              (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
+                (let ((port (open-output-file (make-pathname source-directory (string-append (->string node-name) ".sml")))))
+                  (salt:codegen-ODE/ML sim out: port solver: 'rk3 libs: '(random))
+                  (close-output-port port))
+                ))
+            ))
+          )
+         (population-prototype-env))
 
         (make (
 
@@ -1143,7 +1325,6 @@
 
             ))
     ))
-         
 
 (define (main options operands)
 
@@ -1201,8 +1382,8 @@
 
 
                  (d "ul-properties = ~A~%" ul-properties)
-                 (d "ul-components = ~A~%" ul-components)
-                 
+                 (d "ul-components = ~%") (pp ul-components (current-error-port))                 
+                 (d "ul-component-eval-env = ~%") (pp ul-component-eval-env (current-error-port))
                  (eval-ul-group operand ul-properties `(nml:Group . ,ul-sxml) ul-component-eval-env)
                  
                  ))

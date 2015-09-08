@@ -171,6 +171,7 @@
         (state-variables  ((sxpath `(// nml:StateVariable)) sxml))
 	(regimes          ((sxpath `(// nml:Regime)) sxml))
         (relations        ((sxpath `(// nml:Relation)) sxml))
+        (constants        ((sxpath `(// nml:Constant)) sxml))
         (aliases          ((sxpath `(// nml:Alias)) sxml))
         )
 
@@ -179,7 +180,7 @@
 
           (relations-decls
            (map (lambda (x)
-                  (let ((quantity (sxml:attr x 'name))
+                  (let ((quantity (string->symbol (sxml:attr x 'name)))
                         (var      (sxml:attr x 'argument))
                         (rhs      (parse-string-expr 
                                    (sxml:kidn-cadr 'nml:MathInline x )
@@ -187,6 +188,29 @@
                     `(fun (,quantity ,var) = ,rhs)
                     ))
                 relations))
+           
+          (assign-decls
+           (map (lambda (x)
+                  (let ((quantity (string->symbol (sxml:attr x 'name)))
+                        (rhs      (parse-string-expr 
+                                   (sxml:kidn-cadr 'nml:MathInline x )
+                                   'parse-al-sxml-dynamics)))
+                    `((reduce (+ ,quantity)) = ,rhs)
+                    ))
+                aliases))
+           
+          (constant-decls
+           (map (lambda (x)
+                  (let ((name  (string->symbol (sxml:attr x 'name)))
+                        (units (sxml:attr x 'units))
+                        (rhs   (parse-string-expr 
+                                (sxml:text x)
+                                'parse-al-sxml-dynamics)))
+                    (if units
+                        `(define ,name = constant (unit ,(string->symbol units)) ,rhs)
+                        `(define ,name = constant  ,rhs))
+                    ))
+                constants))
            
           (regimes-decls 
            (fold
@@ -197,7 +221,7 @@
                     (on-events         ((sxpath `(nml:OnEvent)) regime))
                     (on-conditions     ((sxpath `(nml:OnCondition)) regime))
                     )
-                (let (
+                (let* (
                       (ode-decls
                        (match-let (((vars decls)
                                     (fold (match-lambda*
@@ -218,7 +242,6 @@
                                                                  (cons `((der (,var)) = 0.0) decls)))))
                                                      `(,vars ,decls) state-names)))
                                              decls)))
-                      
                       (event-decls 
                        (map (lambda (e)
                               (let*
@@ -290,6 +313,8 @@
                       )
 
                   (append 
+                   assign-decls
+                   constant-decls
                    (if (null? on-conditions)
                        (append ode-decls event-decls)
                        (cons `(structural-event 
