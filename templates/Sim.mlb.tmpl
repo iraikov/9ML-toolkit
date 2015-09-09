@@ -16,6 +16,13 @@ in
     structure {{pop.value.prototype.name}} = Model
 end
 {% endfor %}
+{% if group.plastypes %}{% for plas in dict (group.plastypes) %}
+local
+    {{plas.name}}.sml
+in
+    structure {{plas.name}} = Model
+end
+{% endfor %}{% endif %}
 {% if group.conntypes %}{% for conn in dict (group.conntypes) %}
 {% if conn.value.sysFn %}
 local
@@ -27,4 +34,4 @@ end
 {% endfor %}{% endif %}
 
 {{group.name}}.sml
-Sim{{group.name}}.sml
+Sim_{{group.name}}.sml

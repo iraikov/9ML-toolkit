@@ -197,7 +197,8 @@ struct
 {% endfor %}
 
 {% if group.plastypes %}{% for pl in dict (group.plastypes) %}
-  val {{pl.name}}_initial = {{pl.value.initialExprML}}
+  val {{pl.name}}_parameters = {{pl.name}}.paramfun()
+  val {{pl.name}}_initial = {{pl.name}}.initfun({{pl.name}}_parameters)
 
 {% endfor %}{% endif %}
 

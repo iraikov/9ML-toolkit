@@ -888,7 +888,7 @@
                (let ((populations (car ax))
                      (order (cadr ax)))
                  (let* ((name (sxml:attr node 'name))
-                        (prototype-name ($ (sxml:text (sxml:kidn* 'nml:Reference (sxml:kidn* 'nml:Cell node)))))
+                        (prototype-name ($ (sprintf "~A_~A" name (sxml:text (sxml:kidn* 'nml:Reference (sxml:kidn* 'nml:Cell node))))))
                         (size (eval-ul-property group-name (sxml:kidn* 'nml:Number node)))
                         (size-val (inexact->exact (cdr size))))
                    (list
@@ -1124,6 +1124,7 @@
 
       (d "group-ul-eval: projections = ~A~%" projections)
       (d "group-ul-eval: psr-types = ~A~%" psr-types)
+      (d "group-ul-eval: plas-types = ~A~%" plas-types)
 
       (let* (
              (shared-dir    (chicken-home))
@@ -1179,13 +1180,31 @@
                      (append (salt:astdecls-decls model-eqset) response-dynamics))))
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
-                (let ((port (open-output-file (make-pathname source-directory (string-append (->string node-name) ".sml")))))
+                (let ((port (open-output-file (make-pathname source-directory (sprintf "~A_~A.sml" population node-name)))))
                   (salt:codegen-ODE/ML sim out: port solver: 'rk3 libs: '(random))
                   (close-output-port port))
                 ))
             ))
           )
          (population-prototype-env))
+
+        (for-each
+         (match-lambda
+          ((node-name . plas-type)
+           (match-let
+            (
+             (($ dynamics-node model-name model-formals model-eqset)
+              (alist-ref node-name ul-node-env))
+             )
+            (d "plasticity node name = ~A model-eqset = ~A~%" node-name model-eqset)
+              (let* ((sim (salt:simcreate (salt:elaborate model-eqset))))
+                (let ((port (open-output-file (make-pathname source-directory (sprintf "~A.sml" node-name)))))
+                  (salt:codegen-ODE/ML sim out: port solver: 'rk3 libs: '(random))
+                  (close-output-port port))
+                ))
+            ))
+         plas-types)
+
 
         (make (
 
