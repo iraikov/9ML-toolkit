@@ -123,13 +123,8 @@ fun main (name,args) =
         in
             List.app (fn (s) => putStrLn out ("# " ^ s))
                      ([
-                         label,
-                         {% if not (group.properties == []) %}
-                         {% for p in dict (group.properties) %}
-                         ("{{p.name}} = " ^ (showReal ({{p.value.exprML}}))){% if not loop.last %},{% endif %}
+                         label
 
-                         {% endfor %}
-                         {% endif %}
                      ]);
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")

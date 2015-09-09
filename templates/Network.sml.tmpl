@@ -114,7 +114,7 @@ struct
   end
 
   structure TEQ = FixTEventQueue (structure P = TEventPriority
-                                  type value = (int * SparseMatrix.matrix)
+                                  type value = (int * SparseMatrix.matrix list)
                                   fun value (x : P.item) = (#2(x)))
   val DQ = TEQ.empty
 
@@ -128,6 +128,7 @@ struct
   fun random_normal () = RandomMTZig.randNormal(seed_init,zt_init)
   fun random_uniform () = RandomMTZig.randUniform(seed_init)
   fun random_int (imin,imax) = imin + ((imax - imin + 1) * Real.floor(RandomMTZig.randUniform(seed_init)))
+  fun random_uniform_vector () = RandomMTZig.randUniform(seed_init)
 
 {% for pop in dict (group.populations) %}
 
@@ -172,18 +173,18 @@ struct
 *)
 
 {% if group.psrtypes %}
-        val W = case Wnet of SOME W' => W'
+        val W = case Wnet of SOME (port,W') => W'
                         | NONE => (List.tabulate ({{length (dict (group.psrtypes))}}, 
-                                                  fn (i) => (RTensor.new ([N,1],0.0))))
+                                                  fn (i) => (SparseMatrix.fromTensor [N,1] (RTensor.new ([N,1],0.0), NONE))))
         val [{% for psr in dict (group.psrtypes) %}{{psr.name}}_i{% if not loop.last %},{% endif %}{% endfor %}] =
-            map (fn (W) => RTensor.sub(W,[i+n0,0])) W
+            map (fn (W) => SparseMatrix.sub(W,[i+n0,0])) W
         val ext_i  = 
             Vector.fromList [{% for psr in dict (group.psrtypes) %}{{psr.name}}_i{% if not loop.last %},{% endif %}{% endfor %}] 
 
 {% else %}
         val ext_i  = 
             case Wnet of 
-                SOME W => Vector.fromList (map (fn (W) => RTensor.sub(W,[i+n0,0])) W
+                SOME W => Vector.fromList (map (fn (W) => SparseMatrix.sub(W,[i+n0,0])) W
               | NONE => Vector.fromList []
 
 {% endif %}
@@ -305,14 +306,14 @@ struct
 
 {% macro for_each(name, sp, tp, plasticity, component, cstate) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}#weight({{plasticity}}_initial){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
-                                       fshape=[{{t.size}},{{s.size}}],
-                                       f=(fn (i) => Real.* (weight, #{{cstate}}({{component}}_f {{component}}_initial) ))}{% endcall %}
+                                     fshape=[{{t.size}},{{s.size}}],
+                                     f=(fn (i) => Real.* (weight, #{{cstate}}({{component}}_f {{component}}_initial) ))}{% endcall %}
                                   ]
                                end
 {% endmacro %}
@@ -320,7 +321,7 @@ struct
 
 {% macro all_to_all(name, sp, tp, plasticity)  %}
              val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}#weight({{plasticity}}_initial){% else %}1.0{% endif %}
+                                  val weight = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromTensorList [N,N]
@@ -334,7 +335,7 @@ struct
 
 {% macro one_to_one(name, sp, tp, plasticity) %}
              val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}#weight({{plasticity}}_initial){% else %}1.0{% endif %}
+                                  val weight = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromTensorList [N,N]
@@ -374,45 +375,47 @@ struct
 
 {% macro preorder(sp, tp) %}
    {% for s in sp %}
-   {{ caller(s,tp) }}{% if not loop.last %},{% endif %}
+   {% for t in tp %}
+   {{ caller(s,t) }}{% if not loop.last %},{% endif %}
+   {% endfor %}{% if not loop.last %},{% endif %}
    {% endfor %}
 {% endmacro %}
 
 
 {% macro postorder(sp, tp) %}
    {% for t in tp %}
-   {{ caller(sp,t) }}{% if not loop.last %},{% endif %}
+   {% for s in sp %}
+   {{ caller(s,t) }}{% if not loop.last %},{% endif %}
+   {% endfor %}{% if not loop.last %},{% endif %}
    {% endfor %}
 {% endmacro %}
 
 
-{% macro fan_in(name, sp, tp, plasticity, component, cstate) %}
+{% macro random_fan_in(name, sp, tp, plasticity, component, cstate) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}#weight({{plasticity}}_initial){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
-                                  SparseMatrix.fromMapGeneratorList [N,N]
+                                  SparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call postorder (sp,tp) %}          {offset=[{{t.start}},{{s.start}}],
-                                       forder=SparseMatrix.Index.CSR,
                                        fshape=[{{t.size}},{{s.size}}],
-                                       f=(fn (i) => Real.* (weight, #{{cstate}}({{component}}_f {{component}}_initial) ))}{% endcall %}
+                                       f=(fn (i) => Real.* (weight, random_uniform ()))}{% endcall %}
                                   ]
                                end
 {% endmacro %}
 
 
-{% macro fan_out(name, sp, tp, plasticity, component, cstate) %}
+{% macro random_fan_out(name, sp, tp, plasticity, component, cstate) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}#weight({{plasticity}}_initial){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
-                                  SparseMatrix.fromMapGeneratorList [N,N]
+                                  SparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call preorder (sp,tp) %}         {offset=[{{t.start}},{{s.start}}],
-                                     forder=SparseMatrix.Index.CSC,
                                      fshape=[{{t.size}},{{s.size}}],
-                                     f=(fn (i) => Real.* (weight, #{{cstate}}({{component}}_f {{component}}_initial) ))}{% endcall %}
+                                     f=(fn (i) => Real.* (weight, random_uniform ()))}{% endcall %}
                                   ]
                                end
 {% endmacro %}
@@ -479,16 +482,16 @@ struct
                   pr.value.destination.populations,
                   pr.value.rule.properties.filename.exprML) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "FanIn" %}
-{% call fan_in(pr.name, 
+{% elseif pr.value.connectivity.type.stdlib == "RandomFanIn" %}
+{% call random_fan_in(pr.name, 
                pr.value.source.populations,
                pr.value.destination.populations,
                pr.value.plasticity,
                pr.value.rule.component,
                pr.value.rule.cstate) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "FanOut" %}
-{% call fan_out(pr.name, 
+{% elseif pr.value.connectivity.type.stdlib == "RandomFanOut" %}
+{% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
                 pr.value.plasticity,

@@ -743,6 +743,8 @@
   
 
 (define (make-projection-tenv name type source destination connectivity response response-ports plasticity del properties)
+    (d "make-projection-tenv: source = ~A~%" source)
+    (d "make-projection-tenv: destination = ~A~%" destination)
     (d "make-projection-tenv: connectivity = ~A~%" connectivity)
     (d "make-projection-tenv: delay = ~A~%" del)
     (alist->tenv
