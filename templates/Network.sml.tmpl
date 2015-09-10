@@ -49,6 +49,13 @@ struct
       else 
           raise RTensor.Shape
 
+  fun index_foldri (a, b, f, init) =
+      if a < b then
+          index_foldri (a, b-1, f, f (b, init))
+      else
+          init
+
+
   val RandomInit = RandomMTZig.fromEntropy
 
   val ZigInit = RandomMTZig.ztnew
@@ -56,12 +63,21 @@ struct
   fun optApply fopt args =
       case fopt of SOME f => SOME (f args) | NONE => NONE
 
-  fun make_initial_vector (N,initial,SOME evinitial,SOME dinitial,SOME rinitial,extinitial) =
-      Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial, rinitial, extinitial, false))
+  fun make_initial_vector (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial) =
+      let 
+          val dinitial': real vector = 
+              case dinitial of
+                  SOME v => v
+                | NONE => (Vector.fromList [])
+      in
+          Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, false))
+      end
    |  make_initial_vector (N,initial,SOME evinitial,NONE,NONE,extinitial) =
       Vector.tabulate (N, fn (i) => D.EventState (0.0, initial, evinitial, extinitial, false))
    |  make_initial_vector (N,initial,NONE,NONE,NONE,extinitial) =
       Vector.tabulate (N, fn (i) => D.ContState (0.0, initial, extinitial))
+   |  make_initial_vector (N,initial,_,_,_,extinitial) =
+      (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
   fun update_external_state (D.RegimeState (x, y, ev, d, r, _, root), ext) =
       D.RegimeState (x, y, ev, d, r, ext, root)
@@ -77,12 +93,20 @@ struct
    |  state_sub (D.ContState (x, y, ext), i) =
       Vector.sub(y, i)
 
+  fun state_indep (D.RegimeState (x, y, ev, d, r, ext, root)) = x
+   |  state_indep (D.EventState (x, y, ev, ext, root)) = x
+   |  state_indep (D.ContState (x, y, ext)) = x
+
+  fun state_ext (D.RegimeState (x, y, ev, d, r, ext, root)) = ext
+   |  state_ext (D.EventState (x, y, ev, ext, root)) = ext
+   |  state_ext (D.ContState (x, y, ext)) = ext
+
   fun event_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) =
       Vector.sub(ev, i)
    |  event_sub (D.EventState (x, y, ev, ext, root), i) =
       Vector.sub(ev, i)
    |  event_sub (D.ContState (x, y, ext), i) =
-      raise Domain
+      (putStrLn TextIO.stdOut "event_sub:"; raise Domain)
 
         
   exception Index        
@@ -114,7 +138,7 @@ struct
   end
 
   structure TEQ = FixTEventQueue (structure P = TEventPriority
-                                  type value = (int * SparseMatrix.matrix list)
+                                  type value = (int * SparseMatrix.matrix)
                                   fun value (x : P.item) = (#2(x)))
   val DQ = TEQ.empty
 
@@ -151,6 +175,8 @@ struct
       in
           make_initial_vector (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial)
       end
+
+  val N_{{pop.name}}_ext_inputs = Vector.length ({{pop.value.prototype.name}}.initextfun ())
                            
   val {{pop.name}}_f = 
       let
@@ -164,30 +190,24 @@ struct
                      {{pop.value.prototype.name}}.regfun,h)
       end
 
-  fun {{pop.name}}_run (Wnet,n0) (i,input) =
+  fun {{pop.name}}_run (Wmap,n0) (i,input) =
     let 
 (*
 {% if pop.value.prototype.fieldExprML %}
         val fieldV = Vector.sub ({{pop.name}}_field_vector,i)
 {% endif %}
 *)
-
-{% if group.psrtypes %}
-        val W = case Wnet of SOME (port,W') => W'
-                        | NONE => (List.tabulate ({{length (dict (group.psrtypes))}}, 
-                                                  fn (i) => (SparseMatrix.fromTensor [N,1] (RTensor.new ([N,1],0.0), NONE))))
-        val [{% for psr in dict (group.psrtypes) %}{{psr.name}}_i{% if not loop.last %},{% endif %}{% endfor %}] =
-            map (fn (W) => SparseMatrix.sub(W,[i+n0,0])) W
-        val ext_i  = 
-            Vector.fromList [{% for psr in dict (group.psrtypes) %}{{psr.name}}_i{% if not loop.last %},{% endif %}{% endfor %}] 
-
-{% else %}
-        val ext_i  = 
-            case Wnet of 
-                SOME W => Vector.fromList (map (fn (W) => SparseMatrix.sub(W,[i+n0,0])) W
-              | NONE => Vector.fromList []
-
-{% endif %}
+        val ext_i = 
+            Vector.fromList
+                (index_foldri
+                     (0, N_{{pop.name}}_ext_inputs-1, 
+                      (fn (port, ax) => 
+                          case IntMap.find (Wmap, port) of
+                              NONE => (0.0 :: (~1.0) :: ax)
+                            | SOME W => case SparseMatrix.sub'(W,[i+n0,0]) of
+                                            SOME v => (v :: 1.0 :: ax)
+                                          | NONE => (0.0 :: (~1.0) :: ax)),
+                      []))
 
         (*val _ = putStrLn TextIO.stdOut ("# {{pop.name}}: t = " ^ (showReal t) ^ " Isyn_i = " ^ (showReal Isyn_i) ^ " V = " ^ (showReal V))*)
         val nstate = {{pop.name}}_f (update_external_state (input, ext_i))
@@ -198,7 +218,7 @@ struct
 {% endfor %}
 
 {% if group.plastypes %}{% for pl in dict (group.plastypes) %}
-  val {{pl.name}}_parameters = {{pl.name}}.paramfun()
+  val {{pl.name}}_parameters: real vector = {{pl.name}}.paramfun()
   val {{pl.name}}_initial = {{pl.name}}.initfun({{pl.name}}_parameters)
 
 {% endfor %}{% endif %}
@@ -264,7 +284,7 @@ struct
 {% endfor %} ) =
         
 {% with pop = first (dict (group.populations)) %}
-            state_sub (Vector.sub ({{pop.name}}_state_vector,0), 0)
+            state_indep (Vector.sub ({{pop.name}}_state_vector,0))
 {% endwith %}
     
         

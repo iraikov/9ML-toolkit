@@ -29,16 +29,16 @@ fun timing (action) =
     in
         (result, Time.+ (#usr times, #sys times))
     end
-
+                             
 
 exception Index
 
 fun start (tmax, N, S, D, DQ, Pn, initial_vector, frun, ftime, fspikes, finfo, out) =
 
 let
-    val sub = Unsafe.Real64Array.sub
-    val isub = Unsafe.IntArray.sub
-    val update = Unsafe.Real64Array.update
+    val sub = Real64Array.sub
+    val isub = IntArray.sub
+    val update = Real64Array.update
 
         
     fun netrun (DQ,state_vector) =
@@ -46,9 +46,10 @@ let
             val t = ftime state_vector
             val prio = {{group.name}}.TEventPriority.delayPriority t
 
-            val (I,DQ') = {{group.name}}.TEQ.nextEvents 
+            val (I,DQ') = {{group.name}}.TEQ.nextEventsFold 
                                         (fn (prio',_) => prio' <= prio,
-                                         fn (_,v) => v,
+                                         fn (_,(port,w),ax) => IntMap.insert (ax,port,w),
+                                         IntMap.empty,
                                          DQ)
             
             val state_vector_i = frun I state_vector
@@ -96,9 +97,10 @@ let
                         val DW: (real list * SparseMatrix.matrix list) = (D,W)
                     in
                         (#2(ListPair.foldl
-                                (fn(del: real,w: SparseMatrix.matrix,(i,dq)) => 
-                                    (i+1, {{group.name}}.TEQ.addEvent ((Real.+ (t_i,del),(i,w)), dq)))
-                                (0, DQ') DW))
+                                (fn(del: real,w: SparseMatrix.matrix,(port,dq)) => 
+                                    (port+1, {{group.name}}.TEQ.addEvent ((Real.+ (t_i,del), (port,w)), dq)))
+                                (0, DQ') 
+                                DW))
                     end
                   | NONE => DQ'
         in
@@ -145,5 +147,5 @@ val _ = let val name = CommandLine.name()
 	    val args = CommandLine.arguments()
 	    val env  = Posix.ProcEnv.environ()
 	in
-	    Sim{{group.name}}.main (name, args)
+	    Sim_{{group.name}}.main (name, args)
 	end

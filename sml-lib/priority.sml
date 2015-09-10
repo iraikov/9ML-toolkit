@@ -6,6 +6,8 @@ struct
 
     structure PQ = SkewBinomialHeap (P)
 
+    type value = value
+
     val empty = PQ.empty
 
     val addEvent  = PQ.insert
@@ -41,6 +43,23 @@ struct
                      else (ax, pq))
         in
             recur (pq, [])
+        end
+
+    fun nextEventsFold (p, f, init, pq) =
+        let
+            fun recur (pq,ax) =
+                case PQ.findMin pq of
+                    NONE => (ax, pq)
+                  | SOME (v) => 
+                    (if p (P.priority v, v) 
+                     then (let 
+                              val ax' = f (P.priority v, value v, ax)
+                          in 
+                              recur (valOf (PQ.deleteMin pq), ax') 
+                          end)
+                     else (ax, pq))
+        in
+            recur (pq, init)
         end
 
 

@@ -1,6 +1,6 @@
 
 (*
- Copyright 2013-2014 Ivan Raikov.
+ Copyright 2013-2015 Ivan Raikov.
  All rights reserved.
 
 Redistribution and use in source and binary forms, with or
@@ -120,13 +120,12 @@ signature MONO_SPARSE_MATRIX =
 	val fromGenerator : index -> ((index -> elem) * index * (index option)) -> matrix
 	val fromGeneratorList : index -> ({f: (index -> elem), fshape: index, offset: index} list) -> matrix
 	val fromMapGenerator : index -> ((int -> elem Map.map) * storage * index * (index option)) -> matrix
-	val fromMapGeneratorList : index -> ({f: int -> elem Map.map, forder: storage, fshape: index, offset: index}) list -> matrix
-                                                                                                                   
         val insert : matrix * matrix -> matrix
 
 	val shape : matrix -> index
 
 	val sub : matrix * index -> elem
+	val sub' : matrix * index -> elem option
 	val update : matrix * index * elem -> unit
 
 	val map : (elem -> elem) -> matrix -> matrix
@@ -201,25 +200,22 @@ structure SparseIndex =
                     (case (index, shape) of
                          ([i,j],[s,rs]) => 
                          let
-                             val s = sub (indptr, j)
-                             val e = if (j < (nptr-1)) then sub (indptr,j+1) else nind
+                             val s = sub (indptr, i)
+                             val e = if (i < (nptr-1)) then sub (indptr,i+1) else nind
                          in
-                             findFromTo (i, indices, s, e)
+                             findFromTo (j, indices, s, e)
                          end
                        | ([],[]) => SOME 0
                        | (_,_)   => raise Index)
                   | CSC => 
                     (case (index, shape) of
                          ([i,j],[s,rs]) => 
-                         if (i >= 0) andalso (i < s) 
-                         then
-                             (let
-                                  val s = sub (indptr,i)
-                                  val e = if (i < (nptr-1)) then sub (indptr,i+1) else nind
-                              in
-                                  findFromTo (j, indices, s, e)
-                              end)
-                         else raise Index
+                         let
+                             val s = sub (indptr, j)
+                             val e = if (j < (nptr-1)) then sub (indptr,j+1) else nind
+                         in
+                             findFromTo (i, indices, s, e)
+                         end
                        | ([],[]) => SOME 0
                        | (_,_)   => raise Index)
                     
@@ -952,6 +948,32 @@ struct
                        end)
                 )
               | NONE => zero
+        end
+
+    fun sub' ({shape, blocks},index) =
+        let
+            val (i,j) = dimVals index
+            val block = findBlock (i,j,blocks)
+        in
+            case block of
+                SOME (b) => 
+                (case b of 
+                     SPARSE {offset, shape, nz, data} => 
+                     (let 
+                         val (m,n) = dimVals offset
+                         val p = Index.toInt shape nz [i-m,j-n]
+                       in
+                           case p of SOME p' => SOME (Tensor.Array.sub (data, p'))
+                                   | NONE => NONE
+                       end)
+                     | DENSE {offset, data} => 
+                     (let 
+                         val (m,n) = dimVals offset
+                       in
+                           SOME (Tensor.sub (data,[i+m,j+n]))
+                       end)
+                )
+              | NONE => NONE
         end
 
     fun update ({shape,blocks},index,new) =
