@@ -101,6 +101,10 @@ struct
    |  state_ext (D.EventState (x, y, ev, ext, root)) = ext
    |  state_ext (D.ContState (x, y, ext)) = ext
 
+  fun ext_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) = Vector.sub(ext, i)
+   |  ext_sub (D.EventState (x, y, ev, ext, root), i) = Vector.sub(ext, i)
+   |  ext_sub (D.ContState (x, y, ext), i) = Vector.sub(ext, i)
+
   fun event_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) =
       Vector.sub(ev, i)
    |  event_sub (D.EventState (x, y, ev, ext, root), i) =
