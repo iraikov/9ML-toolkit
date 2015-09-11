@@ -19,6 +19,9 @@ struct
       in
 	  (if n < 0.0 then "-" else "") ^ (fmt (FIX (SOME 12)) (abs n))
       end
+
+  fun showRealVector v = 
+      ("<" ^ (String.concatWith ", " (Vector.foldr (fn (x, ax) => (showReal x)::ax) [] v)) ^ ">")
       
   fun foldl1 f lst = let val v = List.hd lst
                          val lst' = List.tl lst
@@ -50,7 +53,7 @@ struct
           raise RTensor.Shape
 
   fun index_foldri (a, b, f, init) =
-      if a < b then
+      if a <= b then
           index_foldri (a, b-1, f, f (b, init))
       else
           init
@@ -93,6 +96,10 @@ struct
    |  state_sub (D.ContState (x, y, ext), i) =
       Vector.sub(y, i)
 
+  fun state_y (D.RegimeState (x, y, ev, d, r, ext, root)) = y
+   |  state_y (D.EventState (x, y, ev, ext, root)) = y
+   |  state_y (D.ContState (x, y, ext)) = y
+
   fun state_indep (D.RegimeState (x, y, ev, d, r, ext, root)) = x
    |  state_indep (D.EventState (x, y, ev, ext, root)) = x
    |  state_indep (D.ContState (x, y, ext)) = x
@@ -111,6 +118,10 @@ struct
       Vector.sub(ev, i)
    |  event_sub (D.ContState (x, y, ext), i) =
       (putStrLn TextIO.stdOut "event_sub:"; raise Domain)
+
+  fun state_root (D.RegimeState (x, y, ev, d, r, ext, root)) = root
+   |  state_root (D.EventState (x, y, ev, ext, root)) = root
+   |  state_root (D.ContState (x, y, ext)) = false
 
         
   exception Index        
@@ -204,7 +215,7 @@ struct
         val ext_i = 
             Vector.fromList
                 (index_foldri
-                     (0, N_{{pop.name}}_ext_inputs-1, 
+                     (0, Int.div(N_{{pop.name}}_ext_inputs,2)-1, 
                       (fn (port, ax) => 
                           case IntMap.find (Wmap, port) of
                               NONE => (0.0 :: (~1.0) :: ax)
@@ -213,10 +224,11 @@ struct
                                           | NONE => (0.0 :: (~1.0) :: ax)),
                       []))
 
-        (*val _ = putStrLn TextIO.stdOut ("# {{pop.name}}: t = " ^ (showReal t) ^ " Isyn_i = " ^ (showReal Isyn_i) ^ " V = " ^ (showReal V))*)
-        val nstate = {{pop.name}}_f (update_external_state (input, ext_i))
+        val input' = update_external_state (input, ext_i)
+        val nstate = {{pop.name}}_f input'
+                                 
     in 
-        nstate
+        if state_root nstate then {{pop.name}}_f nstate else nstate
     end
 
 {% endfor %}
