@@ -569,8 +569,17 @@
                  
                  ((and ($ alsys-node model-name model-formals model-decls) node)
                   (cons (string->symbol node-name) node))
-                 ((and ($ connection-rule-node model-name model-formals model-decls) node)
-                  (cons (string->symbol node-name) node))
+                 ((and ($ connection-rule-node model-name model-formals model-stdlib) node)
+                  (let ((parameters
+                         (map (lambda (n v) 
+                                (let* ((vtext (sxml:text v))
+                                       (name (string->symbol (sxml:text n))))
+                                  `(,name . ,vtext)))
+                              propns propvs)))
+                  (cons (string->symbol node-name) 
+                        (make-connection-rule-node model-name model-formals 
+                                                   (cons model-stdlib parameters)))
+                  ))
                  )
           ))
       ))
@@ -747,6 +756,7 @@
     (d "make-projection-tenv: destination = ~A~%" destination)
     (d "make-projection-tenv: connectivity = ~A~%" connectivity)
     (d "make-projection-tenv: delay = ~A~%" del)
+    (d "make-projection-tenv: properties = ~A~%" properties)
     (alist->tenv
      `((name          . ,name)
        (type          . ,type)
@@ -757,6 +767,7 @@
        (responsePorts . ,response-ports)
        (plasticity    . ,plasticity)
        (delay         . ,del)
+       (properties    . ,properties)
        )
      ))
   
@@ -772,10 +783,12 @@
   (cond
 
    ((lookup-def sys-name node-env) =>
-    (match-lambda (($ connection-rule-node name connection-formals connection-stdlib)
+    (match-lambda (($ connection-rule-node name connection-formals connection-rule)
                    (alist->tenv
+                    (append
                     `((name  . ,sys-name)
-                      (stdlib . ,connection-stdlib))))
+                      (stdlib . ,(car connection-rule)))
+                    (cdr connection-rule))))
                   (else (error 'make-connection-tenv "unknown stdlib connection"))))
 
    ((lookup-def sys-name node-env) =>
@@ -796,8 +809,6 @@
            `((name               . ,name)
              (sysFn              . ,sysFn)
              (states             . ,states)
-             (initialExprML      . ,initialExpr/ML)
-             (initialStateExprML . ,initialStateExpr/ML)
              ))
           ))
       ))

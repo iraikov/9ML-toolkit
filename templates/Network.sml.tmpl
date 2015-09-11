@@ -427,7 +427,7 @@ struct
 {% endmacro %}
 
 
-{% macro random_fan_in(name, sp, tp, plasticity, component, cstate) %}
+{% macro random_fan_in(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
                                   val weight  = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
@@ -436,13 +436,13 @@ struct
                                   [
 {% call postorder (sp,tp) %}          {offset=[{{t.start}},{{s.start}}],
                                        fshape=[{{t.size}},{{s.size}}],
-                                       f=(fn (i) => Real.* (weight, random_uniform ()))}{% endcall %}
+                                       f=(fn (i) => if (Real.<=(random_uniform (), {{prob}})) then weight else 0.0)}{% endcall %}
                                   ]
                                end
 {% endmacro %}
 
 
-{% macro random_fan_out(name, sp, tp, plasticity, component, cstate) %}
+{% macro random_fan_out(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
                                   val weight  = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
@@ -451,7 +451,7 @@ struct
                                   [
 {% call preorder (sp,tp) %}         {offset=[{{t.start}},{{s.start}}],
                                      fshape=[{{t.size}},{{s.size}}],
-                                     f=(fn (i) => Real.* (weight, random_uniform ()))}{% endcall %}
+                                     f=(fn (i) => if (Real.<=(random_uniform(), {{prob}})) then weight else 0.0)}{% endcall %}
                                   ]
                                end
 {% endmacro %}
@@ -523,16 +523,14 @@ struct
                pr.value.source.populations,
                pr.value.destination.populations,
                pr.value.plasticity,
-               pr.value.rule.component,
-               pr.value.rule.cstate) %}
+               pr.value.connectivity.type.probability) %}
 {% endcall %}
 {% elseif pr.value.connectivity.type.stdlib == "RandomFanOut" %}
 {% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
                 pr.value.plasticity,
-                pr.value.rule.component,
-                pr.value.rule.cstate) %}
+                pr.value.connectivity.type.probability) %}
 {% endcall %}
 {% endif %}
 {% endfor %}
