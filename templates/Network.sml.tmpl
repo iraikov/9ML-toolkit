@@ -58,6 +58,8 @@ struct
       else
           init
 
+  val getindex = Unsafe.Vector.sub
+
 
   val RandomInit = RandomMTZig.fromEntropy
 
@@ -90,11 +92,11 @@ struct
       D.ContState (x, y, ext)
 
   fun state_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) =
-      Vector.sub(y, i)
+      getindex(y, i)
    |  state_sub (D.EventState (x, y, ev, ext, root), i) =
-      Vector.sub(y, i)
+      getindex(y, i)
    |  state_sub (D.ContState (x, y, ext), i) =
-      Vector.sub(y, i)
+      getindex(y, i)
 
   fun state_y (D.RegimeState (x, y, ev, d, r, ext, root)) = y
    |  state_y (D.EventState (x, y, ev, ext, root)) = y
@@ -108,14 +110,14 @@ struct
    |  state_ext (D.EventState (x, y, ev, ext, root)) = ext
    |  state_ext (D.ContState (x, y, ext)) = ext
 
-  fun ext_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) = Vector.sub(ext, i)
-   |  ext_sub (D.EventState (x, y, ev, ext, root), i) = Vector.sub(ext, i)
-   |  ext_sub (D.ContState (x, y, ext), i) = Vector.sub(ext, i)
+  fun ext_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) = getindex(ext, i)
+   |  ext_sub (D.EventState (x, y, ev, ext, root), i) = getindex(ext, i)
+   |  ext_sub (D.ContState (x, y, ext), i) = getindex(ext, i)
 
   fun event_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) =
-      Vector.sub(ev, i)
+      getindex(ev, i)
    |  event_sub (D.EventState (x, y, ev, ext, root), i) =
-      Vector.sub(ev, i)
+      getindex(ev, i)
    |  event_sub (D.ContState (x, y, ext), i) =
       (putStrLn TextIO.stdOut "event_sub:"; raise Domain)
 
@@ -148,12 +150,12 @@ struct
        fun delayPriority (delay) = Real.round (Real./ (delay, h))
        
        fun compare (x,y) = Int.compare (x,y)
-       type item         = real * (int * SparseMatrix.matrix)
+       type item         = real * (int * (real IntMap.map))
        fun priority (x : item) = delayPriority (#1(x))
   end
 
   structure TEQ = FixTEventQueue (structure P = TEventPriority
-                                  type value = (int * SparseMatrix.matrix)
+                                  type value = (int * (real IntMap.map))
                                   fun value (x : P.item) = (#2(x)))
   val DQ = TEQ.empty
 
@@ -209,8 +211,13 @@ struct
     let 
 (*
 {% if pop.value.prototype.fieldExprML %}
-        val fieldV = Vector.sub ({{pop.name}}_field_vector,i)
+        val fieldV = getindex ({{pop.name}}_field_vector,i)
 {% endif %}
+*)
+(*
+        val _ = if (i=0) 
+                then putStrLn TextIO.stdOut ("{{pop.name}}: t = " ^ (showReal (state_indep input)) ^ 
+                                             " state = " ^ (showRealVector (state_y input))) else ()
 *)
         val ext_i = 
             Vector.fromList
@@ -219,16 +226,16 @@ struct
                       (fn (port, ax) => 
                           case IntMap.find (Wmap, port) of
                               NONE => (0.0 :: (~1.0) :: ax)
-                            | SOME W => case SparseMatrix.sub'(W,[i+n0,0]) of
+                            | SOME W => case IntMap.find(W,i+n0) of
                                             SOME v => (v :: 1.0 :: ax)
                                           | NONE => (0.0 :: (~1.0) :: ax)),
                       []))
 
         val input' = update_external_state (input, ext_i)
         val nstate = {{pop.name}}_f input'
-                                 
+        val nstate' = if state_root nstate then {{pop.name}}_f nstate else nstate
     in 
-        if state_root nstate then {{pop.name}}_f nstate else nstate
+        nstate'
     end
 
 {% endfor %}
@@ -300,7 +307,7 @@ struct
 {% endfor %} ) =
         
 {% with pop = first (dict (group.populations)) %}
-            state_indep (Vector.sub ({{pop.name}}_state_vector,0))
+            state_indep (getindex ({{pop.name}}_state_vector,0))
 {% endwith %}
     
         
@@ -342,7 +349,7 @@ struct
 
 {% macro for_each(name, sp, tp, plasticity, component, cstate) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
@@ -357,7 +364,7 @@ struct
 
 {% macro all_to_all(name, sp, tp, plasticity)  %}
              val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromTensorList [N,N]
@@ -371,7 +378,7 @@ struct
 
 {% macro one_to_one(name, sp, tp, plasticity) %}
              val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromTensorList [N,N]
@@ -429,7 +436,7 @@ struct
 
 {% macro random_fan_in(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
@@ -444,7 +451,7 @@ struct
 
 {% macro random_fan_out(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}Vector.sub({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
@@ -536,26 +543,13 @@ struct
 {% endfor %}
                 
        
-{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
-{% if psr.value.type == "event" %}
-             val S_{{psr.name}} = foldl1 SparseMatrix.insert
-                                  ([
-{% for pr in psr.value.projections %}
-                                    Pr_{{pr}}{% if not loop.last %},{% endif %}
-
-{% endfor %}
-                                   ])
-{% endif %}
-{% endfor %}{% else %}
-             val S = foldl1 SparseMatrix.insert
-                     ([ 
+             val S = ([ 
                        {% for pr in dict (group.projections) %}
                        {% if pr.value.type == "event" %}
                        Pr_{{pr.name}}{% if not loop.last %},{% endif %}
                        {% endif %}
                        {% endfor %}
                      ])
-{% endif %}
 
 {% for pr in dict (group.projections) %}
 {% if pr.value.type == "continuous" %}
@@ -579,13 +573,7 @@ struct
              val E = if List.null Elst then NONE else SOME Elst
 
              in
-              ([
-{% if group.psrtypes %}{% for psr in dict (group.psrtypes) %}
-               S_{{ psr.name }}{% if not loop.last %},{% endif %}
-{% endfor %}{% else %}
-               S
-{% endif %}
-              ])
+              S
              end)
 
 end

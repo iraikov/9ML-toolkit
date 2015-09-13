@@ -85,6 +85,19 @@ structure Loop =
             else
                 any (a+1, b, f)
 
+        fun find (a, b, f) =
+            if a >= b 
+            then NONE
+            else (let
+                     val v1 = f a
+                 in
+                     case v1 of 
+                         SOME _ => v1
+                       | NONE => (let val v2 = f b 
+                                  in case v2 of SOME _ => v2 | NONE => find (a+1, b-1, f) 
+                                  end)
+                 end)
+
         fun app (a, b, f) =
             if a < b then
                 (f a; app (a+1, b, f))
@@ -2299,6 +2312,7 @@ structure MonoTensor  =
                         f (Array.sub(a, i)))
             end
         fun foldl f init tensor = Array.foldl f init (toArray tensor)
+
         fun foldln f init {shape, indexer, data=a} index =
             let val (head,lk,tail) = splitList(shape, index)
                 val li = Index.length head
@@ -3010,6 +3024,7 @@ structure MonoTensor  =
                         f (Array.sub(a, i)))
             end
         fun foldl f init tensor = Array.foldl f init (toArray tensor)
+
         fun foldln f init {shape, indexer, data=a} index =
             let val (head,lk,tail) = splitList(shape, index)
                 val li = Index.length head

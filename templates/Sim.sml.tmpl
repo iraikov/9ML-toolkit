@@ -79,7 +79,9 @@ let
                                                        sl
                                                end)
                                            spike_i;
-                                       SparseMatrix.fromTensor [N,1] (RTensor.fromArray ([N,1], T), NONE))
+                                       Real64Array.foldli 
+                                           (fn (i,v,m) => if not (Real.==(v, 0.0)) then IntMap.insert(m,i,v) else m)
+                                           IntMap.empty T)
                                   end)
                               S)
                               
@@ -94,10 +96,10 @@ let
                 case W'' of
                     SOME W => 
                     let
-                        val DW: (real list * SparseMatrix.matrix list) = (D,W)
+                        val DW: (real list * (real IntMap.map) list) = (D,W)
                     in
                         (#2(ListPair.foldl
-                                (fn(del: real,w: SparseMatrix.matrix,(port,dq)) => 
+                                (fn(del: real,w: real IntMap.map,(port,dq)) => 
                                     (port+1, {{group.name}}.TEQ.addEvent ((Real.+ (t_i,del), (port,w)), dq)))
                                 (0, DQ') 
                                 DW))
