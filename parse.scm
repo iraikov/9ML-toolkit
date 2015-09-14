@@ -312,6 +312,8 @@
                       
                       )
 
+                  (pp `(transition-decls . ,transition-decls) (current-error-port))
+
                   (append 
                    assign-decls
                    constant-decls

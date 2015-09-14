@@ -64,7 +64,8 @@
           
           (spike-bins 
            (let recur ((data data) (tbin 0.0) (nbin 0) (bins '()))
-             (if (null? data) bins
+             (if (null? data) 
+                 (cons (list tbin nbin) bins)
                  (match (car data)
                         ((t . ns)
                          (if (> t tbin)
@@ -94,7 +95,7 @@
 	   (close-output-port dataport))
 	 
 	 (let ((dataport (open-output-file temp-path2)))
-	   (for-each (match-lambda ((tbin nbin) (fprintf dataport "~A,~A~%" tbin nbin))) spike-bins)
+	   (for-each (match-lambda ((tbin nbin) (fprintf dataport "~A,~A~%" tbin nbin))) (reverse spike-bins))
 	   (close-output-port dataport))
 	 
 	 (plot:init 'png (make-pathname
