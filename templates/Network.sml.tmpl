@@ -443,7 +443,7 @@ struct
                                   [
 {% call postorder (sp,tp) %}          {offset=[{{t.start}},{{s.start}}],
                                        fshape=[{{t.size}},{{s.size}}],
-                                       f=(fn (i) => if (Real.<=(random_uniform (), {{prob}})) then weight else 0.0)}{% endcall %}
+                                       f=(fn (i) => if (Real.> ({{prob}}, random_uniform ())) then weight else 0.0)}{% endcall %}
                                   ]
                                end
 {% endmacro %}
@@ -458,7 +458,7 @@ struct
                                   [
 {% call preorder (sp,tp) %}         {offset=[{{t.start}},{{s.start}}],
                                      fshape=[{{t.size}},{{s.size}}],
-                                     f=(fn (i) => if (Real.<=(random_uniform(), {{prob}})) then weight else 0.0)}{% endcall %}
+                                     f=(fn (i) => if (Real.> ({{prob}}, random_uniform())) then weight else 0.0)}{% endcall %}
                                   ]
                                end
 {% endmacro %}
