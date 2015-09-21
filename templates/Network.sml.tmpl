@@ -29,6 +29,8 @@ struct
                          List.foldl f v lst'
                      end
 
+  fun dimVals [m,n] = (m,n) | dimVals _ = raise SparseMatrix.Shape
+
   fun fromDiag (m, n, a, dflt) =
       if Index.validShape [m,n]
       then 
@@ -53,18 +55,20 @@ struct
           raise RTensor.Shape
 
 
-  fun sampleN n =
+  fun sampleN randomInt n dflt =
       let
           val i = ref 0
-          val sample = Array.array (n+1, 0)
+          val sample = Array.array (n+1, dflt)
       in
           (sample,
            fn (x) =>
               (i := (!i)+1;
                if (!i) <= n
-           then Array.update (sample, !i, x)
-               else (if random_int (0, !i) < n
-                     then Array.update(sample, random_int (0, n), x) else ())))
+               then Array.update (sample, !i, x)
+               else (let val k = randomInt (0, !i) 
+                     in 
+                         if k < n then Array.update(sample, randomInt (0, n), x) else ()
+                     end)))
       end
 
   fun index_foldri (a, b, f, init) =
@@ -183,8 +187,12 @@ struct
   val zt_init   = ZigInit()
   fun random_normal () = RandomMTZig.randNormal(seed_init,zt_init)
   fun random_uniform () = RandomMTZig.randUniform(seed_init)
-  fun random_int (imin,imax) = imin + ((imax - imin + 1) * Real.floor(RandomMTZig.randUniform(seed_init)))
   fun random_uniform_vector () = RandomMTZig.randUniform(seed_init)
+  fun random_int (imin,imax) = 
+      let val range = imax - imin
+      in
+          imin + Real.round(Real.* (Real.fromInt(range), RandomMTZig.randUniform(seed_init)))
+      end
 
 {% for pop in dict (group.populations) %}
 
@@ -482,18 +490,45 @@ struct
 {% macro random_fan_in_num(name, sp, tp, plasticity, num) %}
              val Pr_{{name}} = let
                                   val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
-                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then weight else 0.0) 
                                in
-                                  SparseMatrix.fromTensorList [N,N]
+                                  SparseMatrix.fromPairsList [N,N]
                                   [
 {% call postorder (sp,tp) %}          (let
-                                          val (sample,fsample) = sampleN {{num}}
-                                          val _ = Loop.app (0,{{s.size}},fn (i) => Loop.app (0,{{t.size}},fn (j) => fsample (100*i + j)))
-                                          val t = RTensor.new ([{{t.size}},{{s.size}}],1.0)
+                                          val (sample,fsample) = sampleN random_int {{num}} [0,0]
+                                          val _ = Loop.app (0,{{t.size}},fn (i) => 
+                                                                            Loop.app (0,{{s.size}},
+                                                                                      fn (j) => fsample ([i,j])))
+                                          val l = List.tabulate ({{num}}, fn(i) => let val (i,j) = dimVals (Array.sub(sample, i))
+                                                                                   in
+                                                                                       (i,j,weight)
+                                                                                   end)
                                       in
                                           {offset=[{{t.start}},{{s.start}}],
-                                           tensor=(RTensor.*> weight t),
-                                           sparse=true}
+                                           l=l, shape_l=[{{t.size}},{{s.size}}]}
+                                      end){% endcall %}
+                                  ]
+                               end
+{% endmacro %}
+
+
+{% macro random_fan_out_num(name, sp, tp, plasticity, num) %}
+             val Pr_{{name}} = let
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                               in
+                                  SparseMatrix.fromPairsList [N,N]
+                                  [
+{% call preorder (sp,tp) %}          (let
+                                          val (sample,fsample) = sampleN random_int {{num}} [0,0]
+                                          val _ = Loop.app (0,{{t.size}},fn (i) => 
+                                                                            Loop.app (0,{{s.size}},
+                                                                                      fn (j) => fsample ([i,j])))
+                                          val l = List.tabulate ({{num}}, fn(i) => let val (i,j) = dimVals (Array.sub(sample, i))
+                                                                                   in
+                                                                                       (i,j,weight)
+                                                                                   end)
+                                      in
+                                          {offset=[{{t.start}},{{s.start}}],
+                                           l=l, shape_l=[{{t.size}},{{s.size}}]}
                                       end){% endcall %}
                                   ]
                                end
@@ -561,20 +596,32 @@ struct
                   pr.value.destination.populations,
                   pr.value.rule.properties.filename.exprML) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanIn" %}
+{% elseif pr.value.connectivity.type.stdlib == "RandomFanIn" &&  pr.value.connectivity.type.probability %}
 {% call random_fan_in(pr.name, 
-               pr.value.source.populations,
-               pr.value.destination.populations,
-               pr.value.plasticity,
-               pr.value.connectivity.type.probability,
-               pr.value.connectivity.type.number) %}
+                      pr.value.source.populations,
+                      pr.value.destination.populations,
+                      pr.value.plasticity,
+                      pr.value.connectivity.type.probability) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanOut" %}
+{% elseif pr.value.connectivity.type.stdlib == "RandomFanIn" &&  pr.value.connectivity.type.number %}
+{% call random_fan_in_num(pr.name, 
+                          pr.value.source.populations,
+                          pr.value.destination.populations,
+                          pr.value.plasticity,
+                          pr.value.connectivity.type.number) %}
+{% endcall %}
+{% elseif pr.value.connectivity.type.stdlib == "RandomFanOut"  &&  pr.value.connectivity.type.probability %}
 {% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
                 pr.value.plasticity,
-                pr.value.connectivity.type.probability,
+                pr.value.connectivity.type.probability) %}
+{% endcall %}
+{% elseif pr.value.connectivity.type.stdlib == "RandomFanOut"  &&  pr.value.connectivity.type.number %}
+{% call random_fan_out(pr.name, 
+                pr.value.source.populations,
+                pr.value.destination.populations,
+                pr.value.plasticity,
                 pr.value.connectivity.type.number) %}
 {% endcall %}
 {% endif %}
