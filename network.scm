@@ -349,40 +349,21 @@
       ))
 
 
-(define-quantity   CurrentPerTime        (/ Current Time))
-
-(salt:model-quantities
-  (append
-   (map cons
-    `(time area volume temperature
-      potential voltage current capacitance conductance resistance
-      per_time current_per_time
-      )
-    (list Time Area Volume Temperature
-          Potential Potential Current Capacitance Conductance Resistance
-          Frequency CurrentPerTime
-          ))
-   (salt:model-quantities)
-   ))
-         
-(define-unit-prefix    mega ohm )
-(define-unit-prefix    nano amp )
-
-(define-unit A_per_s  CurrentPerTime 1.0)
-
-(salt:model-units
-  (append
-   (map cons
-    `(Mohm A_per_s)
-    (list megaohm A_per_s))
-   (salt:model-units)
-   ))
-         
-
 (define default-units
   `(
     (current . nA)
     ))
+
+
+(define (eval-sxml-units dimensions-sxml units-sxml)
+    (let* ((dimensions (map parse-sxml-dimension dimensions-sxml))
+           (dimensions-env (map (lambda (x) (cons (quantity-name x) x)) dimensions))
+           (units (map (lambda (x) (parse-sxml-unit x dimensions-env)) units-sxml))
+           (units-env (map (lambda (x) (cons (unit-name x) x)) units)))
+      (salt:model-quantities (append dimensions-env (salt:model-quantities)))
+      (salt:model-units (append units-env (salt:model-units)))
+      ))
+
 
 (define (eval-ul-component x) 
 
@@ -426,6 +407,11 @@
              (model-decls (parse-al-sxml model-sxml))
              (dd     (d "NineML abstraction layer model declarations: ~A~%" model-decls))
 
+             (model-dimensions-sxml ((sxpath `(// nml:NineML nml:Dimension)) model-sxml))
+             (model-units-sxml ((sxpath `(// nml:NineML nml:Unit)) model-sxml))
+
+             (units-env (eval-sxml-units model-dimensions-sxml model-units-sxml))
+
              (model-env (map (match-lambda
                               (($ dynamics-node model-name model-formals model-decls) 
                                (cons model-name (make-dynamics-node model-name model-formals 
@@ -436,9 +422,12 @@
                                (cons model-name node))
                               (node (error 'eval-ul-component "unknown node type" node)))
                              model-decls))
+
              (dd     (d "NineML abstraction layer models: ~A~%" model-env))
              (model  (alist-ref al-definition-name model-env))
              (dd     (d "NineML abstraction layer model intermediate form: ~A~%" model))
+
+
              (model-parameters
               (map (lambda (x) 
                      (let ((name (string->symbol (sxml:attr x 'name)))
@@ -551,6 +540,7 @@
                                   ))
 
                )
+
 
           (match model
                  (($ dynamics-node model-name model-formals model-decls) 
@@ -1358,6 +1348,7 @@
             ))
     ))
 
+
 (define (main options operands)
 
   (if (options 'help) (network:usage))
@@ -1391,30 +1382,36 @@
                   (model-sxml (sxml:kids nineml-sxml))
 		  (ul-imports ((sxpath `(// (*or* nml:Import nml:import)))  model-sxml))
 		  (ul-import-sxmls (map (lambda (x) (parse-xml (fetch (sxml-string->uri (sxml:text x))))) ul-imports))
+                  (all-sxml (fold append model-sxml ul-import-sxmls))
                   )
 
-             (let-values (((component-env ul-sxml) (resolve-ul-components (fold append model-sxml ul-import-sxmls))))
+             (let-values (((component-env ul-sxml) (resolve-ul-components all-sxml)))
 
-               (pp `(ul-sxml . ,ul-sxml) (current-error-port))
+               (pp `(all-sxml . ,all-sxml) (current-error-port))
                (pp `(component-env . ,component-env) (current-error-port))
+
+               (let ((dimensions-sxml (sxml:kidsn 'nml:Dimension `(nml:NineML . ,all-sxml)))
+                     (units-sxml (sxml:kidsn 'nml:Unit `(nml:NineML . ,all-sxml))))
+                 (eval-sxml-units dimensions-sxml units-sxml))
 
                (let* (
                       (ul-properties
                        (parse-ul-properties
-                        operand ((sxpath `(// nml:NineML (*or* nml:Property nml:property)))  ul-sxml)))
+                        operand ((sxpath `(// (*or* nml:Property nml:property)))  ul-sxml)))
+
+                      (dd (d "ul-properties = ~A~%" ul-properties))
                       
                       (ul-components
                        (append ((sxpath `(// (*or* nml:Component nml:component)))  model-sxml)
                                component-env))
+
+                      (dd (begin (d "ul-components = ~%") (pp ul-components (current-error-port))))
 
                       (ul-component-eval-env
                        (map eval-ul-component ul-components))
                       
                       )
 
-
-                 (d "ul-properties = ~A~%" ul-properties)
-                 (d "ul-components = ~%") (pp ul-components (current-error-port))                 
                  (d "ul-component-eval-env = ~%") (pp ul-component-eval-env (current-error-port))
                  (eval-ul-group operand ul-properties `(nml:Group . ,ul-sxml) ul-component-eval-env)
                  

@@ -52,6 +52,21 @@ struct
       else 
           raise RTensor.Shape
 
+
+  fun sampleN n =
+      let
+          val i = ref 0
+          val sample = Array.array (n+1, 0)
+      in
+          (sample,
+           fn (x) =>
+              (i := (!i)+1;
+               if (!i) <= n
+           then Array.update (sample, !i, x)
+               else (if random_int (0, !i) < n
+                     then Array.update(sample, random_int (0, n), x) else ())))
+      end
+
   fun index_foldri (a, b, f, init) =
       if a <= b then
           index_foldri (a, b-1, f, f (b, init))
@@ -437,13 +452,13 @@ struct
 {% macro random_fan_in(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
                                   val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
-
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then weight else 0.0) 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call postorder (sp,tp) %}          {offset=[{{t.start}},{{s.start}}],
                                        fshape=[{{t.size}},{{s.size}}],
-                                       f=(fn (i) => if (Real.> ({{prob}}, random_uniform ())) then weight else 0.0)}{% endcall %}
+                                       f=f}{% endcall %}
                                   ]
                                end
 {% endmacro %}
@@ -452,13 +467,34 @@ struct
 {% macro random_fan_out(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
                                   val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
-
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then weight else 0.0)
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call preorder (sp,tp) %}         {offset=[{{t.start}},{{s.start}}],
                                      fshape=[{{t.size}},{{s.size}}],
-                                     f=(fn (i) => if (Real.> ({{prob}}, random_uniform())) then weight else 0.0)}{% endcall %}
+                                     f=f}{% endcall %}
+                                  ]
+                               end
+{% endmacro %}
+
+
+{% macro random_fan_in_num(name, sp, tp, plasticity, num) %}
+             val Pr_{{name}} = let
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then weight else 0.0) 
+                               in
+                                  SparseMatrix.fromTensorList [N,N]
+                                  [
+{% call postorder (sp,tp) %}          (let
+                                          val (sample,fsample) = sampleN {{num}}
+                                          val _ = Loop.app (0,{{s.size}},fn (i) => Loop.app (0,{{t.size}},fn (j) => fsample (100*i + j)))
+                                          val t = RTensor.new ([{{t.size}},{{s.size}}],1.0)
+                                      in
+                                          {offset=[{{t.start}},{{s.start}}],
+                                           tensor=(RTensor.*> weight t),
+                                           sparse=true}
+                                      end){% endcall %}
                                   ]
                                end
 {% endmacro %}
@@ -530,14 +566,16 @@ struct
                pr.value.source.populations,
                pr.value.destination.populations,
                pr.value.plasticity,
-               pr.value.connectivity.type.probability) %}
+               pr.value.connectivity.type.probability,
+               pr.value.connectivity.type.number) %}
 {% endcall %}
 {% elseif pr.value.connectivity.type.stdlib == "RandomFanOut" %}
 {% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
                 pr.value.plasticity,
-                pr.value.connectivity.type.probability) %}
+                pr.value.connectivity.type.probability,
+                pr.value.connectivity.type.number) %}
 {% endcall %}
 {% endif %}
 {% endfor %}

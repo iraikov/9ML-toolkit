@@ -21,12 +21,14 @@
 (module 9ML-parse
 
 	(parse-string-expr parse-sym-expr make-signal-expr
-	 nineml-xmlns-base parse-al-sxml-component parse-al-sxml)
+	 nineml-xmlns-base parse-al-sxml-component parse-al-sxml
+         parse-sxml-unit parse-sxml-dimension)
 
 	(import scheme chicken)
-	(require-library srfi-1 srfi-13 data-structures extras)
+	(require-library srfi-1 srfi-4 srfi-13 data-structures extras)
 	(import
 	 (only srfi-1 concatenate fold combine any every unzip2 filter-map partition delete-duplicates cons* lset-difference)
+         (only srfi-4 s32vector)
 	 (only srfi-13 string-null?)
 	 (only data-structures conc ->string alist-ref)
 	 (only extras fprintf pp))
@@ -459,5 +461,40 @@
     ))
 
 
+(define (parse-sxml-unit sxml dim-env)
+  (let* (
+         (unit-symbol     (string->symbol (sxml:attr sxml 'symbol)))
+         (unit-power      (string->number (sxml:attr sxml 'power)))
+         (dimension-name  (string->symbol (sxml:attr sxml 'dimension)))
+         (dimension-assoc (assv dimension-name dim-env))
+         )
+    (if (not dimension-assoc)
+        (error 'parse-sxml-unit "unknown dimension in unit definition" 
+               unit-symbol dimension-name)
+        (make-unit unit-symbol (cdr dimension-assoc) (expt 10 unit-power) '()))
+    ))
+
+(define (opt-string->number str #!key (default 0.0))
+  (or (and str (string->number str)) default))
+
+(define (parse-sxml-dimension sxml)
+  (let (
+        (name (string->symbol (sxml:attr sxml 'name)))
+        (m    (opt-string->number (sxml:attr sxml 'm)))
+        (l    (opt-string->number (sxml:attr sxml 'l)))
+        (i    (opt-string->number (sxml:attr sxml 'i)))
+        (n    (opt-string->number (sxml:attr sxml 'n)))
+        (k    (opt-string->number (sxml:attr sxml 'k)))
+        (j    (opt-string->number (sxml:attr sxml 'j)))
+        (t    (opt-string->number (sxml:attr sxml 't)))
+        )
+
+    (let ((dims (s32vector l t k m i j n 0 0)))
+
+      (make-quantity name (dimint dims))
+
+    ))
+  )
+    
 
 )
