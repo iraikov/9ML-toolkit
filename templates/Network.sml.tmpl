@@ -491,20 +491,17 @@ struct
              val Pr_{{name}} = let
                                   val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
                                in
-                                  SparseMatrix.fromPairsList [N,N]
+                                  SparseMatrix.fromVectors [N,N]
                                   [
 {% call postorder (sp,tp) %}          (let
-                                          val (sample,fsample) = sampleN random_int {{num}} [0,0]
+                                          val (sample,fsample) = sampleN random_int ({{num}} * {{t.size}}) (0,0,0.0)
                                           val _ = Loop.app (0,{{t.size}},fn (i) => 
                                                                             Loop.app (0,{{s.size}},
-                                                                                      fn (j) => fsample ([i,j])))
-                                          val l = List.tabulate ({{num}}, fn(i) => let val (i,j) = dimVals (Array.sub(sample, i))
-                                                                                   in
-                                                                                       (i,j,weight)
-                                                                                   end)
+                                                                                      fn (j) => fsample ((i,j,weight))))
+                                          val v = Array.vector sample
                                       in
                                           {offset=[{{t.start}},{{s.start}}],
-                                           l=l, shape_l=[{{t.size}},{{s.size}}]}
+                                           v=v, shape_v=[{{t.size}},{{s.size}}]}
                                       end){% endcall %}
                                   ]
                                end
@@ -515,20 +512,17 @@ struct
              val Pr_{{name}} = let
                                   val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
                                in
-                                  SparseMatrix.fromPairsList [N,N]
+                                  SparseMatrix.fromVectors [N,N]
                                   [
 {% call preorder (sp,tp) %}          (let
-                                          val (sample,fsample) = sampleN random_int {{num}} [0,0]
+                                          val (sample,fsample) = sampleN random_int ({{num}} * {{t.size}}) (0,0,0.0)
                                           val _ = Loop.app (0,{{t.size}},fn (i) => 
                                                                             Loop.app (0,{{s.size}},
-                                                                                      fn (j) => fsample ([i,j])))
-                                          val l = List.tabulate ({{num}}, fn(i) => let val (i,j) = dimVals (Array.sub(sample, i))
-                                                                                   in
-                                                                                       (i,j,weight)
-                                                                                   end)
+                                                                                      fn (j) => fsample ((i,j,weight))))
+                                          val v = Array.vector sample
                                       in
                                           {offset=[{{t.start}},{{s.start}}],
-                                           l=l, shape_l=[{{t.size}},{{s.size}}]}
+                                           v=v, shape_v=[{{t.size}},{{s.size}}]}
                                       end){% endcall %}
                                   ]
                                end

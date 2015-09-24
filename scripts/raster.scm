@@ -15,10 +15,14 @@
 
 (define (sample n v)
   (let ((ub (vector-length v)))
-    (let ((idxs (list-tabulate n (lambda (i) (random ub)))))
-      (map (lambda (i) (vector-ref v i)) idxs)
-      ))
-    )
+    (list-tabulate n (lambda (i) 
+                       (let loop ((idx (random ub)))
+                         (let ((v (vector-ref v idx)))
+                           (if (null? v)
+                               (loop (random ub))
+                               v))))))
+  )
+
 
 (define (raster-plot spike-file plot-label xrange yrange)
   (match-let 
@@ -98,9 +102,9 @@
 	   (for-each (match-lambda ((tbin nbin) (fprintf dataport "~A,~A~%" tbin nbin))) (reverse spike-bins))
 	   (close-output-port dataport))
 	 
-	 (plot:init 'png (make-pathname
+	 (plot:init 'eps (make-pathname
                           "." 
-                          (sprintf "~A_activity.png" 
+                          (sprintf "~A_activity.eps" 
                                    (pathname-strip-directory
                                     (pathname-strip-extension spike-file )))))
 	 
@@ -123,7 +127,7 @@
 	 (plot:proc "areadef"
 		  `(("title"     . ,(sprintf "~A (~A Hz)" 
                                              plot-label average-firing-frequency))
-                    ("titledetails" . "adjust=0,0.2")
+                    ("titledetails" . "adjust=-0.9,0.2")
 		    ("rectangle" . "2 3.5 8 10.5")
 ;;		    ("rectangle" . "2 5 10 14")
 		    ("areacolor" . "white")
@@ -178,11 +182,12 @@
 		    ("xaxis.stubs"     . "inc 50")
 		    ("xaxis.stubrange" . "0")
 		    ("xaxis.label"     . "Time [ms]")
+		    ("xaxis.labeldistance" . "1.25")
 ;;		    ("xaxis.stubdetails" . "adjust=0,1")
 		    ("yrange"      . ,(sprintf "0 ~A" yrange))
 ;;                  ("yautorange"      . "datafield=count")
-		    ("yaxis.label"     . "# spikes")
-		    ("yaxis.labeldistance" . "1.5")
+;;		    ("yaxis.label"     . "# spikes")
+;;		    ("yaxis.labeldistance" . "1.5")
 		    ("yaxis.axisline"  . "no")
 		    ("yaxis.tics"      . "no")
 		    ("yaxis.stubs"     . ,(sprintf "inc ~A" (/ (string->number yrange) 5)))

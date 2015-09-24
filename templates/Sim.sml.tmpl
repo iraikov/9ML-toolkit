@@ -36,9 +36,9 @@ exception Index
 fun start (tmax, N, S, D, DQ, Pn, initial_vector, frun, ftime, fspikes, finfo, out) =
 
 let
-    val sub = Real64Array.sub
-    val isub = IntArray.sub
-    val update = Real64Array.update
+    val sub = Unsafe.Real64Array.sub
+    val isub = Unsafe.IntArray.sub
+    val update = Unsafe.Real64Array.update
 
         
     fun netrun (DQ,state_vector) =
