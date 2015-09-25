@@ -59,15 +59,16 @@ struct
       let
           val i = ref 0
           val sample = Array.array (n+1, dflt)
+          val update = Unsafe.Array.update
       in
           (sample,
            fn (x) =>
               (i := (!i)+1;
                if (!i) <= n
-               then Array.update (sample, !i, x)
+               then update (sample, !i, x)
                else (let val k = randomInt (0, !i) 
                      in 
-                         if k < n then Array.update(sample, randomInt (0, n), x) else ()
+                         if k < n then update(sample, randomInt (0, n), x) else ()
                      end)))
       end
 
@@ -494,10 +495,16 @@ struct
                                   SparseMatrix.fromVectors [N,N]
                                   [
 {% call postorder (sp,tp) %}          (let
-                                          val (sample,fsample) = sampleN random_int ({{num}} * {{t.size}}) (0,0,0.0)
-                                          val _ = Loop.app (0,{{t.size}},fn (i) => 
-                                                                            Loop.app (0,{{s.size}},
-                                                                                      fn (j) => fsample ((i,j,weight))))
+                                          val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
+                                          val update = Array.update
+                                          val _ = Loop.foldi (0,{{t.size}},
+                                                              fn (i,k) => 
+                                                                 Loop.foldi (0,{{num}},
+                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),weight)); 
+                                                                                          k+1),
+                                                                             k),
+                                                              0)
+                                                                             
                                           val v = Array.vector sample
                                       in
                                           {offset=[{{t.start}},{{s.start}}],
@@ -515,10 +522,16 @@ struct
                                   SparseMatrix.fromVectors [N,N]
                                   [
 {% call preorder (sp,tp) %}          (let
-                                          val (sample,fsample) = sampleN random_int ({{num}} * {{t.size}}) (0,0,0.0)
-                                          val _ = Loop.app (0,{{t.size}},fn (i) => 
-                                                                            Loop.app (0,{{s.size}},
-                                                                                      fn (j) => fsample ((i,j,weight))))
+                                          val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
+                                          val update = Array.update
+                                          val _ = Loop.foldi (0,{{t.size}},
+                                                              fn (i,k) => 
+                                                                 Loop.foldi (0,{{num}},
+                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),weight)); 
+                                                                                          k+1),
+                                                                             k),
+                                                              0)
+
                                           val v = Array.vector sample
                                       in
                                           {offset=[{{t.start}},{{s.start}}],

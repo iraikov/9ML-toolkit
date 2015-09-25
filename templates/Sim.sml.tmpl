@@ -32,6 +32,35 @@ fun timing (action) =
                              
 
 exception Index
+exception Shape
+fun dimVals [m,n] = (m,n) | dimVals _ = raise Shape
+
+fun printProjections S k =
+    List.app
+        (fn (W) =>
+            let
+                val (m,n) = dimVals (SparseMatrix.shape W)
+            in
+                Loop.app (0, n,
+                          fn (i) => 
+                             let
+                                 val sl = SparseMatrix.slice (W,k,i)
+                                 val sln = SparseMatrix.sliceFoldi
+                                               (fn (j,x,n) => n+1)
+                                               0 sl
+                                 val slsum = SparseMatrix.sliceFoldi
+                                                 (fn (j,x,ax) => Real.+(ax,x))
+                                                 0.0 sl
+                             in
+                                 putStrLn TextIO.stdOut
+                                          ("column " ^ (Int.toString i) ^ 
+                                           ": n = " ^ (Int.toString sln) ^
+                                           ": mean = " ^ (Real.toString (Real./(slsum, (Real.fromInt sln)))))
+                             end)
+            end)
+        S
+
+
 
 fun start (tmax, N, S, D, DQ, Pn, initial_vector, frun, ftime, fspikes, finfo, out) =
 

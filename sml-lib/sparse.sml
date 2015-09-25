@@ -459,8 +459,8 @@ struct
 
     fun fromVector shape (a, shape_a, offset) = 
         (let 
-            val sub = Unsafe.Array.sub
-            val update = Unsafe.Array.update
+            val sub = Array.sub
+            val update = Array.update
             val len_a = Vector.length a
             val (rows,cols) = dimVals shape_a
         in
@@ -473,6 +473,11 @@ struct
                                 (fn (irow,icol,v) => 
                                     (let 
                                         val colv = sub (data, icol)
+                                                   handle Subscript => (putStrLn TextIO.stdErr
+                                                                                 ("fromVector: invalid index " ^
+                                                                                  (Int.toString irow) ^ ", " ^ (Int.toString icol) ^
+                                                                                 " (shape is " ^ (Int.toString rows) ^ ", " ^ (Int.toString cols) ^ ")");
+                                                                        raise Subscript)
                                     in 
                                         (case colv of
                                              SOME col => update (data, icol, SOME ((irow,v) :: col))
