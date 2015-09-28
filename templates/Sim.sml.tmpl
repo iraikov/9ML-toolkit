@@ -35,7 +35,7 @@ exception Index
 exception Shape
 fun dimVals [m,n] = (m,n) | dimVals _ = raise Shape
 
-fun printProjections S k =
+fun printProjectionSummary S k =
     List.app
         (fn (W) =>
             let
@@ -129,7 +129,7 @@ let
                     in
                         (#2(ListPair.foldl
                                 (fn(del: real,w: real IntMap.map,(port,dq)) => 
-                                    (port+1, {{group.name}}.TEQ.addEvent ((Real.+ (t_i,del), (port,w)), dq)))
+                                    (port+1, {{group.name}}.TEQ.addEvent ((Real.+ (t,del), (port,w)), dq)))
                                 (0, DQ') 
                                 DW))
                     end
@@ -153,6 +153,20 @@ fun main (name,args) =
             val (S,t) = timing fprojection
             val     _ = putStrLn TextIO.stdOut ("fprojection took " ^ (Time.toString t) ^ " s")
             val out   = TextIO.openOut (label ^ ".dat")
+
+{% for pop in dict (group.populations) %}
+{% if group.statesample > 0 %}
+
+            val _ = ({{pop.name}}_state_out := TextIO.openOut ("{{pop.name}}_state.dat"))
+
+{% endif %}
+{% if group.extsample > 0 %}
+
+            val _ = ({{pop.name}}_ext_out := TextIO.openOut ("{{pop.name}}_ext.dat"))
+
+{% endif %}
+{% endfor %}
+
         in
             List.app (fn (s) => putStrLn out ("# " ^ s))
                      ([
@@ -161,13 +175,30 @@ fun main (name,args) =
                      ]);
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")
-                val (_,t) = timing (fn () => start (1200.0, N, S, D, DQ, Pn, initial, frun, ftime, fspikes, finfo, out))
+                val (_,t) = timing (fn () => start ({{duration}}, N, S, D, DQ, Pn, initial, frun, ftime, fspikes, finfo, out))
             in
                 putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
             end;
             
             TextIO.flushOut (out);
-            TextIO.closeOut (out)
+            TextIO.closeOut (out);
+
+{% for pop in dict (group.populations) %}
+{% if group.statesample > 0 %}
+
+            TextIO.flushOut (!{{pop.name}}_state_out); 
+            TextIO.closeOut (!{{pop.name}}_state_out);
+
+{% endif %}
+{% if group.extsample > 0 %}
+
+            TextIO.flushOut (!{{pop.name}}_ext_out); 
+            TextIO.closeOut (!{{pop.name}}_ext_out);
+
+{% endif %}
+{% endfor %}
+
+           ()
         end)
     end
     

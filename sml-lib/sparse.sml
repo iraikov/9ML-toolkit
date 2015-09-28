@@ -19,13 +19,6 @@ conditions are met:
 
 
 
-fun putStr out str = 
-    TextIO.output (out, str)
-
-fun putStrLn out str = 
-    (TextIO.output (out, str);
-     TextIO.output (out, "\n"))
-
 
 
 signature SPARSE_INDEX =
@@ -459,10 +452,8 @@ struct
 
     fun fromVector shape (a, shape_a, offset) = 
         (let 
-            val sub = Array.sub
-            val update = Array.update
-            val len_a = Vector.length a
-            val (rows,cols) = dimVals shape_a
+             val len_a = Vector.length a
+             val (rows,cols) = dimVals shape_a
         in
             case Index.order of
                 Index.CSC =>
@@ -472,16 +463,11 @@ struct
                     val _ = Vector.app 
                                 (fn (irow,icol,v) => 
                                     (let 
-                                        val colv = sub (data, icol)
-                                                   handle Subscript => (putStrLn TextIO.stdErr
-                                                                                 ("fromVector: invalid index " ^
-                                                                                  (Int.toString irow) ^ ", " ^ (Int.toString icol) ^
-                                                                                 " (shape is " ^ (Int.toString rows) ^ ", " ^ (Int.toString cols) ^ ")");
-                                                                        raise Subscript)
+                                        val colv = Array.sub (data, icol)
                                     in 
                                         (case colv of
-                                             SOME col => update (data, icol, SOME ((irow,v) :: col))
-                                           | NONE => (update (data, icol, SOME [(irow,v)]));
+                                             SOME col => Array.update (data, icol, SOME ((irow,v) :: col))
+                                           | NONE => (Array.update (data, icol, SOME [(irow,v)]));
                                          nzcount := (!nzcount) + 1)
                                     end))
                                 a
@@ -503,11 +489,11 @@ struct
                     val _ = Vector.app 
                                 (fn (irow,icol,v) => 
                                     (let 
-                                        val rowv = sub (data, irow)
+                                        val rowv = Array.sub (data, irow)
                                     in 
                                         (case rowv of
-                                             SOME row => (update (data, irow, SOME ((icol,v) :: row)))
-                                           | NONE => (update (data, irow, SOME [(icol,v)]));
+                                             SOME row => (Array.update (data, irow, SOME ((icol,v) :: row)))
+                                           | NONE => (Array.update (data, irow, SOME [(icol,v)]));
                                          nzcount := (!nzcount) + 1)
                                     end)) a
                     val data'   = Tensor.Array.array (!nzcount, zero)
@@ -1009,7 +995,7 @@ struct
                      (let 
                          val (m,n) = dimVals offset
                        in
-                           Tensor.sub (data,[i+m,j+n])
+                           Tensor.sub (data,[i-m,j-n])
                        end)
                 )
               | NONE => zero
@@ -1035,7 +1021,7 @@ struct
                      (let 
                          val (m,n) = dimVals offset
                        in
-                           SOME (Tensor.sub (data,[i+m,j+n]))
+                           SOME (Tensor.sub (data,[i-m,j-n]))
                        end)
                 )
               | NONE => NONE
@@ -1060,7 +1046,7 @@ struct
                        (let 
                          val (m,n) = dimVals offset
                        in
-                           Tensor.update (data,[i+m,j+n],new)
+                           Tensor.update (data,[i-m,j-n],new)
                        end)
                 )
               | NONE => ()
@@ -1189,9 +1175,10 @@ struct
                     val (m,n) = dimVals (Tensor.shape data)
 
                     val i'  = case axis of 1 => i-v | 0 => i-u | _ => raise Match
+
                     val sl  = case axis of 
-                                  1 => TensorSlice.fromto ([0,i'],[m-1,i'],data)
-                                | 0 => TensorSlice.fromto ([i',0],[i',n-1],data)
+                                  1 => RTensorSlice.fromto' ([0,i'],[m,i'],data)
+                                | 0 => RTensorSlice.fromto' ([i',0],[i',n],data)
                                 | _ => raise Match
               in
                   SOME (SLDENSE {data=sl, offset=offset})

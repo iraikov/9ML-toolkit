@@ -77,6 +77,8 @@
   `(
     (platform . mlton)
     (method . rkdp)
+    (duration . 100.0)
+    (timestep . 0.1)
     ))
 
 (define (defopt x)
@@ -85,14 +87,7 @@
 (define opt-grammar
   `(
 
-    (output-sxml        "sets output format to SXML")
-
-    (output-xml         "sets output format to XML")
-
-    (single-ivp          "evaluate all single-node IVP problems and save data in files ${OPERAND}_NAME.dat"
-                         (single-char #\d))
-
-    (platform        "simulation platform (one of mlton, chicken, chicken/cvode, octave/mlton)"
+    (platform        "simulation platform (one of mlton, chicken, chicken/cvode)"
 		     (value (required PLATFORM)
 			    (predicate 
 			     ,(lambda (x) 
@@ -112,7 +107,60 @@
 				    ((rkfe rk3 rk4a rk4b rkoz rkdp) s)
 				    (else (error '9ML-network "unrecognized method" x))))))
 			    (transformer ,string->symbol)
-                            ))
+                            )
+                     (single-char #\m)
+                     )
+
+    (duration        "simulation duration in milliseconds"
+		     (value (required VALUE)
+			    (predicate 
+			     ,(lambda (x) 
+				(let ((n (string->number x)))
+                                  (if (> n 0) n
+                                      (error '9ML-network "duration must be a positive number" x)))))
+			    (transformer ,string->number)
+                            )
+                     (single-char #\d)
+                     )
+
+    (timestep       "simulation timestep milliseconds"
+		     (value (required VALUE)
+			    (predicate 
+			     ,(lambda (x) 
+				(let ((n (string->number x)))
+                                  (if (> n 0) n
+                                      (error '9ML-network "timestep must be a positive number" x)))))
+			    (transformer ,string->number)
+                            )
+                     (single-char #\h)
+                     )
+
+    (spikerecord     "name of population for spike recording"
+		     (value (required POPULATION))
+                     (single-char #\s)
+                     )
+
+    (statesample     "sample size of neurons for state recording"
+		     (value (required VALUE)
+			    (predicate 
+			     ,(lambda (x) 
+				(let ((n (string->number x)))
+                                  (if (> n 0) n
+                                      (error '9ML-network "sample size must be a positive number" x)))))
+			    (transformer ,string->number)
+                            )
+                     )
+
+    (extsample     "sample size of neurons for external input recording"
+		     (value (required VALUE)
+			    (predicate 
+			     ,(lambda (x) 
+				(let ((n (string->number x)))
+                                  (if (> n 0) n
+                                      (error '9ML-network "sample size must be a positive number" x)))))
+			    (transformer ,string->number)
+                            )
+                     )
 
     (verbose          "print commands as they are executed"
 		      (single-char #\v))
@@ -529,16 +577,6 @@
                      model-reduce-ports))
                  
                  
-               (ivp-duration (and ivp
-                                  (car ((sxpath `(// nml:duration))  ivp))
-                                  ))
-               
-               (ivp-timestep (and ivp
-                                  (string->number
-                                   (sxml:text
-                                    (car ((sxpath `(// nml:timestep))  ivp))))
-                                  ))
-
                )
 
 
@@ -810,7 +848,7 @@
 
 (define (make-group-tenv name order populations sets projections 
                          psr-types plas-types connection-types
-                         spikepoplst properties)
+                         spikepoplst statesample extsample properties)
   (let ((alst 
          `((group 
             . 
@@ -824,6 +862,8 @@
              (conntypes   . ,(if (null? connection-types) #f connection-types))
              (properties  . ,(if (null? properties) (ersatz:sexpr->tvalue '()) properties))
              (spikepoplst . ,spikepoplst)
+             (statesample . ,statesample)
+             (extsample . ,extsample)
              ))
            ))
         )
@@ -874,7 +914,6 @@
          (selections-sxml  (sxml:kidsn 'nml:Selection  node))
          (projections-sxml ((sxpath `(// nml:Projection)) node))
          (properties-sxml  ((sxpath `(// nml:Property)) node))
-         (spikerecord-sxml ((sxpath `(// nml:SpikeRecording)) node))
          )
 
     (d "UL group: ~A properties: ~A populations: ~A selections: ~A projections: ~A~%" 
@@ -1149,11 +1188,15 @@
                                         (append
                                          (map (lambda (x) (->string (alist-ref 'name x))) populations)
                                          ax))))
-                                  '() spikerecord-sxml))
+                                  '() (filter identity (list (opt 'spikerecord)))))
+
              (group-tenv    (make-group-tenv group-name order populations sets-tenv projections 
                                              psr-types plas-types connection-types spikelst 
+                                             (or (opt 'statesample) 0) (or (opt 'extsample) 0)
                                              (append properties ul-properties) ))
-
+             (simcontrol-tenv (alist->tenv
+                               `((duration . ,(or (opt 'duration) (defopt 'duration)))
+                                 (timestep . ,(or (opt 'timestep) (defopt 'timestep))))))
              )
 
         (d "group-path = ~A~%" group-path)
@@ -1217,7 +1260,7 @@
                                (print (ersatz:from-file 
                                        network-tmpl
                                        env: (template-std-env search-path: `(,template-dir))
-                                       models: group-tenv))))
+                                       models: (append simcontrol-tenv group-tenv)))))
                            )
         
                (sim-path (operand)
@@ -1226,7 +1269,7 @@
                              (print (ersatz:from-file 
                                      sim-tmpl
                                      env: (template-std-env search-path: `(,template-dir))
-                                     models: group-tenv))))
+                                     models: (append simcontrol-tenv group-tenv)))))
                          )
                
                (mlb-path ()
@@ -1353,73 +1396,67 @@
 
   (if (options 'help) (network:usage))
 
-  (if (null? operands)
+  (if (null? operands) (network:usage))
 
-      (network:usage)
+  (if (options 'verbose) 
+      (begin
+        (salt:verbose 1)
+        (network-verbose 1)))
+  
+  (simulation-platform (or (options 'platform) (defopt 'platform) ))
+  (simulation-method (or (options 'method) (defopt 'method) ))
+  
+  (ivp-simulation-platform (simulation-platform))
+  (alsys-simulation-platform (simulation-platform))
+  (ivp-simulation-method (simulation-method))
+  
+  (for-each
+   
+   (lambda (operand)
+     
+     (let* (
+            (nineml-sxml ((sxpath `(// nml:NineML)) (parse-xml (read-all operand))))
+            (model-sxml (sxml:kids nineml-sxml))
+            (ul-imports ((sxpath `(// (*or* nml:Import nml:import)))  model-sxml))
+            (ul-import-sxmls (map (lambda (x) (parse-xml (fetch (sxml-string->uri (sxml:text x))))) ul-imports))
+            (all-sxml (fold append model-sxml ul-import-sxmls))
+            )
+       
+       (let-values (((component-env ul-sxml) (resolve-ul-components all-sxml)))
+         
+         (pp `(all-sxml . ,all-sxml) (current-error-port))
+         (pp `(component-env . ,component-env) (current-error-port))
+         
+         (let ((dimensions-sxml (sxml:kidsn 'nml:Dimension `(nml:NineML . ,all-sxml)))
+               (units-sxml (sxml:kidsn 'nml:Unit `(nml:NineML . ,all-sxml))))
+           (eval-sxml-units dimensions-sxml units-sxml))
+         
+         (let* (
+                (ul-properties
+                 (parse-ul-properties
+                  operand ((sxpath `(// (*or* nml:Property nml:property)))  ul-sxml)))
+                
+                (dd (d "ul-properties = ~A~%" ul-properties))
+                
+                (ul-components
+                 (append ((sxpath `(// (*or* nml:Component nml:component)))  model-sxml)
+                         component-env))
+                
+                (dd (begin (d "ul-components = ~%") (pp ul-components (current-error-port))))
+                
+                (ul-component-eval-env
+                 (map eval-ul-component ul-components))
+                
+                )
+           
+           (d "ul-component-eval-env = ~%") (pp ul-component-eval-env (current-error-port))
+           (eval-ul-group operand ul-properties `(nml:Group . ,ul-sxml) ul-component-eval-env)
+           
+           ))
+       ))
+   
+   operands))
 
-      (let ((output-type (cond ((options 'output-xml)  'xml)
-			       ((options 'output-sxml) 'sxml)
-			       (else #f))))
-
-	(if (options 'verbose) 
-            (begin
-              (salt:verbose 1)
-              (network-verbose 1)))
-
-	(simulation-platform (or (options 'platform) (defopt 'platform) ))
-	(simulation-method (or (options 'method) (defopt 'method) ))
-
-        (ivp-simulation-platform (simulation-platform))
-        (alsys-simulation-platform (simulation-platform))
-        (ivp-simulation-method (simulation-method))
-
-	(for-each
-
-	 (lambda (operand)
-
-	   (let* (
-                  (nineml-sxml ((sxpath `(// nml:NineML)) (parse-xml (read-all operand))))
-                  (model-sxml (sxml:kids nineml-sxml))
-		  (ul-imports ((sxpath `(// (*or* nml:Import nml:import)))  model-sxml))
-		  (ul-import-sxmls (map (lambda (x) (parse-xml (fetch (sxml-string->uri (sxml:text x))))) ul-imports))
-                  (all-sxml (fold append model-sxml ul-import-sxmls))
-                  )
-
-             (let-values (((component-env ul-sxml) (resolve-ul-components all-sxml)))
-
-               (pp `(all-sxml . ,all-sxml) (current-error-port))
-               (pp `(component-env . ,component-env) (current-error-port))
-
-               (let ((dimensions-sxml (sxml:kidsn 'nml:Dimension `(nml:NineML . ,all-sxml)))
-                     (units-sxml (sxml:kidsn 'nml:Unit `(nml:NineML . ,all-sxml))))
-                 (eval-sxml-units dimensions-sxml units-sxml))
-
-               (let* (
-                      (ul-properties
-                       (parse-ul-properties
-                        operand ((sxpath `(// (*or* nml:Property nml:property)))  ul-sxml)))
-
-                      (dd (d "ul-properties = ~A~%" ul-properties))
-                      
-                      (ul-components
-                       (append ((sxpath `(// (*or* nml:Component nml:component)))  model-sxml)
-                               component-env))
-
-                      (dd (begin (d "ul-components = ~%") (pp ul-components (current-error-port))))
-
-                      (ul-component-eval-env
-                       (map eval-ul-component ul-components))
-                      
-                      )
-
-                 (d "ul-component-eval-env = ~%") (pp ul-component-eval-env (current-error-port))
-                 (eval-ul-group operand ul-properties `(nml:Group . ,ul-sxml) ul-component-eval-env)
-                 
-                 ))
-             ))
-
-	 operands))
-      ))
 
 (main opt (opt '@))
 

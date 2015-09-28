@@ -21,7 +21,7 @@ struct
       end
 
   fun showRealVector v = 
-      ("<" ^ (String.concatWith ", " (Vector.foldr (fn (x, ax) => (showReal x)::ax) [] v)) ^ ">")
+      (String.concatWith ", " (Vector.foldr (fn (x, ax) => (showReal x)::ax) [] v))
       
   fun foldl1 f lst = let val v = List.hd lst
                          val lst' = List.tl lst
@@ -130,6 +130,14 @@ struct
    |  state_ext (D.EventState (x, y, ev, ext, root)) = ext
    |  state_ext (D.ContState (x, y, ext)) = ext
 
+  fun state_regime (D.RegimeState (x, y, ev, d, r, ext, root)) = r
+   |  state_regime (D.EventState (x, y, ev, ext, root)) = Vector.fromList []
+   |  state_regime (D.ContState (x, y, ext)) = Vector.fromList[]
+
+  fun state_event (D.RegimeState (x, y, ev, d, r, ext, root)) = ev
+   |  state_event (D.EventState (x, y, ev, ext, root)) = ev
+   |  state_event (D.ContState (x, y, ext)) = Vector.fromList []
+
   fun ext_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) = getindex(ext, i)
    |  ext_sub (D.EventState (x, y, ev, ext, root), i) = getindex(ext, i)
    |  ext_sub (D.ContState (x, y, ext), i) = getindex(ext, i)
@@ -159,9 +167,7 @@ struct
 {% endfor %}
 {% endif %}
 
-{% with timestep = default(group.properties.timestep.exprML, 0.1) %}
   val h = {{ timestep }}
-{% endwith %}
 
   structure TEventPriority = 
   struct
@@ -201,6 +207,10 @@ struct
 
   val {{pop.name}}_parameters = {{pop.value.prototype.name}}.paramfun()
 
+  val {{pop.name}}_state_out = ref (TextIO.stdOut)
+
+  val {{pop.name}}_ext_out = ref (TextIO.stdOut)
+
 (*
   val {{pop.name}}_field_vector = 
     Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.name}}.fieldfun({{pop.name}}_parameters))
@@ -238,11 +248,19 @@ struct
         val fieldV = getindex ({{pop.name}}_field_vector,i)
 {% endif %}
 *)
-(*
-        val _ = if (i=0) 
-                then putStrLn TextIO.stdOut ("{{pop.name}}: t = " ^ (showReal (state_indep input)) ^ 
-                                             " state = " ^ (showRealVector (state_y input))) else ()
-*)
+
+        val _ = if (i<{{group.statesample}})
+                then putStrLn (!{{pop.name}}_state_out)
+                              (showReal (state_indep input) ^ ", " ^
+                               (showRealVector (state_y input))) 
+                else ()
+
+        val _ = if (i<{{group.extsample}})
+                then putStrLn (!{{pop.name}}_ext_out)
+                              (showReal (state_indep input) ^ ", " ^
+                               (showRealVector (state_ext input)))
+                else ()
+
         val ext_i = 
             Vector.fromList
                 (index_foldri
