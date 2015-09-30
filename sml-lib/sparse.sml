@@ -171,7 +171,7 @@ structure SparseIndex =
 
 	fun eq (a, b) = compare(a,b) = EQUAL
                                            
-        val sub = IntArray.sub
+        val sub = Unsafe.IntArray.sub
 
         fun findFromTo (i,v,s,e) = 
             Loop.find (s,e-1,fn(j) => if (sub (v,j) = i) then SOME j else NONE)
@@ -404,7 +404,7 @@ struct
                     val _ = List.app 
                                 (fn (icol,lst) => 
                                     (let 
-                                        val colv = Array.sub (data, icol)
+                                        val colv = Unsafe.Array.sub (data, icol)
                                     in 
                                         (case colv of
                                              SOME col => Array.update (data, icol, SOME (lst @ col))
@@ -430,7 +430,7 @@ struct
                     val _ = List.app 
                                 (fn (irow,lst) => 
                                     (let 
-                                        val rowv = Array.sub (data, irow)
+                                        val rowv = Unsafe.Array.sub (data, irow)
                                     in 
                                         (case rowv of
                                              SOME row => (Array.update (data, irow, SOME (lst @ row)))
@@ -463,7 +463,7 @@ struct
                     val _ = Vector.app 
                                 (fn (irow,icol,v) => 
                                     (let 
-                                        val colv = Array.sub (data, icol)
+                                        val colv = Unsafe.Array.sub (data, icol)
                                     in 
                                         (case colv of
                                              SOME col => Array.update (data, icol, SOME ((irow,v) :: col))
@@ -489,7 +489,7 @@ struct
                     val _ = Vector.app 
                                 (fn (irow,icol,v) => 
                                     (let 
-                                        val rowv = Array.sub (data, irow)
+                                        val rowv = Unsafe.Array.sub (data, irow)
                                     in 
                                         (case rowv of
                                              SOME row => (Array.update (data, irow, SOME ((icol,v) :: row)))
@@ -529,7 +529,7 @@ struct
                                         then
                                             let 
                                                 val (irow,icol) = dimVals i
-                                                val colv  = Array.sub (data, icol)
+                                                val colv  = Unsafe.Array.sub (data, icol)
                                             (*val col' = (irow,v) :: col*)
                                             in
                                                 (case colv of
@@ -571,7 +571,7 @@ struct
                                     then
                                         let 
                                             val (irow,icol) = dimVals i
-                                            val rowv  = Array.sub (data, irow)
+                                            val rowv  = Unsafe.Array.sub (data, irow)
                                         (*val row' = (icol,v) :: row*)
                                         in
                                             (case rowv of
@@ -630,7 +630,7 @@ struct
                                         then
                                             let 
                                                 val (irow,icol) = dimVals i
-                                                val colv  = Array.sub (data, icol)
+                                                val colv  = Unsafe.Array.sub (data, icol)
                                             (*val col' = (irow,v) :: col*)
                                             in
                                                 (case colv of
@@ -665,7 +665,7 @@ struct
                                         then
                                             let 
                                                 val (irow,icol) = dimVals i
-                                                val rowv  = Array.sub (data, irow)
+                                                val rowv  = Unsafe.Array.sub (data, irow)
                                             in
                                                 (case rowv of
                                                      SOME row => DynArray.update (row,DynArray.length row,(icol,v))
@@ -720,7 +720,7 @@ struct
                                      in
                                          IntMap.appi
                                              (fn (colind,v) =>
-                                                 case Array.sub (columnData,colind) of
+                                                 case Unsafe.Array.sub (columnData,colind) of
                                                      SOME m' => 
                                                      (let val m'' = Map.insert(m',irow,v)
                                                       in
@@ -773,7 +773,7 @@ struct
                                      in
                                          IntMap.appi
                                              (fn (rowind,v) =>
-                                                 case Array.sub (rowData,rowind) of
+                                                 case Unsafe.Array.sub (rowData,rowind) of
                                                      SOME m' => 
                                                      (let val m'' = Map.insert(m',icol,v)
                                                       in
@@ -1099,16 +1099,16 @@ struct
                 in
                 (case (Index.order,axis) of
                      (Index.CSC,1) => (let 
-                                           val s   = IntArray.sub (indptr, i')
+                                           val s   = Unsafe.IntArray.sub (indptr, i')
                                            val e   = (if i' < (n-1)
-                                                      then IntArray.sub (indptr, i'+1) 
+                                                      then Unsafe.IntArray.sub (indptr, i'+1) 
                                                       else Tensor.Array.length data)
                                            val len = e-s
                                            val res = Tensor.Array.array (len, zero)
                                            val rsi = IntArray.array (len, 0)
                                            fun loop (i,n) = if i < e 
                                                             then (Tensor.Array.update (res,n,Tensor.Array.sub (data,i));
-                                                                  IntArray.update (rsi,i-s,Index.sub (indices,i));
+                                                                  Unsafe.IntArray.update (rsi,i-s,Index.sub (indices,i));
                                                                   loop (i+1,n+1))
                                                             else ()
                                        in
@@ -1119,16 +1119,16 @@ struct
                                                                 offset=offset})
                                            else NONE
                                        end)
-                   | (Index.CSR,0) => (let val s   = IntArray.sub (indptr, i')
+                   | (Index.CSR,0) => (let val s   = Unsafe.IntArray.sub (indptr, i')
                                            val e   = (if i' < (m-1) 
-                                                      then IntArray.sub (indptr, i'+1) 
+                                                      then Unsafe.IntArray.sub (indptr, i'+1) 
                                                       else Tensor.Array.length data)
                                            val len = e-s
                                            val res = Tensor.Array.array (len, zero)
                                            val rsi = IntArray.array (len, 0)
                                            fun loop (i,n) = if i < e 
                                                             then (Tensor.Array.update (res,n,Tensor.Array.sub (data,i));
-                                                                  IntArray.update (rsi,i-s,Index.sub (indices,i));
+                                                                  Unsafe.IntArray.update (rsi,i-s,Index.sub (indices,i));
                                                                   loop (i+1,n+1))
                                                             else ()
                                        in

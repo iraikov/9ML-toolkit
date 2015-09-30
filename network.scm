@@ -847,7 +847,7 @@
 
 
 (define (make-group-tenv name order populations sets projections 
-                         psr-types plas-types connection-types
+                         psr-types plas-types connection-types projection-ports
                          spikepoplst statesample extsample properties)
   (let ((alst 
          `((group 
@@ -857,6 +857,7 @@
              (sets        . ,sets)
              (populations . ,populations)
              (projections . ,projections)
+             (projectionPorts . ,projection-ports)
              (psrtypes    . ,(if (null? psr-types) #f psr-types))
              (plastypes   . ,(if (null? plas-types) #f plas-types))
              (conntypes   . ,(if (null? connection-types) #f connection-types))
@@ -991,6 +992,8 @@
                   `(,($ name) . ,(make-population-set-tenv ($ name) set))))
               selections-sxml)))
 
+           (projection-port (make-parameter 0))
+
            (projections+types
             (map
              (lambda (node)
@@ -1023,6 +1026,7 @@
                               )))
 
                       (response-ports `(
+                                        (projection-port . ,(projection-port))
                                         (plasticity-ports . ,response-plasticity-ports)
                                         (destination-ports . ,destination-response-ports)
                                         ))
@@ -1051,6 +1055,7 @@
                      (d "group-ul-eval: connectivity-name = ~A ~%" connectivity-name)
                      (d "group-ul-eval: connectivity-port = ~A ~%" connectivity-port)
 
+                     (projection-port (+ 1 (projection-port)))
                      (let* (
                             (source (lookup-def source-name sets-tenv))
                             (destination (lookup-def destination-name sets-tenv))
@@ -1093,8 +1098,9 @@
                           (connection . ,connection) )
                         )
                        ))
-                   )
-                 projections-sxml))
+               
+               )
+             projections-sxml))
 
            (projections (map car projections+types ))
            
@@ -1180,25 +1186,41 @@
              (mlb-path      (make-pathname source-directory (conc "Sim_" group-name ".mlb")))
              (exec-path     (make-pathname source-directory (conc "Sim_" group-name)))
              (makefile-path (make-pathname source-directory (conc "Makefile." group-name)))
-             (spikelst      (fold (lambda (node ax)
-                                    (let ((set (alist-ref ($ (sxml:attr node 'set)) sets-tenv)))
-                                      (let ((populations
-                                             (let ((poplst (alist-ref 'populations set)))
-                                               (ersatz:tvalue->sexpr poplst))))
-                                        (append
-                                         (map (lambda (x) (->string (alist-ref 'name x))) populations)
-                                         ax))))
-                                  '() (filter identity (list (opt 'spikerecord)))))
+             (spikelst
+              (fold (lambda (name ax)
+                      (let ((set (alist-ref ($ name) sets-tenv)))
+                        (if (not set) (error '9ML-network "Population set not found" name))
+                        (let ((populations
+                               (let ((poplst (alist-ref 'populations set)))
+                                 (ersatz:tvalue->sexpr poplst))))
+                          (append
+                           (map (lambda (x) (->string (alist-ref 'name x))) populations)
+                           ax))))
+                    '() (filter identity (list (opt 'spikerecord)))))
+             
+             (projection-ports
+              (ersatz:sexpr->tvalue 
+               (map (match-lambda
+                     ((population node-name . responses)
+                      (let ((ports (filter-map
+                                    (lambda (x) (alist-ref 'projection-port (cddr x)))
+                                    responses)))
+                        `(,population . ,ports))))
+                    (population-prototype-env))))
 
-             (group-tenv    (make-group-tenv group-name order populations sets-tenv projections 
-                                             psr-types plas-types connection-types spikelst 
-                                             (or (opt 'statesample) 0) (or (opt 'extsample) 0)
-                                             (append properties ul-properties) ))
-             (simcontrol-tenv (alist->tenv
-                               `((duration . ,(or (opt 'duration) (defopt 'duration)))
-                                 (timestep . ,(or (opt 'timestep) (defopt 'timestep))))))
+             (group-tenv
+              (make-group-tenv group-name order populations sets-tenv projections 
+                               psr-types plas-types connection-types projection-ports
+                               spikelst (or (opt 'statesample) 0) (or (opt 'extsample) 0)
+                               (append properties ul-properties) ))
+
+             (simcontrol-tenv
+              (alist->tenv
+               `((duration . ,(or (opt 'duration) (defopt 'duration)))
+                 (timestep . ,(or (opt 'timestep) (defopt 'timestep))))))
              )
 
+        (d "projection-ports = ~A~%" (ersatz:tvalue->sexpr projection-ports))
         (d "group-path = ~A~%" group-path)
         (d "group-tenv = ~A~%" (map (lambda (x) (cons (car x) (ersatz:tvalue->sexpr (cdr x)))) group-tenv))
         (d "population-prototype-env = ~A~%" (population-prototype-env))

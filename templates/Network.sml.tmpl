@@ -251,27 +251,28 @@ struct
 
         val _ = if (i<{{group.statesample}})
                 then putStrLn (!{{pop.name}}_state_out)
-                              (showReal (state_indep input) ^ ", " ^
+                              (Int.toString (i) ^ "," ^ (showReal (state_indep input)) ^ ", " ^
                                (showRealVector (state_y input))) 
                 else ()
 
         val _ = if (i<{{group.extsample}})
                 then putStrLn (!{{pop.name}}_ext_out)
-                              (showReal (state_indep input) ^ ", " ^
+                              (Int.toString (i) ^ "," ^ (showReal (state_indep input)) ^ ", " ^
                                (showRealVector (state_ext input)))
                 else ()
 
         val ext_i = 
             Vector.fromList
-                (index_foldri
-                     (0, Int.div(N_{{pop.name}}_ext_inputs,2)-1, 
-                      (fn (port, ax) => 
-                          case IntMap.find (Wmap, port) of
-                              NONE => (0.0 :: (~1.0) :: ax)
-                            | SOME W => case IntMap.find(W,i+n0) of
-                                            SOME v => (v :: 1.0 :: ax)
-                                          | NONE => (0.0 :: (~1.0) :: ax)),
-                      []))
+                (List.foldl
+                     (fn (port, ax) => 
+                         case IntMap.find (Wmap, port) of
+                             NONE => (0.0 :: (~1.0) :: ax)
+                           | SOME W => case IntMap.find(W,i+n0) of
+                                           SOME v => (v :: 1.0 :: ax)
+                                         | NONE => (0.0 :: (~1.0) :: ax))
+                     []
+                [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
+                )
 
         val input' = update_external_state (input, ext_i)
         val nstate = {{pop.name}}_f input'
