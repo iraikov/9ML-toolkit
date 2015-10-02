@@ -140,7 +140,7 @@
 ;;		    ("xaxis.stubdetails" . "adjust=0,1")
 
 		    ("yrange"          . "0 51")
-;;		    ("yaxis.label"     . "Neuron #")
+;;		    ("yaxis.label"     . "Cell #")
 		    ("yaxis.axisline"  . "no")
 		    ("yaxis.tics"      . "no")
 ;;		    ("yaxis.stubs"     . "inc 10")

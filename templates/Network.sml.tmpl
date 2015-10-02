@@ -20,8 +20,8 @@ struct
 	  (if n < 0.0 then "-" else "") ^ (fmt (FIX (SOME 12)) (abs n))
       end
 
-  fun showRealVector v = 
-      (String.concatWith ", " (Vector.foldr (fn (x, ax) => (showReal x)::ax) [] v))
+  fun showRealArray v = 
+      (String.concatWith ", " (Array.foldr (fn (x, ax) => (showReal x)::ax) [] v))
       
   fun foldl1 f lst = let val v = List.hd lst
                          val lst' = List.tl lst
@@ -78,7 +78,7 @@ struct
       else
           init
 
-  val getindex = Unsafe.Vector.sub
+  val getindex = Unsafe.Array.sub
 
 
   val RandomInit = RandomMTZig.fromEntropy
@@ -90,10 +90,10 @@ struct
 
   fun make_initial_vector (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial) =
       let 
-          val dinitial': real vector = 
+          val dinitial': real array = 
               case dinitial of
                   SOME v => v
-                | NONE => (Vector.fromList [])
+                | NONE => (Array.fromList [])
       in
           Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, false))
       end
@@ -131,12 +131,12 @@ struct
    |  state_ext (D.ContState (x, y, ext)) = ext
 
   fun state_regime (D.RegimeState (x, y, ev, d, r, ext, root)) = r
-   |  state_regime (D.EventState (x, y, ev, ext, root)) = Vector.fromList []
-   |  state_regime (D.ContState (x, y, ext)) = Vector.fromList[]
+   |  state_regime (D.EventState (x, y, ev, ext, root)) = Array.fromList []
+   |  state_regime (D.ContState (x, y, ext)) = Array.fromList[]
 
   fun state_event (D.RegimeState (x, y, ev, d, r, ext, root)) = ev
    |  state_event (D.EventState (x, y, ev, ext, root)) = ev
-   |  state_event (D.ContState (x, y, ext)) = Vector.fromList []
+   |  state_event (D.ContState (x, y, ext)) = Array.fromList []
 
   fun ext_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) = getindex(ext, i)
    |  ext_sub (D.EventState (x, y, ev, ext, root), i) = getindex(ext, i)
@@ -227,7 +227,11 @@ struct
           make_initial_vector (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial)
       end
 
-  val N_{{pop.name}}_ext_inputs = Vector.length ({{pop.value.prototype.name}}.initextfun ())
+  val {{pop.name}}_ext_inputs = Array.length ({{pop.value.prototype.name}}.initextfun ())
+                           
+  val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
+                           
+  val {{pop.name}}_ext_array = Array.array (2*(List.length {{pop.name}}_ext_ports), 0.0)
                            
   val {{pop.name}}_f = 
       let
@@ -252,27 +256,32 @@ struct
         val _ = if (i<{{group.statesample}})
                 then putStrLn (!{{pop.name}}_state_out)
                               (Int.toString (i) ^ "," ^ (showReal (state_indep input)) ^ ", " ^
-                               (showRealVector (state_y input))) 
+                               (showRealArray (state_y input))) 
                 else ()
 
         val _ = if (i<{{group.extsample}})
                 then putStrLn (!{{pop.name}}_ext_out)
                               (Int.toString (i) ^ "," ^ (showReal (state_indep input)) ^ ", " ^
-                               (showRealVector (state_ext input)))
+                               (showRealArray (state_ext input)))
                 else ()
 
-        val ext_i = 
-            Vector.fromList
-                (List.foldl
-                     (fn (port, ax) => 
-                         case IntMap.find (Wmap, port) of
-                             NONE => (0.0 :: (~1.0) :: ax)
-                           | SOME W => case IntMap.find(W,i+n0) of
-                                           SOME v => (v :: 1.0 :: ax)
-                                         | NONE => (0.0 :: (~1.0) :: ax))
-                     []
-                [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
-                )
+
+        val update = Unsafe.Array.update
+        val ext_i = {{pop.name}}_ext_array
+        val _ = 
+            List.foldl
+                (fn (port, index) => 
+                    case IntMap.find (Wmap, port) of
+                        NONE => 
+                        (update (ext_i, index, 0.0); update (ext_i, index+1, ~1.0); index+2)
+                      | SOME W => 
+                        case IntMap.find(W,i+n0) of
+                            SOME v => 
+                            (update (ext_i, index, v); update (ext_i, index+1, 1.0); index+2)
+                          | NONE => 
+                            (update (ext_i, index, 0.0); update (ext_i, index+1, ~1.0); index+2))
+                0
+                {{pop.name}}_ext_ports
 
         val input' = update_external_state (input, ext_i)
         val nstate = {{pop.name}}_f input'
@@ -284,7 +293,7 @@ struct
 {% endfor %}
 
 {% if group.plastypes %}{% for pl in dict (group.plastypes) %}
-  val {{pl.name}}_parameters: real vector = {{pl.name}}.paramfun()
+  val {{pl.name}}_parameters: real array = {{pl.name}}.paramfun()
   val {{pl.name}}_initial = {{pl.name}}.initfun({{pl.name}}_parameters)
 
 {% endfor %}{% endif %}
@@ -350,7 +359,7 @@ struct
 {% endfor %} ) =
         
 {% with pop = first (dict (group.populations)) %}
-            state_indep (getindex ({{pop.name}}_state_vector,0))
+            state_indep (Vector.sub ({{pop.name}}_state_vector,0))
 {% endwith %}
     
         
@@ -515,7 +524,7 @@ struct
                                   [
 {% call postorder (sp,tp) %}          (let
                                           val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
-                                          val update = Array.update
+                                          val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num}},
@@ -542,7 +551,7 @@ struct
                                   [
 {% call preorder (sp,tp) %}          (let
                                           val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
-                                          val update = Array.update
+                                          val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num}},
