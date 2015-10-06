@@ -492,14 +492,22 @@
                            `(,name . ,(string->symbol dim))
                            `(,name . Unity))))
                    ((sxpath `(// nml:StateVariable)) model-sxml)))
-             (model-receive-ports
+             (model-event-receive-ports
               (map (lambda (x) 
                      (let ((name (string->symbol (sxml:attr x 'name)))
                            (dim (sxml:attr x 'dimension)))
                        (if dim
                            `(,name . ,(string->symbol dim))
                            `(,name . Unity))))
-                   ((sxpath `(// (*or* nml:AnalogReceivePort nml:EventReceivePort))) model-sxml)))
+                   ((sxpath `(// nml:EventReceivePort)) model-sxml)))
+             (model-analog-receive-ports
+              (map (lambda (x) 
+                     (let ((name (string->symbol (sxml:attr x 'name)))
+                           (dim (sxml:attr x 'dimension)))
+                       (if dim
+                           `(,name . ,(string->symbol dim))
+                           `(,name . Unity))))
+                   ((sxpath `(// nml:AnalogReceivePort)) model-sxml)))
              (model-reduce-ports
               (map (lambda (x) 
                      (let ((name (string->symbol (sxml:attr x 'name)))
@@ -563,7 +571,22 @@
                                        "cannot find default unit for dimension in receive port definition"
                                        dim name))
                             `(define ,name = external (dim ,dim) (0.0 * ,unit)))))))
-                     model-receive-ports))
+                     model-analog-receive-ports))
+                 
+               (extev-decls
+                (map (match-lambda 
+                      ((name . dim) 
+                       (case dim
+                         ((Unity)
+                          `(define ,name = external-event -1.0))
+                         (else
+                          (let ((unit (alist-ref dim default-units )))
+                            (if (not unit) 
+                                (error 'eval-ul-component
+                                       "cannot find default unit for dimension in receive port definition"
+                                       dim name))
+                            `(define ,name = external-event (dim ,dim) (0.0 * ,unit)))))))
+                     model-event-receive-ports))
                  
                (reduce-decls
                 (map (match-lambda 
@@ -585,6 +608,7 @@
                   (let ((decls (append parameter-decls
                                        state-decls
                                        ext-decls
+                                       extev-decls
                                        reduce-decls
                                        (list model-decls))))
                     (pp `(model-decls = ,decls) (current-error-port))
@@ -1177,9 +1201,15 @@
       (let* (
              (shared-dir    (chicken-home))
              (template-dir  (make-pathname (make-pathname shared-dir "9ML") "templates"))
-             (network-tmpl  "Network.sml.tmpl")
-             (sim-tmpl      "Sim.sml.tmpl")
-             (mlb-tmpl      "Sim.mlb.tmpl")
+             (network-tmpl  (case (ivp-simulation-method)
+                              ((rkoz rkdp) "Network.sml.adaptive.tmpl")
+                              (else "Network.sml.tmpl")))
+             (sim-tmpl      (case (ivp-simulation-method)
+                              ((rkoz rkdp) "Sim.sml.adaptive.tmpl")
+                              (else "Sim.sml.tmpl")))
+             (mlb-tmpl      (case (ivp-simulation-method)
+                              ((rkoz rkdp) "Sim.mlb.adaptive.tmpl")
+                              (else "Sim.mlb.tmpl")))
              (makefile-tmpl "Makefile.tmpl")
              (group-path    (make-pathname source-directory (conc group-name ".sml")))
              (sim-path      (make-pathname source-directory (conc "Sim_" group-name ".sml")))
@@ -1273,19 +1303,30 @@
             ))
          plas-types)
 
+        (let ((node-files 
+               (map 
+                (match-lambda
+                 ((population node-name . responses)
+                  (make-pathname source-directory
+                                 (sprintf "~A_~A.sml" population node-name))))
+                (population-prototype-env))))
+          (make/proc
+           `((,group-path 
+              ,node-files
+              ,(lambda ()
+                 (with-output-to-file group-path 
+                   (lambda ()
+                     (print (ersatz:from-file 
+                             network-tmpl
+                             env: (template-std-env search-path: `(,template-dir))
+                             models: (append simcontrol-tenv group-tenv))))))
+              ))
+           (list group-path))
+          )
 
         (make (
 
-               (group-path (operand)
-                           (with-output-to-file group-path 
-                             (lambda ()
-                               (print (ersatz:from-file 
-                                       network-tmpl
-                                       env: (template-std-env search-path: `(,template-dir))
-                                       models: (append simcontrol-tenv group-tenv)))))
-                           )
-        
-               (sim-path (operand)
+               (sim-path (group-path)
                          (with-output-to-file sim-path 
                            (lambda ()
                              (print (ersatz:from-file 
@@ -1294,7 +1335,7 @@
                                      models: (append simcontrol-tenv group-tenv)))))
                          )
                
-               (mlb-path ()
+               (mlb-path (group-path)
                          (with-output-to-file mlb-path 
                            (lambda ()
                              (print (ersatz:from-file 

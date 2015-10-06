@@ -88,70 +88,74 @@ struct
   fun optApply fopt args =
       case fopt of SOME f => SOME (f args) | NONE => NONE
 
-  fun make_initial_vector (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial) =
+  fun make_initial_vector (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
       let 
           val dinitial': real array = 
               case dinitial of
                   SOME v => v
                 | NONE => (Array.fromList [])
       in
-          Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, false))
+          Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, extevinitial, false))
       end
-   |  make_initial_vector (N,initial,SOME evinitial,NONE,NONE,extinitial) =
-      Vector.tabulate (N, fn (i) => D.EventState (0.0, initial, evinitial, extinitial, false))
-   |  make_initial_vector (N,initial,NONE,NONE,NONE,extinitial) =
-      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial, extinitial))
-   |  make_initial_vector (N,initial,_,_,_,extinitial) =
+   |  make_initial_vector (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
+      Vector.tabulate (N, fn (i) => D.EventState (0.0, initial, evinitial, extinitial, extevinitial, false))
+   |  make_initial_vector (N,initial,NONE,NONE,NONE,extinitial,extevinitial) =
+      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial, extinitial, extevinitial))
+   |  make_initial_vector (N,initial,_,_,_,extinitial,extevinitial) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
-  fun update_external_state (D.RegimeState (x, y, ev, d, r, _, root), ext) =
-      D.RegimeState (x, y, ev, d, r, ext, root)
-   |  update_external_state (D.EventState (x, y, ev, _, root), ext) =
-      D.EventState (x, y, ev, ext, root)
-   |  update_external_state (D.ContState (x, y, _), ext) =
-      D.ContState (x, y, ext)
+  fun update_external_state (D.RegimeState (x, y, ev, d, r, _, _, root), ext, extev) =
+      D.RegimeState (x, y, ev, d, r, ext, extev, root)
+   |  update_external_state (D.EventState (x, y, ev, _, _, root), ext, extev) =
+      D.EventState (x, y, ev, ext, extev, root)
+   |  update_external_state (D.ContState (x, y, _, _), ext, extev) =
+      D.ContState (x, y, ext, extev)
 
-  fun state_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) =
+  fun state_sub (D.RegimeState (x, y, ev, d, r, ext, extev, root), i) =
       getindex(y, i)
-   |  state_sub (D.EventState (x, y, ev, ext, root), i) =
+   |  state_sub (D.EventState (x, y, ev, ext, extev, root), i) =
       getindex(y, i)
-   |  state_sub (D.ContState (x, y, ext), i) =
+   |  state_sub (D.ContState (x, y, ext, extev), i) =
       getindex(y, i)
 
-  fun state_y (D.RegimeState (x, y, ev, d, r, ext, root)) = y
-   |  state_y (D.EventState (x, y, ev, ext, root)) = y
-   |  state_y (D.ContState (x, y, ext)) = y
+  fun state_y (D.RegimeState (x, y, ev, d, r, ext, extev, root)) = y
+   |  state_y (D.EventState (x, y, ev, ext, extev, root)) = y
+   |  state_y (D.ContState (x, y, ext, extev)) = y
 
-  fun state_indep (D.RegimeState (x, y, ev, d, r, ext, root)) = x
-   |  state_indep (D.EventState (x, y, ev, ext, root)) = x
-   |  state_indep (D.ContState (x, y, ext)) = x
+  fun state_indep (D.RegimeState (x, y, ev, d, r, ext, extev, root)) = x
+   |  state_indep (D.EventState (x, y, ev, ext, extev, root)) = x
+   |  state_indep (D.ContState (x, y, ext, extev)) = x
 
-  fun state_ext (D.RegimeState (x, y, ev, d, r, ext, root)) = ext
-   |  state_ext (D.EventState (x, y, ev, ext, root)) = ext
-   |  state_ext (D.ContState (x, y, ext)) = ext
+  fun state_ext (D.RegimeState (x, y, ev, d, r, ext, extev, root)) = ext
+   |  state_ext (D.EventState (x, y, ev, ext, extev, root)) = ext
+   |  state_ext (D.ContState (x, y, ext, extev)) = ext
 
-  fun state_regime (D.RegimeState (x, y, ev, d, r, ext, root)) = r
-   |  state_regime (D.EventState (x, y, ev, ext, root)) = Array.fromList []
-   |  state_regime (D.ContState (x, y, ext)) = Array.fromList[]
+  fun state_extev (D.RegimeState (x, y, ev, d, r, ext, extev, root)) = extev
+   |  state_extev (D.EventState (x, y, ev, ext, extev, root)) = extev
+   |  state_extev (D.ContState (x, y, ext, extev)) = extev
 
-  fun state_event (D.RegimeState (x, y, ev, d, r, ext, root)) = ev
-   |  state_event (D.EventState (x, y, ev, ext, root)) = ev
-   |  state_event (D.ContState (x, y, ext)) = Array.fromList []
+  fun state_regime (D.RegimeState (x, y, ev, d, r, ext, extev, root)) = r
+   |  state_regime (D.EventState (x, y, ev, ext, extev, root)) = Array.fromList []
+   |  state_regime (D.ContState (x, y, ext, extev)) = Array.fromList[]
 
-  fun ext_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) = getindex(ext, i)
-   |  ext_sub (D.EventState (x, y, ev, ext, root), i) = getindex(ext, i)
-   |  ext_sub (D.ContState (x, y, ext), i) = getindex(ext, i)
+  fun state_event (D.RegimeState (x, y, ev, d, r, ext, extev, root)) = ev
+   |  state_event (D.EventState (x, y, ev, ext, extev, root)) = ev
+   |  state_event (D.ContState (x, y, ext, extev)) = Array.fromList []
 
-  fun event_sub (D.RegimeState (x, y, ev, d, r, ext, root), i) =
+  fun ext_sub (D.RegimeState (x, y, ev, d, r, ext, extev, root), i) = getindex(ext, i)
+   |  ext_sub (D.EventState (x, y, ev, ext, extev, root), i) = getindex(ext, i)
+   |  ext_sub (D.ContState (x, y, ext, extev), i) = getindex(ext, i)
+
+  fun event_sub (D.RegimeState (x, y, ev, d, r, ext, extev, root), i) =
       getindex(ev, i)
-   |  event_sub (D.EventState (x, y, ev, ext, root), i) =
+   |  event_sub (D.EventState (x, y, ev, ext, extev, root), i) =
       getindex(ev, i)
-   |  event_sub (D.ContState (x, y, ext), i) =
+   |  event_sub (D.ContState (x, y, ext, extev), i) =
       (putStrLn TextIO.stdOut "event_sub:"; raise Domain)
 
-  fun state_root (D.RegimeState (x, y, ev, d, r, ext, root)) = root
-   |  state_root (D.EventState (x, y, ev, ext, root)) = root
-   |  state_root (D.ContState (x, y, ext)) = false
+  fun state_root (D.RegimeState (x, y, ev, d, r, ext, extev, root)) = root
+   |  state_root (D.EventState (x, y, ev, ext, extev, root)) = root
+   |  state_root (D.ContState (x, y, ext, extev)) = false
 
         
   exception Index        
@@ -174,6 +178,8 @@ struct
        type priority     = int
        (* Given a delay (positive real number), compute the priority given a time step *)
        fun delayPriority (delay) = Real.round (Real./ (delay, h))
+       (*  Given a priority and a time step, computes the corresponding delay *)
+       fun priorityDelay (priority,h) = Real.* (Real.fromInt priority, h)
        
        fun compare (x,y) = Int.compare (x,y)
        type item         = real * (int * (real IntMap.map))
@@ -205,6 +211,11 @@ struct
 
   val N_{{pop.name}} = {{ pop.value.size }}
 
+{% for pop in dict (group.populations) %}
+    val {{pop.name}}_n0 = {{pop.value.start}}
+
+{% endfor %}
+
   val {{pop.name}}_parameters = {{pop.value.prototype.name}}.paramfun()
 
   val {{pop.name}}_state_out = ref (TextIO.stdOut)
@@ -223,15 +234,18 @@ struct
           val dinitial    = optApply {{pop.value.prototype.name}}.dinitfun ()
           val rinitial    = optApply {{pop.value.prototype.name}}.initregfun ()
           val extinitial  = {{pop.value.prototype.name}}.initextfun ()
+          val extevinitial  = {{pop.value.prototype.name}}.initextevfun ()
       in
-          make_initial_vector (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial)
+          make_initial_vector (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial,extevinitial)
       end
 
   val {{pop.name}}_ext_inputs = Array.length ({{pop.value.prototype.name}}.initextfun ())
+  val {{pop.name}}_extev_inputs = Array.length ({{pop.value.prototype.name}}.initextevfun ())
                            
   val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
                            
-  val {{pop.name}}_ext_array = Array.array (2*(List.length {{pop.name}}_ext_ports), 0.0)
+  val {{pop.name}}_ext_array = Array.array (List.length {{pop.name}}_ext_ports, 0.0)
+  val {{pop.name}}_extev_array = Array.array (List.length {{pop.name}}_ext_ports, 0.0)
                            
   val {{pop.name}}_f = 
       let
@@ -245,7 +259,8 @@ struct
                      {{pop.value.prototype.name}}.regfun,h)
       end
 
-  fun {{pop.name}}_run (Wmap,n0) (i,input) =
+
+  fun {{pop.name}}_run (Wmap,n0) (i,input,(nstates,spikes)) =
     let 
 (*
 {% if pop.value.prototype.fieldExprML %}
@@ -255,39 +270,50 @@ struct
 
         val _ = if (i<{{group.statesample}})
                 then putStrLn (!{{pop.name}}_state_out)
-                              (Int.toString (i) ^ "," ^ (showReal (state_indep input)) ^ ", " ^
+                              (Int.toString (i) ^ ", " ^ (showReal (state_indep input)) ^ ", " ^
                                (showRealArray (state_y input))) 
                 else ()
 
         val _ = if (i<{{group.extsample}})
                 then putStrLn (!{{pop.name}}_ext_out)
-                              (Int.toString (i) ^ "," ^ (showReal (state_indep input)) ^ ", " ^
-                               (showRealArray (state_ext input)))
+                              (Int.toString (i) ^ ", " ^ (showReal (state_indep input)) ^ ", " ^
+                               (showRealArray (state_ext input)) ^ ", " ^
+                               (showRealArray (state_extev input)))
                 else ()
 
+        val input' = if state_root input then {{pop.name}}_f input else input
 
         val update = Unsafe.Array.update
         val ext_i = {{pop.name}}_ext_array
+        val extev_i = {{pop.name}}_extev_array
         val _ = 
             List.foldl
                 (fn (port, index) => 
                     case IntMap.find (Wmap, port) of
                         NONE => 
-                        (update (ext_i, index, 0.0); update (ext_i, index+1, ~1.0); index+2)
-                      | SOME W => 
+                        (update (ext_i, index, 0.0); 
+                         update (extev_i, index, ~1.0); 
+                         index+1)
+                      | SOME (t,W) => 
                         case IntMap.find(W,i+n0) of
                             SOME v => 
-                            (update (ext_i, index, v); update (ext_i, index+1, 1.0); index+2)
+                            (update (ext_i, index, v); 
+                             update (extev_i, index, t); 
+                             index+1)
                           | NONE => 
-                            (update (ext_i, index, 0.0); update (ext_i, index+1, ~1.0); index+2))
+                            (update (ext_i, index, 0.0); 
+                             update (extev_i, index, ~1.0); 
+                             index+1))
                 0
                 {{pop.name}}_ext_ports
 
-        val input' = update_external_state (input, ext_i)
-        val nstate = {{pop.name}}_f input'
-        val nstate' = if state_root nstate then {{pop.name}}_f nstate else nstate
+        val input'' = update_external_state (input', ext_i, extev_i)
+        val nstate = {{pop.name}}_f input''
     in 
-        nstate'
+        (nstate::nstates, 
+         if (Real.>= (event_sub(nstate,0), 0.0))
+         then ((i+{{pop.name}}_n0,1.0))::spikes 
+         else spikes)
     end
 
 {% endfor %}
@@ -316,11 +342,6 @@ struct
     )
 
 
-{% for pop in dict (group.populations) %}
-    val {{pop.name}}_n0 = {{pop.value.start}}
-
-{% endfor %}
-
                 
     val Pn = [
         {% for pop in dict (group.populations) %}
@@ -337,18 +358,24 @@ struct
 {% endfor %} ) =
         let
 {% for pop in dict (group.populations) %}
-            val {{pop.name}}_state_vector' = 
-                Vector.mapi ({{pop.name}}_run (I,{{pop.name}}_n0))
-                            {{pop.name}}_state_vector
+            val ({{pop.name}}_states,{{pop.name}}_spikes) = 
+                Vector.foldri ({{pop.name}}_run (I,{{pop.name}}_n0))
+                              ([],[]) {{pop.name}}_state_vector
 
 {% endfor %}
         in
-            (
+            ((
 {% for pop in dict (group.populations) %}
-             {{pop.name}}_state_vector'{% if not loop.last %},{% endif %}
+             Vector.fromList {{pop.name}}_states{% if not loop.last %},{% endif %}
 
 {% endfor %}
-            ) 
+            ), 
+             (
+{% for pop in dict (group.populations) %}
+             {{pop.name}}_spikes{% if not loop.last %},{% endif %}
+
+{% endfor %}
+            ))
         end
                          
                          
@@ -365,20 +392,10 @@ struct
         
     fun fspikes (
 {% for pop in dict (group.populations) %}
-              {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
+              {{pop.name}}_spike_i{% if not loop.last %},{% endif %}
 {% endfor %} ) =
 
         let
-{% for pop in dict (group.populations) %}
-            val {{pop.name}}_spike_i = 
-                Vector.foldri (fn (i,v,ax) => 
-                               (if (Real.>= (event_sub(v,0), 0.0))
-                                then ((i+{{pop.name}}_n0,1.0))::ax 
-                                else ax))
-                              [] {{pop.name}}_state_vector
-
-{% endfor %}
-
            val ext_spike_i = List.concat ( {% for pop in dict (group.populations) %}{% if not pop.name in group.spikepoplst %}{{pop.name}}_spike_i ::{% endif %}{% endfor %} [] )
 
                 

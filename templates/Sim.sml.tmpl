@@ -73,19 +73,23 @@ let
     fun netrun (DQ,state_vector) =
         let 
             val t = ftime state_vector
-            val prio = {{group.name}}.TEventPriority.delayPriority t
+            val prio = {{group.name}}.TEventPriority.delayPriority (t+{{group.name}}.h)
 
             val (I,DQ') = {{group.name}}.TEQ.nextEventsFold 
-                                        (fn (prio',_) => prio' <= prio,
-                                         fn (_,(port,w),ax) => IntMap.insert (ax,port,w),
+                                        (fn (prio',_) => prio' < prio,
+                                         fn (prio,(port,w),ax) => 
+                                            let val t = {{group.name}}.TEventPriority.priorityDelay (prio, {{group.name}}.h)
+                                            in
+                                                IntMap.insert (ax,port,(t,w))
+                                            end,
                                          IntMap.empty,
                                          DQ)
             
-            val state_vector_i = frun I state_vector
+            val (state_vector_i, spikes_i) = frun I state_vector
 
             val t_i = ftime state_vector_i
 
-            val (spike_i, log_spike_i) = fspikes state_vector_i
+            val (spike_i, log_spike_i) = fspikes spikes_i
                 
             val _   = finfo (state_vector_i, out)
                               
@@ -129,7 +133,10 @@ let
                     in
                         (#2(ListPair.foldl
                                 (fn(del: real,w: real IntMap.map,(port,dq)) => 
-                                    (port+1, {{group.name}}.TEQ.addEvent ((Real.+ (t,del), (port,w)), dq)))
+                                    let val t' = Real.+ (t,del)
+                                    in
+                                        (port+1, {{group.name}}.TEQ.addEvent ((t', (port,w)), dq))
+                                    end)
                                 (0, DQ') 
                                 DW))
                     end

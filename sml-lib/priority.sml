@@ -83,6 +83,8 @@ struct
 
     val merge   = PQ.merge
 
+    val findMin = PQ.findMin
+
     fun addEvent (item, pq) =
         PQ.insert (item, pq)
 
@@ -119,16 +121,21 @@ struct
             recur (pq, [])
         end
 
-    fun nextCond (p, f, g, dflt, pq) =
-        case PQ.findMin pq of
-            NONE => (dflt, pq)
-          | SOME (v) => 
-            (if p (P.priority v, value v) 
-             then (f (P.priority v, value v), valOf (PQ.deleteMin pq))
-             else (g (P.priority v, value v), pq))
-
-
-    val app = PQ.app
-    val foldl  = PQ.foldl
+    fun nextEventsFold (p, f, init, pq) =
+        let
+            fun recur (pq,ax) =
+                case PQ.findMin pq of
+                    NONE => (ax, pq)
+                  | SOME (v) => 
+                    (if p (P.priority v, v) 
+                     then (let 
+                              val ax' = f (P.priority v, value v, ax)
+                          in 
+                              recur (valOf (PQ.deleteMin pq), ax') 
+                          end)
+                     else (ax, pq))
+        in
+            recur (pq, init)
+        end
 
 end

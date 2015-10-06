@@ -172,6 +172,7 @@
 
 (copy-file-to-9ML-dir "templates/Network.sml.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.sml.adaptive.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.mlb.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Network.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.tmpl")
