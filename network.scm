@@ -132,7 +132,6 @@
                                       (error '9ML-network "timestep must be a positive number" x)))))
 			    (transformer ,string->number)
                             )
-                     (single-char #\h)
                      )
 
     (spikerecord     "name of population for spike recording"
