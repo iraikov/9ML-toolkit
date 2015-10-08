@@ -128,7 +128,7 @@
 		  `(("title"     . ,(sprintf "~A (~A Hz)" 
                                              plot-label average-firing-frequency))
                     ("titledetails" . "adjust=-0.9,0.2")
-		    ("rectangle" . "2 3.5 8 10.5")
+		    ("rectangle" . "2 3.5 10 10.5")
 ;;		    ("rectangle" . "2 5 10 14")
 		    ("areacolor" . "white")
 
@@ -172,7 +172,7 @@
        
        (plot:proc "areadef"
 		  `(;; ("title"     . "Spike # per time bin")
-		    ("rectangle" . "2 1 8 3")
+		    ("rectangle" . "2 1 10 3")
 ;;		    ("rectangle" . "2 1 10 4")
 		    ("areacolor" . "white")
                     
