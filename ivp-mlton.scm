@@ -64,7 +64,7 @@
       ((realconst) (mlton-value (cadr v)))
       ((generator) (sprintf "~A ()" (cadr v)))
       ((random)    (sprintf "random_~A ()" (cadr v)))
-      ((neg)       (sprintf "Real.~~ (~A)" (mlton-value (cadr v))))
+      ((neg)       (sprintf "Real.~A (~A)" "~" (mlton-value (cadr v))))
       ((+ - * / >= > <= <) 
        (sprintf "Real.~A (~A, ~A)"
                 (car v) (mlton-value (cadr v)) 
