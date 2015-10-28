@@ -236,11 +236,11 @@ struct
           val extinitial  = {{pop.value.prototype.name}}.initextfun ()
           val extevinitial  = {{pop.value.prototype.name}}.initextevfun ()
       in
-          make_initial_vector (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial,extevinitial)
+          make_initial_vector (N_{{pop.name}},initial(),evinitial,optApply dinitial (),rinitial,extinitial(),extevinitial())
       end
 
-  val {{pop.name}}_ext_inputs = Array.length ({{pop.value.prototype.name}}.initextfun ())
-  val {{pop.name}}_extev_inputs = Array.length ({{pop.value.prototype.name}}.initextevfun ())
+  val {{pop.name}}_ext_inputs = Array.length ({{pop.value.prototype.name}}.initextfun {{pop.name}}_parameters ())
+  val {{pop.name}}_extev_inputs = Array.length ({{pop.value.prototype.name}}.initextevfun {{pop.name}}_parameters ())
                            
   val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
                            
@@ -418,7 +418,7 @@ struct
 
 {% macro for_each(name, sp, tp, plasticity, component, cstate) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
@@ -433,7 +433,7 @@ struct
 
 {% macro all_to_all(name, sp, tp, plasticity)  %}
              val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromTensorList [N,N]
@@ -447,7 +447,7 @@ struct
 
 {% macro one_to_one(name, sp, tp, plasticity) %}
              val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromTensorList [N,N]
@@ -505,7 +505,7 @@ struct
 
 {% macro random_fan_in(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
                                   val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then weight else 0.0) 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
@@ -520,7 +520,7 @@ struct
 
 {% macro random_fan_out(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
                                   val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then weight else 0.0)
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
@@ -535,7 +535,7 @@ struct
 
 {% macro random_fan_in_num(name, sp, tp, plasticity, num) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
                                in
                                   SparseMatrix.fromVectors [N,N]
                                   [
@@ -562,7 +562,7 @@ struct
 
 {% macro random_fan_out_num(name, sp, tp, plasticity, num) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial,0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
                                in
                                   SparseMatrix.fromVectors [N,N]
                                   [
