@@ -204,6 +204,7 @@ EOF
 			  `(("$(SML_LIB)/basis/basis.mlb" ,nl )
                             ("$(SML_LIB)/basis/unsafe.mlb" ,nl )
 			    ("$(RK_LIB)/rk.mlb" ,nl )
+			    ("$(LASTN_LIB)/lastn-buffer.mlb" ,nl )
 			    ("$(RANDMTZIG_LIB)/randmtzig.mlb" ,nl )
 			    ("local " ,nl)
 			    (,(sprintf "    ~A_solver.sml" ivp-id) ,nl)
@@ -215,6 +216,7 @@ EOF
 	   
 	   (exec-path (solver-path run-path mlb-path)
 		      (run (,mlton-path -link-opt -s 
+					-mlb-path-var ,(string-append "'LASTN_LIB " salt-dir "/sml-lib/lastn-buffer'") 
 					-mlb-path-var ,(string-append "'RK_LIB " salt-dir "/sml-lib/rk'") 
 					-mlb-path-var ,(string-append "'RANDMTZIG_LIB " salt-dir "/sml-lib/randmtzig'") 
 					,mlb-path
@@ -258,6 +260,7 @@ EOF
 			 (print-fragments
 			  `(("$(SML_LIB)/basis/basis.mlb" ,nl )
 			    ("$(RK_LIB)/rk.mlb" ,nl )
+			    ("$(LASTN_LIB)/lastn-buffer.mlb" ,nl )
 			    ("$(RANDMTZIG_LIB)/randmtzig.mlb" ,nl )
 			    ("local " ,nl)
 			    (,(sprintf "    ~A_solver.sml" ivp-id) ,nl)
