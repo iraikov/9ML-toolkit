@@ -319,7 +319,7 @@ struct
                 then (nstate::nstates, spikes)
                 else 
                     let
-                        val h' = Real.min(tend-(state_indep nstate), state_h nstate)
+                        val h' = Real.max(Real.min(tend-(state_indep nstate), state_h nstate), 1e~6)
                         val nstate'  = update_h (nstate, h')
                         val nstate'' = {{pop.name}}_f nstate'
                         val hasevent = Real.>= (event_sub(nstate'',0), 0.0)
