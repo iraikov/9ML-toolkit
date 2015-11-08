@@ -88,20 +88,25 @@ struct
   fun optApply fopt args =
       case fopt of SOME f => SOME (f args) | NONE => NONE
 
-  fun make_initial_vector (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
+  fun make_initial_vector condfun (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
       let 
           val dinitial': real array = 
               case dinitial of
                   SOME v => v
                 | NONE => (Array.fromList [])
+          val s = D.condApply condfun (D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, extevinitial, false))
       in
-          Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, extevinitial, false))
+          Vector.tabulate (N, fn (i) => s)
       end
-   |  make_initial_vector (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
-      Vector.tabulate (N, fn (i) => D.EventState (0.0, initial, evinitial, extinitial, extevinitial, false))
-   |  make_initial_vector (N,initial,NONE,NONE,NONE,extinitial,extevinitial) =
+   |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
+      let
+          val s = D.condApply condfun (D.EventState (0.0, initial, evinitial, extinitial, extevinitial, false))
+      in
+          Vector.tabulate (N, fn (i) => s)
+      end
+   |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial) =
       Vector.tabulate (N, fn (i) => D.ContState (0.0, initial, extinitial, extevinitial))
-   |  make_initial_vector (N,initial,_,_,_,extinitial,extevinitial) =
+   |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
   fun update_external_state (D.RegimeState (x, y, ev, d, r, _, _, root), ext, extev) =
@@ -236,7 +241,8 @@ struct
           val extinitial  = {{pop.value.prototype.name}}.initextfun ()
           val extevinitial  = {{pop.value.prototype.name}}.initextevfun ()
       in
-          make_initial_vector (N_{{pop.name}},initial(),evinitial,optApply dinitial (),rinitial,extinitial(),extevinitial())
+          make_initial_vector (optApply {{pop.value.prototype.name}}.condfun ({{pop.name}}_parameters))
+                              (N_{{pop.name}},initial(),evinitial,optApply dinitial (),rinitial,extinitial(),extevinitial())
       end
 
   val {{pop.name}}_ext_inputs = Array.length ({{pop.value.prototype.name}}.initextfun {{pop.name}}_parameters ())
@@ -267,21 +273,20 @@ struct
         val fieldV = getindex ({{pop.name}}_field_vector,i)
 {% endif %}
 *)
+        val input' = if state_root input then {{pop.name}}_f input else input
 
         val _ = if (i<{{group.statesample}})
                 then putStrLn (!{{pop.name}}_state_out)
-                              (Int.toString (i) ^ ", " ^ (showReal (state_indep input)) ^ ", " ^
-                               (showRealArray (state_y input))) 
+                              (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
+                               (showRealArray (state_y input'))) 
                 else ()
 
         val _ = if (i<{{group.extsample}})
                 then putStrLn (!{{pop.name}}_ext_out)
-                              (Int.toString (i) ^ ", " ^ (showReal (state_indep input)) ^ ", " ^
-                               (showRealArray (state_ext input)) ^ ", " ^
-                               (showRealArray (state_extev input)))
+                              (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
+                               (showRealArray (state_ext input')) ^ ", " ^
+                               (showRealArray (state_extev input')))
                 else ()
-
-        val input' = if state_root input then {{pop.name}}_f input else input
 
         val update = Unsafe.Array.update
         val ext_i = {{pop.name}}_ext_array
@@ -292,7 +297,7 @@ struct
                     case IntMap.find (Wmap, port) of
                         NONE => 
                         (update (ext_i, index, 0.0); 
-                         update (extev_i, index, ~1.0); 
+                         update (extev_i, index, Real.posInf); 
                          index+1)
                       | SOME (t,W) => 
                         case IntMap.find(W,i+n0) of
@@ -302,7 +307,7 @@ struct
                              index+1)
                           | NONE => 
                             (update (ext_i, index, 0.0); 
-                             update (extev_i, index, ~1.0); 
+                             update (extev_i, index, Real.posInf); 
                              index+1))
                 0
                 {{pop.name}}_ext_ports

@@ -577,7 +577,7 @@
                       ((name . dim) 
                        (case dim
                          ((Unity)
-                          `(define ,name = external-event -1.0))
+                          `(define ,name = external-event +inf.0))
                          (else
                           (let ((unit (alist-ref dim default-units )))
                             (if (not unit) 
