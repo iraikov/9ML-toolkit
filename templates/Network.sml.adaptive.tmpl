@@ -59,7 +59,7 @@ struct
       let
           val i = ref 0
           val sample = Array.array (n+1, dflt)
-          val update = Array.update
+          val update = Unsafe.Array.update
       in
           (sample,
            fn (x) =>
@@ -78,7 +78,7 @@ struct
       else
           init
 
-  val getindex = Array.sub
+  val getindex = Unsafe.Array.sub
 
 
   val RandomInit = RandomMTZig.fromEntropy
