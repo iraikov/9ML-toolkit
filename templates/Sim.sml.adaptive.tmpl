@@ -72,9 +72,10 @@ let
         
     fun netrun (DQ,t,state_vector) =
         let 
+            val tn  = t+{{group.name}}.h
             val t_i = case {{group.name}}.TEQ.findMin DQ of
-                          SOME (t,_) => t
-                        | NONE => t+{{group.name}}.h
+                          SOME (t,_) => Real.min(t, tn)
+                        | NONE => tn
 
             val (I,DQ') = {{group.name}}.TEQ.nextEventsFold 
                                         (fn (t,_) => Real.<=(t,t_i),

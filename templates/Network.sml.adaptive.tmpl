@@ -88,20 +88,25 @@ struct
   fun optApply fopt args =
       case fopt of SOME f => SOME (f args) | NONE => NONE
 
-  fun make_initial_vector (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial,h0) =
+  fun make_initial_vector condfun (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial,h0) =
       let 
           val dinitial': real array = 
               case dinitial of
                   SOME v => v
                 | NONE => (Array.fromList [])
+          val s = D.condApply condfun (D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, extevinitial, h0, false))
       in
-          Vector.tabulate (N, fn (i) => D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, extevinitial, h0, false))
+          Vector.tabulate (N, fn (i) => s)
       end
-   |  make_initial_vector (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,h0) =
-      Vector.tabulate (N, fn (i) => D.EventState (0.0, initial, evinitial, extinitial, extevinitial, h0, false))
-   |  make_initial_vector (N,initial,NONE,NONE,NONE,extinitial,extevinitial,h0) =
+   |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,h0) =
+      let
+          val s = D.condApply condfun (D.EventState (0.0, initial, evinitial, extinitial, extevinitial, h0, false))
+      in
+          Vector.tabulate (N, fn (i) => s)
+      end
+   |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial,h0) =
       Vector.tabulate (N, fn (i) => D.ContState (0.0, initial, extinitial, extevinitial, h0))
-   |  make_initial_vector (N,initial,_,_,_,extinitial,extevinitial,_) =
+   |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial,_) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
   fun update_external_state (D.RegimeState (x, y, ev, d, r, _, _, h, root), ext, extev) =
@@ -245,7 +250,8 @@ struct
           val extinitial  = {{pop.value.prototype.name}}.initextfun ()
           val extevinitial  = {{pop.value.prototype.name}}.initextevfun ()
       in
-          make_initial_vector (N_{{pop.name}},initial(),evinitial,optApply dinitial (),rinitial,extinitial(),extevinitial(),h)
+          make_initial_vector (optApply {{pop.value.prototype.name}}.condfun ({{pop.name}}_parameters))
+                              (N_{{pop.name}},initial(),evinitial,optApply dinitial (),rinitial,extinitial(),extevinitial(),h)
       end
 
   val {{pop.name}}_ext_inputs = Array.length ({{pop.value.prototype.name}}.initextfun {{pop.name}}_parameters ())
@@ -274,6 +280,8 @@ struct
 {% endif %}
 *)
         val update = Unsafe.Array.update
+
+        val input' = if state_root input then {{pop.name}}_f input else input
 
         val ext_i = state_ext input
         val extev_i = state_extev input
@@ -332,7 +340,7 @@ struct
                     end
             end
     in 
-        recur (input, spikes, 0.0)
+        recur (input', spikes, 0.0)
     end
 
 {% endfor %}
