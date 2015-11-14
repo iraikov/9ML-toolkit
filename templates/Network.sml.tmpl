@@ -59,7 +59,7 @@ struct
       let
           val i = ref 0
           val sample = Array.array (n+1, dflt)
-          val update = Unsafe.Array.update
+          val update = Array.update
       in
           (sample,
            fn (x) =>
@@ -78,7 +78,7 @@ struct
       else
           init
 
-  val getindex = Unsafe.Array.sub
+  val getindex = Array.sub
 
 
   val RandomInit = RandomMTZig.fromEntropy
@@ -90,31 +90,22 @@ struct
 
   fun make_initial_vector condfun (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
       let 
-          val dinitial': real array = 
+          val dinitial': unit -> real array = 
               case dinitial of
                   SOME v => v
-                | NONE => (Array.fromList [])
-          val s = D.condApply condfun (D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, extevinitial, false))
+                | NONE => (fn () => Array.fromList [])
       in
-          Vector.tabulate (N, fn (i) => s)
+          Vector.tabulate (N, fn (i) => 
+                                 D.condApply condfun
+                                             (D.RegimeState (0.0, initial(), evinitial (), dinitial' (), rinitial (), 
+                                                             extinitial(), extevinitial(), false)))
       end
    |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
-      let
-          val s = D.condApply condfun (D.EventState (0.0, initial, evinitial, extinitial, extevinitial, false))
-      in
-          Vector.tabulate (N, fn (i) => s)
-      end
+      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(), evinitial (), extinitial (), extevinitial (), false)))
    |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial) =
-      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial, extinitial, extevinitial))
+      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(), extinitial(), extevinitial()))
    |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
-
-  fun update_external_state (D.RegimeState (x, y, ev, d, r, _, _, root), ext, extev) =
-      D.RegimeState (x, y, ev, d, r, ext, extev, root)
-   |  update_external_state (D.EventState (x, y, ev, _, _, root), ext, extev) =
-      D.EventState (x, y, ev, ext, extev, root)
-   |  update_external_state (D.ContState (x, y, _, _), ext, extev) =
-      D.ContState (x, y, ext, extev)
 
   fun state_sub (D.RegimeState (x, y, ev, d, r, ext, extev, root), i) =
       getindex(y, i)
@@ -227,6 +218,8 @@ struct
 
   val {{pop.name}}_ext_out = ref (TextIO.stdOut)
 
+  val {{pop.name}}_event_out = ref (TextIO.stdOut)
+
 (*
   val {{pop.name}}_field_vector = 
     Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.name}}.fieldfun({{pop.name}}_parameters))
@@ -235,23 +228,17 @@ struct
   val {{pop.name}}_initial_vector = 
       let
           val initial     = {{pop.value.prototype.name}}.initfun({{pop.name}}_parameters)
-          val evinitial   = optApply {{pop.value.prototype.name}}.initcondfun ()
-          val dinitial    = optApply {{pop.value.prototype.name}}.dinitfun ()
-          val rinitial    = optApply {{pop.value.prototype.name}}.initregfun ()
-          val extinitial  = {{pop.value.prototype.name}}.initextfun ()
-          val extevinitial  = {{pop.value.prototype.name}}.initextevfun ()
+          val evinitial   = {{pop.value.prototype.name}}.initcondfun
+          val dinitial    = {{pop.value.prototype.name}}.dinitfun
+          val rinitial    = {{pop.value.prototype.name}}.initregfun
+          val extinitial  = {{pop.value.prototype.name}}.initextfun ({{pop.name}}_parameters)
+          val extevinitial = {{pop.value.prototype.name}}.initextevfun ({{pop.name}}_parameters)
       in
           make_initial_vector (optApply {{pop.value.prototype.name}}.condfun ({{pop.name}}_parameters))
-                              (N_{{pop.name}},initial(),evinitial,optApply dinitial (),rinitial,extinitial(),extevinitial())
+                              (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial,extevinitial)
       end
 
-  val {{pop.name}}_ext_inputs = Array.length ({{pop.value.prototype.name}}.initextfun {{pop.name}}_parameters ())
-  val {{pop.name}}_extev_inputs = Array.length ({{pop.value.prototype.name}}.initextevfun {{pop.name}}_parameters ())
-                           
   val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
-                           
-  val {{pop.name}}_ext_array = Array.array (List.length {{pop.name}}_ext_ports, 0.0)
-  val {{pop.name}}_extev_array = Array.array (List.length {{pop.name}}_ext_ports, 0.0)
                            
   val {{pop.name}}_f = 
       let
@@ -268,29 +255,56 @@ struct
 
   fun {{pop.name}}_run (Wmap,n0) (i,input,(nstates,spikes)) =
     let 
+
+        fun log () =
+            let
+                val _ = if (i<{{group.statesample}})
+                        then (if state_root input 
+                              then putStrLn TextIO.stdOut
+                                            ("Input root: " ^ (Int.toString (i)) ^ ", " ^ (showReal (state_indep input)) ^ ", " ^
+                                             (showRealArray (state_y input)))
+                              else ())
+                        else ()
+                                 
+                val _ = if (i<{{group.statesample}})
+                        then (if state_root input 
+                              then putStrLn TextIO.stdOut
+                                            ("Input root: input' = " ^ (Int.toString (i)) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
+                                             (showRealArray (state_y input')))
+                              else ())
+                        else ()
+                                 
+                val _ = if (i<{{group.statesample}})
+                        then putStrLn (!{{pop.name}}_state_out)
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
+                                       (showRealArray (state_y input'))) 
+                        else ()
+                                 
+                val _ = if (i<{{group.extsample}})
+                        then putStrLn (!{{pop.name}}_ext_out)
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
+                                       (showRealArray (state_ext input')) ^ ", " ^
+                                       (showRealArray (state_extev input')))
+                        else ()
+                val _ = if (i<{{group.evsample}})
+                        then putStrLn (!{{pop.name}}_event_out)
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
+                                       (showRealArray (state_event input')))
+                        else ()
+            in
+                ()
+            end
+
+
 (*
 {% if pop.value.prototype.fieldExprML %}
         val fieldV = getindex ({{pop.name}}_field_vector,i)
 {% endif %}
 *)
-        val input' = if state_root input then {{pop.name}}_f input else input
 
-        val _ = if (i<{{group.statesample}})
-                then putStrLn (!{{pop.name}}_state_out)
-                              (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
-                               (showRealArray (state_y input'))) 
-                else ()
-
-        val _ = if (i<{{group.extsample}})
-                then putStrLn (!{{pop.name}}_ext_out)
-                              (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
-                               (showRealArray (state_ext input')) ^ ", " ^
-                               (showRealArray (state_extev input')))
-                else ()
-
-        val update = Unsafe.Array.update
-        val ext_i = {{pop.name}}_ext_array
-        val extev_i = {{pop.name}}_extev_array
+        val update = Array.update
+        val ext_i = state_ext input'
+        val extev_i = state_extev input'
         val _ = 
             List.foldl
                 (fn (port, index) => 
@@ -312,8 +326,20 @@ struct
                 0
                 {{pop.name}}_ext_ports
 
-        val input'' = update_external_state (input', ext_i, extev_i)
-        val nstate = {{pop.name}}_f input''
+        val nstate = {{pop.name}}_f input'
+
+        val _ = if (i<{{group.statesample}})
+                then (if state_root nstate 
+                     then putStrLn TextIO.stdOut
+                                   ("Nstate root: " ^ (Int.toString (i)) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
+                                    (showRealArray (state_y nstate)))
+                      else ())
+                else ()
+
+        fun recur nstate = if state_root nstate then recur ({{pop.name}}_f nstate) else nstate
+        val input' = recur input
+
+
     in 
         (nstate::nstates, 
          if (Real.>= (event_sub(nstate,0), 0.0))
@@ -546,7 +572,7 @@ struct
                                   [
 {% call postorder (sp,tp) %}          (let
                                           val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
-                                          val update = Unsafe.Array.update
+                                          val update = Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num}},
@@ -573,7 +599,7 @@ struct
                                   [
 {% call preorder (sp,tp) %}          (let
                                           val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
-                                          val update = Unsafe.Array.update
+                                          val update = Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num}},

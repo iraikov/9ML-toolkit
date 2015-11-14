@@ -158,6 +158,11 @@ fun main (name,args) =
             val _ = ({{pop.name}}_ext_out := TextIO.openOut ("{{pop.name}}_ext.dat"))
 
 {% endif %}
+{% if group.evsample > 0 %}
+
+            val _ = ({{pop.name}}_event_out := TextIO.openOut ("{{pop.name}}_event.dat"))
+
+{% endif %}
 {% endfor %}
 
         in
@@ -187,6 +192,12 @@ fun main (name,args) =
 
             TextIO.flushOut (!{{pop.name}}_ext_out); 
             TextIO.closeOut (!{{pop.name}}_ext_out);
+
+{% endif %}
+{% if group.evsample > 0 %}
+
+            TextIO.flushOut (!{{pop.name}}_event_out); 
+            TextIO.closeOut (!{{pop.name}}_event_out);
 
 {% endif %}
 {% endfor %}

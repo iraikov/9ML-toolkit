@@ -161,6 +161,17 @@
                             )
                      )
 
+    (evsample     "sample size of neurons for event recording"
+		     (value (required VALUE)
+			    (predicate 
+			     ,(lambda (x) 
+				(let ((n (string->number x)))
+                                  (if (> n 0) n
+                                      (error '9ML-network "sample size must be a positive number" x)))))
+			    (transformer ,string->number)
+                            )
+                     )
+
     (verbose          "print commands as they are executed"
 		      (single-char #\v))
 
@@ -871,7 +882,7 @@
 
 (define (make-group-tenv name order populations sets projections 
                          psr-types plas-types connection-types projection-ports
-                         spikepoplst statesample extsample properties)
+                         spikepoplst statesample extsample evsample properties)
   (let ((alst 
          `((group 
             . 
@@ -888,6 +899,7 @@
              (spikepoplst . ,spikepoplst)
              (statesample . ,statesample)
              (extsample . ,extsample)
+             (evsample . ,evsample)
              ))
            ))
         )
@@ -1241,6 +1253,7 @@
               (make-group-tenv group-name order populations sets-tenv projections 
                                psr-types plas-types connection-types projection-ports
                                spikelst (or (opt 'statesample) 0) (or (opt 'extsample) 0)
+                               (or (opt 'evsample) 0)
                                (append properties ul-properties) ))
 
              (simcontrol-tenv

@@ -236,6 +236,8 @@ struct
 
   val {{pop.name}}_ext_out = ref (TextIO.stdOut)
 
+  val {{pop.name}}_event_out = ref (TextIO.stdOut)
+
 (*
   val {{pop.name}}_field_vector = 
     Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.name}}.fieldfun({{pop.name}}_parameters))
@@ -319,6 +321,12 @@ struct
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_ext nstate)) ^ ", " ^
                                        (showRealArray (state_extev nstate)))
+                        else ()
+
+                val _ = if (i<{{group.evsample}}) andalso Real.>(state_indep nstate, ct)
+                        then putStrLn (!{{pop.name}}_event_out)
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
+                                       (showRealArray (state_event nstate)))
                         else ()
 
                 val nstate = if state_root nstate then {{pop.name}}_f nstate else nstate
