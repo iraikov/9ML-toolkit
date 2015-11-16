@@ -90,31 +90,23 @@ struct
 
   fun make_initial_vector condfun (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial,h0) =
       let 
-          val dinitial': real array = 
+          val dinitial': unit -> real array = 
               case dinitial of
                   SOME v => v
-                | NONE => (Array.fromList [])
-          val s = D.condApply condfun (D.RegimeState (0.0, initial, evinitial, dinitial', rinitial, extinitial, extevinitial, h0, false))
+                | NONE => (fn () => Array.fromList [])
+
       in
-          Vector.tabulate (N, fn (i) => s)
+          Vector.tabulate (N, fn (i) => 
+                                 D.condApply condfun
+                                             (D.RegimeState (0.0, initial(), evinitial (), dinitial' (), rinitial (), 
+                                                             extinitial(), extevinitial(), h0, false)))
       end
    |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,h0) =
-      let
-          val s = D.condApply condfun (D.EventState (0.0, initial, evinitial, extinitial, extevinitial, h0, false))
-      in
-          Vector.tabulate (N, fn (i) => s)
-      end
+      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(), evinitial (), extinitial (), extevinitial (), h0, false)))
    |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial,h0) =
-      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial, extinitial, extevinitial, h0))
+      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(), extinitial(), extevinitial(), h0))
    |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial,_) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
-
-  fun update_external_state (D.RegimeState (x, y, ev, d, r, _, _, h, root), ext, extev) =
-      D.RegimeState (x, y, ev, d, r, ext, extev, h, root)
-   |  update_external_state (D.EventState (x, y, ev, _, _, h, root), ext, extev) =
-      D.EventState (x, y, ev, ext, extev, h, root)
-   |  update_external_state (D.ContState (x, y, _, _, h), ext, extev) =
-      D.ContState (x, y, ext, extev, h)
 
   fun update_h (D.RegimeState (x, y, ev, d, r, ext, extev, _, root), h) =
       D.RegimeState (x, y, ev, d, r, ext, extev, h, root)
@@ -246,14 +238,14 @@ struct
   val {{pop.name}}_initial_vector = 
       let
           val initial     = {{pop.value.prototype.name}}.initfun({{pop.name}}_parameters)
-          val evinitial   = optApply {{pop.value.prototype.name}}.initcondfun ()
-          val dinitial    = optApply {{pop.value.prototype.name}}.dinitfun ({{pop.name}}_parameters)
-          val rinitial    = optApply {{pop.value.prototype.name}}.initregfun ()
-          val extinitial  = {{pop.value.prototype.name}}.initextfun ()
-          val extevinitial  = {{pop.value.prototype.name}}.initextevfun ()
+          val evinitial   = {{pop.value.prototype.name}}.initcondfun 
+          val dinitial    = {{pop.value.prototype.name}}.dinitfun
+          val rinitial    = {{pop.value.prototype.name}}.initregfun 
+          val extinitial  = {{pop.value.prototype.name}}.initextfun ({{pop.name}}_parameters)
+          val extevinitial  = {{pop.value.prototype.name}}.initextevfun ({{pop.name}}_parameters)
       in
           make_initial_vector (optApply {{pop.value.prototype.name}}.condfun ({{pop.name}}_parameters))
-                              (N_{{pop.name}},initial(),evinitial,optApply dinitial (),rinitial,extinitial(),extevinitial(),h)
+                              (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial,extevinitial,h)
       end
 
   val {{pop.name}}_ext_inputs = Array.length ({{pop.value.prototype.name}}.initextfun {{pop.name}}_parameters ())
@@ -276,17 +268,40 @@ struct
 
   fun {{pop.name}}_run (tend,Wmap,n0) (i,input,(nstates,spikes)) =
     let 
+        fun log (nstate) =
+            let
+                val _ = if (i<{{group.statesample}})
+                        then putStrLn (!{{pop.name}}_state_out)
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
+                                       (showRealArray (state_y nstate))) 
+                        else ()
+                                 
+                val _ = if (i<{{group.extsample}})
+                        then putStrLn (!{{pop.name}}_ext_out)
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
+                                       (showRealArray (state_ext nstate)) ^ ", " ^
+                                       (showRealArray (state_extev nstate)))
+                        else ()
+                val _ = if (i<{{group.evsample}})
+                        then putStrLn (!{{pop.name}}_event_out)
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
+                                       (showRealArray (state_event nstate)))
+                        else ()
+            in
+                ()
+            end
+
 (*
 {% if pop.value.prototype.fieldExprML %}
         val fieldV = getindex ({{pop.name}}_field_vector,i)
 {% endif %}
 *)
+        val _ = log(input)
+
         val update = Unsafe.Array.update
-
-        val input' = if state_root input then {{pop.name}}_f input else input
-
         val ext_i = state_ext input
         val extev_i = state_extev input
+
         val _ = 
             List.foldl
                 (fn (port, index) => 
@@ -306,50 +321,26 @@ struct
                              update (extev_i, index, Real.posInf); 
                              index+1))
                 0 {{pop.name}}_ext_ports
+                
+        fun recur (nstate, spikes) = 
+            if state_indep nstate >= tend
+            then 
+                (nstate, spikes)
+            else 
+                (let 
+                    val h' = Real.max(Real.min(tend-(state_indep nstate), state_h nstate), 1e~6)
+                    val nstate'  = {{pop.name}}_f (update_h (nstate, h'))
+                    val hasevent = Real.>= (event_sub(nstate',0), 0.0)
+                in
+                    recur (nstate',
+                           if hasevent then ((i+{{pop.name}}_n0,state_indep nstate',1.0))::spikes else spikes)
+                end)
 
-        fun recur (nstate, spikes, ct) =
-            let
-                                                                                      
-                val _ = if (i<{{group.statesample}}) andalso Real.>(state_indep nstate, ct)
-                        then putStrLn (!{{pop.name}}_state_out)
-                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
-                                       (showRealArray (state_y nstate))) 
-                        else ()
-                                 
-                val _ = if (i<{{group.extsample}}) andalso Real.>(state_indep nstate, ct)
-                        then putStrLn (!{{pop.name}}_ext_out)
-                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
-                                       (showRealArray (state_ext nstate)) ^ ", " ^
-                                       (showRealArray (state_extev nstate)))
-                        else ()
-
-                val _ = if (i<{{group.evsample}}) andalso Real.>(state_indep nstate, ct)
-                        then putStrLn (!{{pop.name}}_event_out)
-                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
-                                       (showRealArray (state_event nstate)))
-                        else ()
-
-                val nstate = if state_root nstate then {{pop.name}}_f nstate else nstate
-            in
-                if Real.>=(state_indep nstate, tend)
-                then (nstate::nstates, spikes)
-                else 
-                    let
-                        val h' = Real.max(Real.min(tend-(state_indep nstate), state_h nstate), 1e~6)
-                        val nstate'  = update_h (nstate, h')
-                        val nstate'' = {{pop.name}}_f nstate'
-                        val hasevent = Real.>= (event_sub(nstate'',0), 0.0)
-                    in
-                        recur (nstate'',
-                               if hasevent
-                               then ((i+{{pop.name}}_n0,state_indep nstate'',1.0))::spikes 
-                               else spikes,
-                               state_indep nstate'')
-                    end
-            end
-    in 
-        recur (input', spikes, 0.0)
-    end
+        val (nstate', spikes') = recur (input, spikes)
+        val nstate' = if state_root nstate' then (log nstate'; {{pop.name}}_f nstate') else nstate'
+ in
+     (nstate'::nstates, spikes')
+ end
 
 {% endfor %}
 

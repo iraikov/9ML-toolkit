@@ -59,7 +59,7 @@ struct
       let
           val i = ref 0
           val sample = Array.array (n+1, dflt)
-          val update = Array.update
+          val update = Unsafe.Array.update
       in
           (sample,
            fn (x) =>
@@ -78,7 +78,7 @@ struct
       else
           init
 
-  val getindex = Array.sub
+  val getindex = Unsafe.Array.sub
 
 
   val RandomInit = RandomMTZig.fromEntropy
@@ -256,40 +256,24 @@ struct
   fun {{pop.name}}_run (Wmap,n0) (i,input,(nstates,spikes)) =
     let 
 
-        fun log () =
+        fun log (nstate) =
             let
                 val _ = if (i<{{group.statesample}})
-                        then (if state_root input 
-                              then putStrLn TextIO.stdOut
-                                            ("Input root: " ^ (Int.toString (i)) ^ ", " ^ (showReal (state_indep input)) ^ ", " ^
-                                             (showRealArray (state_y input)))
-                              else ())
-                        else ()
-                                 
-                val _ = if (i<{{group.statesample}})
-                        then (if state_root input 
-                              then putStrLn TextIO.stdOut
-                                            ("Input root: input' = " ^ (Int.toString (i)) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
-                                             (showRealArray (state_y input')))
-                              else ())
-                        else ()
-                                 
-                val _ = if (i<{{group.statesample}})
                         then putStrLn (!{{pop.name}}_state_out)
-                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
-                                       (showRealArray (state_y input'))) 
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
+                                       (showRealArray (state_y nstate))) 
                         else ()
                                  
                 val _ = if (i<{{group.extsample}})
                         then putStrLn (!{{pop.name}}_ext_out)
-                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
-                                       (showRealArray (state_ext input')) ^ ", " ^
-                                       (showRealArray (state_extev input')))
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
+                                       (showRealArray (state_ext nstate)) ^ ", " ^
+                                       (showRealArray (state_extev nstate)))
                         else ()
                 val _ = if (i<{{group.evsample}})
                         then putStrLn (!{{pop.name}}_event_out)
-                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep input')) ^ ", " ^
-                                       (showRealArray (state_event input')))
+                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
+                                       (showRealArray (state_event nstate)))
                         else ()
             in
                 ()
@@ -302,9 +286,11 @@ struct
 {% endif %}
 *)
 
-        val update = Array.update
-        val ext_i = state_ext input'
-        val extev_i = state_extev input'
+
+        val update = Unsafe.Array.update
+        val ext_i = state_ext input
+        val extev_i = state_extev input
+
         val _ = 
             List.foldl
                 (fn (port, index) => 
@@ -326,25 +312,24 @@ struct
                 0
                 {{pop.name}}_ext_ports
 
-        val nstate = {{pop.name}}_f input'
+        val _ = log(input)
 
-        val _ = if (i<{{group.statesample}})
-                then (if state_root nstate 
-                     then putStrLn TextIO.stdOut
-                                   ("Nstate root: " ^ (Int.toString (i)) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
-                                    (showRealArray (state_y nstate)))
-                      else ())
-                else ()
+        fun recur (nstate, spikes) = 
+            let
+                val spikes' = if (Real.>= (event_sub(nstate,0), 0.0))
+                              then ((i+{{pop.name}}_n0,1.0))::spikes 
+                              else spikes
+            in
+                if state_root nstate 
+                then (log nstate; recur ({{pop.name}}_f nstate, spikes'))
+                else (nstate, spikes')
+            end
 
-        fun recur nstate = if state_root nstate then recur ({{pop.name}}_f nstate) else nstate
-        val input' = recur input
-
+        val (nstate,spikes) = recur ({{pop.name}}_f input, spikes)
 
     in 
-        (nstate::nstates, 
-         if (Real.>= (event_sub(nstate,0), 0.0))
-         then ((i+{{pop.name}}_n0,1.0))::spikes 
-         else spikes)
+        (nstate::nstates, spikes)
+         
     end
 
 {% endfor %}
@@ -572,7 +557,7 @@ struct
                                   [
 {% call postorder (sp,tp) %}          (let
                                           val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
-                                          val update = Array.update
+                                          val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num}},
@@ -599,7 +584,7 @@ struct
                                   [
 {% call preorder (sp,tp) %}          (let
                                           val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
-                                          val update = Array.update
+                                          val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num}},

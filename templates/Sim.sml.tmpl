@@ -73,10 +73,10 @@ let
     fun netrun (DQ,state_vector) =
         let 
             val t = ftime state_vector
-            val prio = {{group.name}}.TEventPriority.delayPriority (t+{{group.name}}.h)
+            val prio = {{group.name}}.TEventPriority.delayPriority t
 
             val (I,DQ') = {{group.name}}.TEQ.nextEventsFold 
-                                        (fn (prio',_) => prio' < prio,
+                                        (fn (prio',_) => prio' <= prio,
                                          fn (prio,(port,w),ax) => 
                                             let val t = {{group.name}}.TEventPriority.priorityDelay (prio, {{group.name}}.h)
                                             in
@@ -84,7 +84,7 @@ let
                                             end,
                                          IntMap.empty,
                                          DQ)
-            
+
             val (state_vector_i, spikes_i) = frun I state_vector
 
             val t_i = ftime state_vector_i
@@ -133,9 +133,9 @@ let
                     in
                         (#2(ListPair.foldl
                                 (fn(del: real,w: real IntMap.map,(port,dq)) => 
-                                    let val t' = Real.+ (t,del)
+                                    let val tev = Real.+ (t_i,del)
                                     in
-                                        (port+1, {{group.name}}.TEQ.addEvent ((t', (port,w)), dq))
+                                        (port+1, {{group.name}}.TEQ.addEvent ((tev, (port,w)), dq))
                                     end)
                                 (0, DQ') 
                                 DW))

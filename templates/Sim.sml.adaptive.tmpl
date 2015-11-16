@@ -108,7 +108,7 @@ let
                                          SparseMatrix.sliceFoldi 
                                              (fn (j,x,dq) => 
                                                  let 
-                                                     val tev = Real.+ (t,del)
+                                                     val tev = Real.+ (t_i,del)
                                                  in
                                                      {{group.name}}.TEQ.addEvent ((tev, (j,port,x)), dq)
                                                  end)
