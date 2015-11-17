@@ -966,7 +966,7 @@
                (let ((populations (car ax))
                      (order (cadr ax)))
                  (let* ((name (sxml:attr node 'name))
-                        (prototype-name ($ (sprintf "~A_~A" name (sxml:text (sxml:kidn* 'nml:Reference (sxml:kidn* 'nml:Cell node))))))
+                        (prototype-name ($ (sxml:text (sxml:kidn* 'nml:Reference (sxml:kidn* 'nml:Cell node)))))
                         (size (eval-ul-property group-name (sxml:kidn* 'nml:Number node)))
                         (size-val (inexact->exact (cdr size))))
                    (list
@@ -1290,7 +1290,7 @@
                      (append (salt:astdecls-decls model-eqset) response-dynamics))))
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
-                (let ((port (open-output-file (make-pathname source-directory (sprintf "~A_~A.sml" population node-name)))))
+                (let ((port (open-output-file (make-pathname source-directory (sprintf "~A.sml" node-name)))))
                   (salt:codegen-ODE/ML sim out: port solver: (ivp-simulation-method) libs: '(random))
                   (close-output-port port))
                 ))
@@ -1320,7 +1320,7 @@
                 (match-lambda
                  ((population node-name . responses)
                   (make-pathname source-directory
-                                 (sprintf "~A_~A.sml" population node-name))))
+                                 (sprintf "~A.sml" node-name))))
                 (population-prototype-env))))
           (make/proc
            `((,group-path 
@@ -1383,7 +1383,12 @@
           (list exec-path) )
         ))
     ))
-  
+
+
+(define (rename-component component name)
+  (let ((kids (sxml:kids component)))
+    `(nml:Component (@ (name ,name)) . ,kids)))
+
 
 (define (resolve-ul-components node)
 
@@ -1398,8 +1403,9 @@
                               (number (sxml:kidn 'nml:Number node))
                               (cell-component ((sxpath `(// nml:Cell nml:Component)) node)))
                           (if (null? cell-component) node
-                              (let ((component-name (sxml:attr (sxml-singleton cell-component) 'name)))
-                                (components-list (cons (sxml-singleton cell-component) (components-list)))
+                              (let ((component-name (sprintf "~A_~A" name (sxml:attr (sxml-singleton cell-component) 'name))))
+                                (components-list (cons (rename-component (sxml-singleton cell-component) component-name)
+                                                       (components-list)))
                                 `(nml:Population (@ (name ,name))
                                                  ,number (nml:Cell (nml:Reference ,component-name)))
                                 ))
@@ -1420,12 +1426,6 @@
                                (plasticity ((sxpath `(// nml:Plasticity)) node))
                                (plasticity-component ((sxpath `(// nml:Plasticity nml:Component)) node))
                               )
-                          (if (not (null? connectivity-component))
-                              (components-list (cons (sxml-singleton connectivity-component) (components-list))))
-                          (if (not (null? response-component))
-                              (components-list (cons (sxml-singleton response-component) (components-list))))
-                          (if (not (null? plasticity-component))
-                              (components-list (cons (sxml-singleton plasticity-component) (components-list))))
                           
                           `(nml:Projection (@ (name ,name))
                                            ,(sxml-singleton src)
@@ -1433,18 +1433,24 @@
                                            ,(sxml-singleton del)
                                            ,(if (null? connectivity-component)
                                                 (sxml-singleton connectivity)
-                                                (let ((component-name (sxml:attr (sxml-singleton connectivity-component) 'name)))
+                                                (let ((component-name (sprintf "~A_~A" name (sxml:attr (sxml-singleton connectivity-component) 'name))))
+                                                  (components-list (cons (rename-component (sxml-singleton connectivity-component) component-name)
+                                                                         (components-list)))
                                                   `(nml:Connectivity (nml:Reference ,component-name)
                                                                      . ,((select-kids (lambda (x) (not (eq? (car x) 'nml:Component)))) connectivity))))
                                            ,(if (null? response-component)
                                                 (sxml-singleton response)
-                                                (let ((component-name (sxml:attr (sxml-singleton response-component) 'name)))
+                                                (let ((component-name (sprintf "~A_~A" name (sxml:attr (sxml-singleton response-component) 'name))))
+                                                  (components-list (cons (rename-component (sxml-singleton response-component) component-name) 
+                                                                         (components-list)))
                                                   `(nml:Response (nml:Reference ,component-name)
                                                                  . ,((select-kids (lambda (x) (not (eq? (car x) 'nml:Component)))) response))
                                                   ))
                                            ,(if (null? plasticity-component)
                                                 (sxml-singleton plasticity)
-                                                (let ((component-name (sxml:attr (sxml-singleton plasticity-component) 'name)))
+                                                (let ((component-name (sprintf "~A_~A" name (sxml:attr (sxml-singleton plasticity-component) 'name))))
+                                                  (components-list (cons (rename-component (sxml-singleton plasticity-component) component-name)
+                                                                         (components-list)))
                                                   `(nml:Plasticity (nml:Reference ,component-name)
                                                                    . ,((select-kids (lambda (x) (not (eq? (car x) 'nml:Component)))) plasticity))))
                                            )
@@ -1465,6 +1471,17 @@
 
             ))
     ))
+
+           
+(define (find-duplicates lis)
+  (let recur ((xs lis) (res '()))
+    (if (null? xs) res
+        (let ((x (car xs)) (xtail (cdr xs)))
+          (let-values ([(xlis ylis) (partition (lambda (y) (equal? x y)) lis)])
+            (recur xtail (if (> (length xlis) 1) (cons x res) res))
+            ))
+        ))
+  )
 
 
 (define (main options operands)
@@ -1513,16 +1530,16 @@
                 
                 (dd (d "ul-properties = ~A~%" ul-properties))
                 
-                (ul-components
-                 (append ((sxpath `(// (*or* nml:Component nml:component)))  model-sxml)
-                         component-env))
-                
-                (dd (begin (d "ul-components = ~%") (pp ul-components (current-error-port))))
-                
                 (ul-component-eval-env
-                 (map eval-ul-component ul-components))
+                 (map eval-ul-component component-env))
                 
                 )
+           
+           (let ((names (map car ul-component-eval-env)))
+             (let ((dups (find-duplicates names)))
+               (if (not (null? dups))
+                   (error '9ML-network "Duplicate component names found" dups))
+               ))
            
            (d "ul-component-eval-env = ~%") (pp ul-component-eval-env (current-error-port))
            (eval-ul-group operand ul-properties `(nml:Group . ,ul-sxml) ul-component-eval-env)
