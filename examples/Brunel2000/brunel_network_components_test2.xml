@@ -71,6 +71,46 @@
       <nineml:SingleValue>1.5</nineml:SingleValue>
     </nineml:Delay>
   </nineml:Projection>
+  <nineml:Projection name="Excitation2">
+    <nineml:Source>
+      <nineml:Reference>Ext2</nineml:Reference>
+    </nineml:Source>
+    <nineml:Destination>
+      <nineml:Reference>Exc</nineml:Reference>
+      <nineml:FromResponse send_port="Isyn" receive_port="Isyn"/>
+    </nineml:Destination>
+    <nineml:Connectivity>
+      <nineml:Component name="AllToAll">
+        <nineml:Definition url="AllToAll.xml">AllToAll</nineml:Definition>
+      </nineml:Component>
+    </nineml:Connectivity>
+    <nineml:Response>
+      <nineml:Component name="syn">
+        <nineml:Definition url="AlphaPSR.xml">AlphaPSR</nineml:Definition>
+        <nineml:Property units="ms" name="tau_syn">
+          <nineml:SingleValue>0.1</nineml:SingleValue>
+        </nineml:Property>
+        <nineml:Initial units="nA" name="A">
+          <nineml:SingleValue>0.0</nineml:SingleValue>
+        </nineml:Initial>
+        <nineml:Initial units="nA" name="B">
+          <nineml:SingleValue>0.0</nineml:SingleValue>
+        </nineml:Initial>
+      </nineml:Component>
+      <nineml:FromPlasticity send_port="weight" receive_port="q"/>
+    </nineml:Response>
+    <nineml:Plasticity>
+      <nineml:Component name="ExcitatoryPlasticity">
+        <nineml:Definition url="StaticConnection.xml">StaticConnection</nineml:Definition>
+        <nineml:Initial units="nA" name="weight">
+          <nineml:SingleValue>2.4</nineml:SingleValue>
+        </nineml:Initial>
+      </nineml:Component>
+    </nineml:Plasticity>
+    <nineml:Delay units="ms">
+      <nineml:SingleValue>1.5</nineml:SingleValue>
+    </nineml:Delay>
+  </nineml:Projection>
   <nineml:Unit symbol="nA" dimension="current" power="-9"/>
   <nineml:Unit symbol="mV" dimension="voltage" power="-3"/>
   <nineml:Dimension i="-2" t="-3" m="1" l="2" name="resistance"/>
@@ -85,6 +125,20 @@
         </nineml:Property>
         <nineml:Initial units="ms" name="t_next">
           <nineml:SingleValue>0.5</nineml:SingleValue>
+        </nineml:Initial>
+      </nineml:Component>
+    </nineml:Cell>
+  </nineml:Population>
+  <nineml:Population name="Ext2">
+    <nineml:Number>1</nineml:Number>
+    <nineml:Cell>
+      <nineml:Component name="stim">
+        <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
+        <nineml:Property units="Hz" name="rate">
+          <nineml:SingleValue>50.0</nineml:SingleValue>
+        </nineml:Property>
+        <nineml:Initial units="ms" name="t_next">
+          <nineml:SingleValue>0.51</nineml:SingleValue>
         </nineml:Initial>
       </nineml:Component>
     </nineml:Cell>
