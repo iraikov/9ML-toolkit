@@ -60,30 +60,78 @@ fun printProjectionSummary S k =
             end)
         S
 
+{% if group.usempi %}
+fun index_foldli (a, b, f, init) =
+    if a <= b then
+        index_foldri (a+1, b, f, f (a, init))
+    else
+        init
+
+fun spikeGatherv (myrank, root, data) =
+    (if (myrank = root)
+     then (let 
+               val (a,rlens) = MPI.Collective.recvGatherv (data, 0, MPI.Comm.World)
+           in
+               SOME a
+           end)
+     else (let 
+               val status = MPI.Collective.sendGatherv (data, 0, MPI.Comm.World) 
+           in
+               NONE
+           end);
+     MPI.Barrier (MPI.Comm.World))
+{% endif %}
 
 
-fun start (tmax, N, S, D, DQ, Pn, initial_vector, frun, ftime, fspikes, finfo, out) =
+fun start (tmax, N, S, D, DQ, initial_vector, frun, ftime, fspikes, finfo, out) =
 
 let
     val sub = Real64Array.sub
     val isub = IntArray.sub
     val update = Real64Array.update
 
+{% if group.usempi %}
+    val myrank = {{group.name}}.myrank
+    val mysize = {{group.name}}.mysize
+{% endif %}
         
     fun netrun (DQ,state_vector) =
         let 
             val t = ftime state_vector
             val prio = {{group.name}}.TEventPriority.delayPriority t
 
-            val (I,DQ') = {{group.name}}.TEQ.nextEventsFold 
-                                        (fn (prio',_) => prio' <= prio,
-                                         fn (prio,(port,w),ax) => 
-                                            let val t = {{group.name}}.TEventPriority.priorityDelay (prio, {{group.name}}.h)
-                                            in
-                                                IntMap.insert (ax,port,(t,w))
-                                            end,
-                                         IntMap.empty,
-                                         DQ)
+
+{% if group.usempi %}
+            val (Ilocal,DQ') = 
+                {{group.name}}.TEQ.nextEventsFold 
+                              (fn (prio',_) => prio' <= prio,
+                               fn (prio,(port,w),ax) => 
+                                  let val t = {{group.name}}.TEventPriority.priorityDelay (prio, {{group.name}}.h)
+                                  in
+                                      IntMap.insert (ax,port,(t,w))
+                                  end,
+                               IntMap.empty,
+                               DQ)
+
+            val I = valOf(index_foldli (0, mysize, 
+                                        fn (i,ax) => 
+                                           if i=myrank 
+                                           then spikeGatherv(myrank, i, Ilocal)
+                                           else (spikeGatherv(myrank, i, Ilocal); ax),
+                                        NONE))
+
+{% else %}
+            val (I,DQ') = 
+                {{group.name}}.TEQ.nextEventsFold 
+                              (fn (prio',_) => prio' <= prio,
+                               fn (prio,(port,w),ax) => 
+                                  let val t = {{group.name}}.TEventPriority.priorityDelay (prio, {{group.name}}.h)
+                                  in
+                                      IntMap.insert (ax,port,(t,w))
+                                  end,
+                               IntMap.empty,
+                               DQ)
+{% endif %}
 
             val (state_vector_i, spikes_i) = frun I state_vector
 
@@ -187,7 +235,7 @@ fun main (name,args) =
                      ]);
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")
-                val (_,t) = timing (fn () => start ({{duration}}, N, S, D, DQ, Pn, initial, frun, ftime, fspikes, finfo, out))
+                val (_,t) = timing (fn () => start ({{duration}}, N, S, D, DQ, initial, frun, ftime, fspikes, finfo, out))
             in
                 putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
             end;
@@ -216,7 +264,8 @@ fun main (name,args) =
 {% endif %}
 {% endfor %}
 
-           ()
+        ()
+
         end)
     end
     
@@ -227,5 +276,10 @@ val _ = let val name = CommandLine.name()
 	    val args = CommandLine.arguments()
 	    val env  = Posix.ProcEnv.environ()
 	in
-	    Sim_{{group.name}}.main (name, args)
+	    Sim_{{group.name}}.main (name, args);
+{% if group.usempi %}
+           MPI.Finalize ()
+{% else %}
+           ()
+{% endif %}
 	end
