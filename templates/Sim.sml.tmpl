@@ -141,6 +141,34 @@ let
                 
             val _   = finfo (state_vector_i, out)
                               
+{% if group.usempi %}
+            val W''  = 
+                if (List.null spike_i)
+                then NONE
+                else SOME 
+                         (List.map
+                              (fn (W) =>
+                                  let
+                                      val T = Real64Array.array (N, 0.0)
+                                  in
+                                      (List.app
+                                           (fn (i,nv) => 
+                                               let
+                                                   val sl = SparseMatrix.slice (W,1,i)
+                                               in
+                                                   SparseMatrix.sliceAppi 
+                                                       (fn (j,x) => 
+                                                           let 
+                                                               val lid = MPI.Utils.lid (j, mysize, myrank)
+                                                           in
+                                                               update (T,lid,Real.+ (Real.* (nv,x), sub(T,lid)))
+                                                           end)
+                                                       sl
+                                               end)
+                                           spike_i; T)
+                                  end)
+                              S)
+{% else %}
             val W''  = 
                 if (List.null spike_i)
                 then NONE
@@ -165,6 +193,7 @@ let
                                            IntMap.empty T)
                                   end)
                               S)
+{% endif %}
                               
             val _ = 
                 if not (List.null log_spike_i)
@@ -177,7 +206,11 @@ let
                 case W'' of
                     SOME W => 
                     let
+{% if group.usempi %}
+                        val DW: (real list * (Real64Array.array list) list) = (D,W)
+{% else %}
                         val DW: (real list * (real IntMap.map) list) = (D,W)
+{% endif %}
                     in
                         (#2(ListPair.foldl
                                 (fn(del: real,w: real IntMap.map,(port,dq)) => 
