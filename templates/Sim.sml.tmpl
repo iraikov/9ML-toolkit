@@ -61,11 +61,10 @@ fun printProjectionSummary S k =
         S
 
 {% if group.usempi %}
-fun index_foldli (a, b, f, init) =
-    if a <= b then
-        index_foldri (a+1, b, f, f (a, init))
-    else
-        init
+fun index_foreach (a, b, f) =
+    if a <= b 
+    then (f a; index_foreach (a+1, b, f))
+    else ()
 
 fun spikeGatherv (myrank, root, data) =
     (if (myrank = root)
@@ -86,9 +85,9 @@ fun spikeGatherv (myrank, root, data) =
 fun start (tmax, N, S, D, DQ, initial_vector, frun, ftime, fspikes, finfo, out) =
 
 let
-    val sub = Real64Array.sub
-    val isub = IntArray.sub
-    val update = Real64Array.update
+    val sub = Unsafe.Real64Array.sub
+    val isub = Unsafe.IntArray.sub
+    val update = Unsafe.Real64Array.update
 
 {% if group.usempi %}
     val myrank = {{group.name}}.myrank
@@ -102,23 +101,23 @@ let
 
 
 {% if group.usempi %}
-            val (Ilocal,DQ') = 
+            val (Ilst,DQ') = 
                 {{group.name}}.TEQ.nextEventsFold 
                               (fn (prio',_) => prio' <= prio,
                                fn (prio,(port,w),ax) => 
                                   let val t = {{group.name}}.TEventPriority.priorityDelay (prio, {{group.name}}.h)
                                   in
-                                      IntMap.insert (ax,port,(t,w))
-                                  end,
-                               IntMap.empty,
-                               DQ)
+                                      (port,(t,w)) :: ax
+                                  end,[],DQ)
 
-            val I = valOf(index_foldli (0, mysize, 
-                                        fn (i,ax) => 
-                                           if i=myrank 
-                                           then spikeGatherv(myrank, i, Ilocal)
-                                           else (spikeGatherv(myrank, i, Ilocal); ax),
-                                        NONE))
+            Ivec format: port numElem gid0 weight0 ... gidN weightN
+            val I = index_foreach
+                        (0, mysize, 
+                         fn (i) => 
+                            if i=myrank 
+                            then spikeGatherv(myrank, i, Ivec)
+                            else (spikeGatherv(myrank, i, Ivec)))
+
 
 {% else %}
             val (I,DQ') = 
@@ -149,7 +148,7 @@ let
                          (List.map
                               (fn (W) =>
                                   let
-                                      val T = Real64Array.array (N, 0.0)
+                                      val Ts = Array.tabulate(mysize, fn(i) => DynArray.array (N, 0.0))
                                   in
                                       (List.app
                                            (fn (i,nv) => 
@@ -158,14 +157,15 @@ let
                                                in
                                                    SparseMatrix.sliceAppi 
                                                        (fn (j,x) => 
-                                                           let 
-                                                               val lid = MPI.Utils.lid (j, mysize, myrank)
+                                                           let
+                                                               val T = Unsafe.Array.sub(Ts,Int.mod(j, mysize))
                                                            in
-                                                               update (T,lid,Real.+ (Real.* (nv,x), sub(T,lid)))
+                                                               update (T, j, Real.+ (Real.* (nv,x), sub(T,j)))
                                                            end)
                                                        sl
                                                end)
-                                           spike_i; T)
+                                           spike_i; 
+                                       Ts)
                                   end)
                               S)
 {% else %}
@@ -207,7 +207,7 @@ let
                     SOME W => 
                     let
 {% if group.usempi %}
-                        val DW: (real list * (Real64Array.array list) list) = (D,W)
+                        val DW: (real list * (DynArray.array array) list) = (D,W)
 {% else %}
                         val DW: (real list * (real IntMap.map) list) = (D,W)
 {% endif %}
