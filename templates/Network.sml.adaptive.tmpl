@@ -263,7 +263,9 @@ struct
                      optApply {{pop.value.prototype.name}}.posfun p,
                      optApply {{pop.value.prototype.name}}.negfun p,
                      optApply {{pop.value.prototype.name}}.dposfun p,
-                     {{pop.value.prototype.name}}.regfun)
+                     {{pop.value.prototype.name}}.regfun,
+                     {{pop.value.prototype.name}}.alloc ({{pop.value.prototype.name}}.statelen ({{pop.value.prototype.name}}.initfun(p) ())))
+
       end
 
   fun {{pop.name}}_run (tend,Wmap,n0) (i,input,(nstates,spikes)) =
