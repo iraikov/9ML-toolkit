@@ -99,10 +99,12 @@ struct
           Vector.tabulate (N, fn (i) => 
                                  D.condApply condfun
                                              (D.RegimeState (0.0, initial(), evinitial (), dinitial' (), rinitial (), 
-                                                             extinitial(), extevinitial(), h0, false)))
+                                                             extinitial(), extevinitial(), h0, false),
+                                              evinitial ()))
       end
    |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,h0) =
-      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(), evinitial (), extinitial (), extevinitial (), h0, false)))
+      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(), evinitial (), extinitial (), extevinitial (), h0, false),
+                                                         evinitial ()))
    |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial,h0) =
       Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(), extinitial(), extevinitial(), h0))
    |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial,_) =
@@ -264,8 +266,9 @@ struct
                      optApply {{pop.value.prototype.name}}.negfun p,
                      optApply {{pop.value.prototype.name}}.dposfun p,
                      {{pop.value.prototype.name}}.regfun,
-                     {{pop.value.prototype.name}}.alloc ({{pop.value.prototype.name}}.statelen ({{pop.value.prototype.name}}.initfun(p) ())))
-
+                     {{pop.value.prototype.name}}.alloc,
+                     {{pop.value.prototype.name}}.n,
+                     case {{pop.value.prototype.name}}.condfun of SOME _ => (SOME {{pop.value.prototype.name}}.nev) | _ => NONE)
       end
 
   fun {{pop.name}}_run (tend,Wmap,n0) (i,input,(nstates,spikes)) =
@@ -332,14 +335,14 @@ struct
                 (let 
                     val h' = Real.max(Real.min(tend-(state_indep nstate), state_h nstate), 1e~6)
                     val nstate'  = {{pop.name}}_f (update_h (nstate, h'))
-                    val hasevent = Real.>= (event_sub(nstate',0), 0.0)
+                    val nstate'' = if state_root nstate' then (log nstate'; {{pop.name}}_f nstate') else nstate'
+                    val hasevent = Real.>= (event_sub(nstate'',0), 0.0)
                 in
-                    recur (nstate',
+                    recur (nstate'',
                            if hasevent then ((i+{{pop.name}}_n0,state_indep nstate',1.0))::spikes else spikes)
                 end)
 
         val (nstate', spikes') = recur (input, spikes)
-        val nstate' = if state_root nstate' then (log nstate'; {{pop.name}}_f nstate') else nstate'
  in
      (nstate'::nstates, spikes')
  end
