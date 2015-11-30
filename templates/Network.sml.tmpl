@@ -98,10 +98,12 @@ struct
           Vector.tabulate (N, fn (i) => 
                                  D.condApply condfun
                                              (D.RegimeState (0.0, initial(), evinitial (), dinitial' (), rinitial (), 
-                                                             extinitial(), extevinitial(), false)))
+                                                             extinitial(), extevinitial(), false),
+                                              evinitial()))
       end
    |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
-      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(), evinitial (), extinitial (), extevinitial (), false)))
+      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(), evinitial (), extinitial (), extevinitial (), false),
+                                                         evinitial ()))
    |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial) =
       Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(), extinitial(), extevinitial()))
    |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial) =
@@ -144,6 +146,13 @@ struct
 
   fun event_sub (D.RegimeState (x, y, ev, d, r, ext, extev, root), i) =
       getindex(ev, i)
+   |  event_sub (D.EventState (x, y, ev, ext, extev, root), i) =
+      getindex(ev, i)
+   |  event_sub (D.ContState (x, y, ext, extev), i) =
+      (putStrLn TextIO.stdOut "event_sub:"; raise Domain)
+
+  fun event_clear (D.RegimeState (x, y, ev, d, r, ext, extev, root), i) =
+      setindex(ev, i, )
    |  event_sub (D.EventState (x, y, ev, ext, extev, root), i) =
       getindex(ev, i)
    |  event_sub (D.ContState (x, y, ext, extev), i) =
@@ -249,7 +258,11 @@ struct
                      optApply {{pop.value.prototype.name}}.posfun p,
                      optApply {{pop.value.prototype.name}}.negfun p,
                      optApply {{pop.value.prototype.name}}.dposfun p,
-                     {{pop.value.prototype.name}}.regfun,h)
+                     {{pop.value.prototype.name}}.regfun,
+                     {{pop.value.prototype.name}}.alloc,
+                     {{pop.value.prototype.name}}.n,
+                     case {{pop.value.prototype.name}}.condfun of SOME _ => (SOME {{pop.value.prototype.name}}.nev) | _ => NONE,
+                     h)
       end
 
 
@@ -315,15 +328,15 @@ struct
         val _ = log(input)
 
         fun recur (nstate, spikes) = 
-            let
-                val spikes' = if (Real.>= (event_sub(nstate,0), 0.0))
-                              then ((i+{{pop.name}}_n0,1.0))::spikes 
-                              else spikes
-            in
-                if state_root nstate 
-                then (log nstate; recur ({{pop.name}}_f nstate, spikes'))
-                else (nstate, spikes')
-            end
+            if state_root nstate 
+            then (log nstate; recur ({{pop.name}}_f nstate, spikes))
+            else (let 
+                     val spikes' = if (Real.>= (event_sub(nstate,0), 0.0))
+                                   then ((i+{{pop.name}}_n0,1.0))::spikes 
+                                   else spikes
+                 in
+                     (nstate, spikes')
+                 end)
 
         val (nstate,spikes) = recur ({{pop.name}}_f input, spikes)
 
