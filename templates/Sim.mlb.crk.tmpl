@@ -1,0 +1,39 @@
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/basis/mlton.mlb
+$(RK_LIB)/rk.mlb
+$(RK_LIB)/crk.mlb
+$(RANDMTZIG_LIB)/randmtzig.mlb
+$(DYNAMICS_LIB)/dynamics.mlb
+$(TENSOR_LIB)/tensor.mlb
+$(TENSOR_LIB)/sparse.mlb
+$(NINEML_LIB)/priority.mlb
+$(NINEML_LIB)/IntMap.sml
+
+structure Dynamics = FunctionalHybridDynamics2
+
+{% for pop in dict (group.populations) %}
+local
+    {{pop.value.prototype.name}}.sml
+in
+    structure {{pop.value.prototype.name}} = Model
+end
+{% endfor %}
+{% if group.plastypes %}{% for plas in dict (group.plastypes) %}
+local
+    {{plas.name}}.sml
+in
+    structure {{plas.name}} = Model
+end
+{% endfor %}{% endif %}
+{% if group.conntypes %}{% for conn in dict (group.conntypes) %}
+{% if conn.value.sysFn %}
+local
+    {{conn.value.sysFn}}_solver.sml
+in
+    structure Model_{{conn.name}} = Model
+end
+{% endif %}
+{% endfor %}{% endif %}
+
+{{group.name}}.sml
+Sim_{{group.name}}.sml
