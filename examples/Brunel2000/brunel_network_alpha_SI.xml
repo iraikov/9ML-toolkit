@@ -51,7 +51,7 @@
       <nineml:Component name="syn">
         <nineml:Definition url="AlphaPSR.xml">AlphaPSR</nineml:Definition>
         <nineml:Property units="ms" name="tau_syn">
-          <nineml:SingleValue>0.5</nineml:SingleValue>
+          <nineml:SingleValue>0.1</nineml:SingleValue>
         </nineml:Property>
         <nineml:Initial units="nA" name="A">
           <nineml:SingleValue>0.0</nineml:SingleValue>
@@ -122,7 +122,7 @@
      <nineml:Component name="syn">
         <nineml:Definition url="AlphaPSR.xml">AlphaPSR</nineml:Definition>
         <nineml:Property units="ms" name="tau_syn">
-          <nineml:SingleValue>0.5</nineml:SingleValue>
+          <nineml:SingleValue>0.1</nineml:SingleValue>
         </nineml:Property>
         <nineml:Initial units="nA" name="A">
           <nineml:SingleValue>0.0</nineml:SingleValue>
@@ -191,7 +191,7 @@
       <nineml:Component name="syn">
         <nineml:Definition url="AlphaPSR.xml">AlphaPSR</nineml:Definition>
         <nineml:Property units="ms" name="tau_syn">
-          <nineml:SingleValue>0.5</nineml:SingleValue>
+          <nineml:SingleValue>0.1</nineml:SingleValue>
         </nineml:Property>
         <nineml:Initial units="nA" name="A">
           <nineml:SingleValue>0.0</nineml:SingleValue>

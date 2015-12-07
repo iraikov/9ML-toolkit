@@ -98,63 +98,63 @@ struct
           Vector.tabulate (N, fn (i) => 
                                  D.condApply condfun
                                              (D.RegimeState (0.0, initial(), 0.0, evinitial (), dinitial' (), rinitial (), 
-                                                             extinitial(), extevinitial(), false),
+                                                             extinitial(), extevinitial(), initial(), false),
                                               evinitial()))
       end
    |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
-      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(), 0.0, evinitial (), extinitial (), extevinitial (), false),
+      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(), 0.0, evinitial (), extinitial (), extevinitial (), initial(), false),
                                                          evinitial ()))
    |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial) =
-      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(), extinitial(), extevinitial()))
+      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(), extinitial(), extevinitial(), initial()))
    |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
-  fun state_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root), i) =
+  fun state_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root), i) =
       getindex(y, i)
-   |  state_sub (D.EventState (x, y, xev, ev, ext, extev, root), i) =
+   |  state_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, root), i) =
       getindex(y, i)
-   |  state_sub (D.ContState (x, y, ext, extev), i) =
+   |  state_sub (D.ContState (x, y, ext, extev, ynext), i) =
       getindex(y, i)
 
-  fun state_y (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root)) = y
-   |  state_y (D.EventState (x, y, xev, ev, ext, extev, root)) = y
-   |  state_y (D.ContState (x, y, ext, extev)) = y
+  fun state_y (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = y
+   |  state_y (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = y
+   |  state_y (D.ContState (x, y, ext, extev, ynext)) = y
 
-  fun state_indep (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root)) = x
-   |  state_indep (D.EventState (x, y, xev, ev, ext, extev, root)) = x
-   |  state_indep (D.ContState (x, y, ext, extev)) = x
+  fun state_indep (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = x
+   |  state_indep (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = x
+   |  state_indep (D.ContState (x, y, ext, extev, ynext)) = x
 
-  fun state_ext (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root)) = ext
-   |  state_ext (D.EventState (x, y, xev, ev, ext, extev, root)) = ext
-   |  state_ext (D.ContState (x, y, ext, extev)) = ext
+  fun state_ext (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = ext
+   |  state_ext (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = ext
+   |  state_ext (D.ContState (x, y, ext, extev, ynext)) = ext
 
-  fun state_extev (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root)) = extev
-   |  state_extev (D.EventState (x, y, xev, ev, ext, extev, root)) = extev
-   |  state_extev (D.ContState (x, y, ext, extev)) = extev
+  fun state_extev (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = extev
+   |  state_extev (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = extev
+   |  state_extev (D.ContState (x, y, ext, extev, ynext)) = extev
 
-  fun state_regime (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root)) = r
-   |  state_regime (D.EventState (x, y, xev, ev, ext, extev, root)) = Array.fromList []
-   |  state_regime (D.ContState (x, y, ext, extev)) = Array.fromList[]
+  fun state_regime (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = r
+   |  state_regime (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = Array.fromList []
+   |  state_regime (D.ContState (x, y, ext, extev, ynext)) = Array.fromList[]
 
-  fun state_event (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root)) = ev
-   |  state_event (D.EventState (x, y, xev, ev, ext, extev, root)) = ev
-   |  state_event (D.ContState (x, y, ext, extev)) = Array.fromList []
+  fun state_event (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = ev
+   |  state_event (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = ev
+   |  state_event (D.ContState (x, y, ext, extev, ynext)) = Array.fromList []
 
-  fun ext_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root), i) = getindex(ext, i)
-   |  ext_sub (D.EventState (x, y, xev, ev, ext, extev, root), i) = getindex(ext, i)
-   |  ext_sub (D.ContState (x, y, ext, extev), i) = getindex(ext, i)
+  fun ext_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root), i) = getindex(ext, i)
+   |  ext_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, root), i) = getindex(ext, i)
+   |  ext_sub (D.ContState (x, y, ext, extev, ynxt), i) = getindex(ext, i)
 
-  fun event_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root), i) =
+  fun event_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root), i) =
       getindex(ev, i)
-   |  event_sub (D.EventState (x, y, xev, ev, ext, extev, root), i) =
+   |  event_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, root), i) =
       getindex(ev, i)
-   |  event_sub (D.ContState (x, y, ext, extev), i) =
+   |  event_sub (D.ContState (x, y, ext, extev, ynext), i) =
       (putStrLn TextIO.stdOut "event_sub:"; raise Domain)
 
 
-  fun state_root (D.RegimeState (x, y, xev, ev, d, r, ext, extev, root)) = root
-   |  state_root (D.EventState (x, y, xev, ev, ext, extev, root)) = root
-   |  state_root (D.ContState (x, y, ext, extev)) = false
+  fun state_root (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = root
+   |  state_root (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = root
+   |  state_root (D.ContState (x, y, ext, extev, ynext)) = false
 
         
   exception Index        
