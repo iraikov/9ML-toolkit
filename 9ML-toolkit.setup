@@ -176,7 +176,12 @@
 (copy-file-to-9ML-dir "templates/Network.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.mlb.crk.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.mlb.crk.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Makefile.tmpl")
+(copy-file-to-9ML-dir "templates/Makefile.crk3.tmpl")
+(copy-file-to-9ML-dir "templates/Makefile.crkbs.tmpl")
+(copy-file-to-9ML-dir "templates/Makefile.crkdp.tmpl")
 
 (copy-file-to-9ML-dir "sml-lib/IntMap.sml")
 (copy-file-to-9ML-dir "sml-lib/DynArray.sml")
