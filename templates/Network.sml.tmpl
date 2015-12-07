@@ -88,72 +88,77 @@ struct
   fun optApply fopt args =
       case fopt of SOME f => SOME (f args) | NONE => NONE
 
-  fun make_initial_vector condfun (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
+  fun make_initial_vector condfun (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial,
+                                  alloc,bool_alloc,n,nev,ndsc,nregime) =
       let 
-          val dinitial': unit -> real array = 
+          val dinitial': real array -> real array = 
               case dinitial of
                   SOME v => v
-                | NONE => (fn () => Array.fromList [])
+                | NONE => (fn v => v)
       in
           Vector.tabulate (N, fn (i) => 
                                  D.condApply condfun
-                                             (D.RegimeState (0.0, initial(), 0.0, evinitial (), dinitial' (), rinitial (), 
-                                                             extinitial(), extevinitial(), initial(), false),
-                                              evinitial()))
+                                             (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
+                                                             rinitial (bool_alloc nregime), extinitial(), extevinitial(), alloc n, alloc n, 
+                                                             false),
+                                              alloc nev))
       end
-   |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
-      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(), 0.0, evinitial (), extinitial (), extevinitial (), initial(), false),
-                                                         evinitial ()))
-   |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial) =
-      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(), extinitial(), extevinitial(), initial()))
-   |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial) =
+   |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,
+                                   alloc,bool_alloc,n,nev,ndsc,nregime) =
+      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
+                                                                       extinitial (), extevinitial (), initial(alloc n), initial(alloc n), false),
+                                                         alloc nev))
+   |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial,
+                                   alloc,bool_alloc,n,nev,ndsc,nregime) =
+      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n))
+   |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial,_,_,_,_,_,_) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
-  fun state_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root), i) =
+  fun state_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root), i) =
       getindex(y, i)
-   |  state_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, root), i) =
+   |  state_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root), i) =
       getindex(y, i)
-   |  state_sub (D.ContState (x, y, ext, extev, ynext), i) =
+   |  state_sub (D.ContState (x, y, ext, extev, ynext, yrsp), i) =
       getindex(y, i)
 
-  fun state_y (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = y
-   |  state_y (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = y
-   |  state_y (D.ContState (x, y, ext, extev, ynext)) = y
+  fun state_y (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root)) = y
+   |  state_y (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root)) = y
+   |  state_y (D.ContState (x, y, ext, extev, ynext, yrsp)) = y
 
-  fun state_indep (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = x
-   |  state_indep (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = x
-   |  state_indep (D.ContState (x, y, ext, extev, ynext)) = x
+  fun state_indep (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root)) = x
+   |  state_indep (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root)) = x
+   |  state_indep (D.ContState (x, y, ext, extev, ynext, yrsp)) = x
 
-  fun state_ext (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = ext
-   |  state_ext (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = ext
-   |  state_ext (D.ContState (x, y, ext, extev, ynext)) = ext
+  fun state_ext (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root)) = ext
+   |  state_ext (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root)) = ext
+   |  state_ext (D.ContState (x, y, ext, extev, ynext, yrsp)) = ext
 
-  fun state_extev (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = extev
-   |  state_extev (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = extev
-   |  state_extev (D.ContState (x, y, ext, extev, ynext)) = extev
+  fun state_extev (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root)) = extev
+   |  state_extev (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root)) = extev
+   |  state_extev (D.ContState (x, y, ext, extev, ynext, yrsp)) = extev
 
-  fun state_regime (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = r
-   |  state_regime (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = Array.fromList []
-   |  state_regime (D.ContState (x, y, ext, extev, ynext)) = Array.fromList[]
+  fun state_regime (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root)) = r
+   |  state_regime (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root)) = Array.fromList []
+   |  state_regime (D.ContState (x, y, ext, extev, ynext, yrsp)) = Array.fromList[]
 
-  fun state_event (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = ev
-   |  state_event (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = ev
-   |  state_event (D.ContState (x, y, ext, extev, ynext)) = Array.fromList []
+  fun state_event (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root)) = ev
+   |  state_event (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root)) = ev
+   |  state_event (D.ContState (x, y, ext, extev, ynext, yrsp)) = Array.fromList []
 
-  fun ext_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root), i) = getindex(ext, i)
-   |  ext_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, root), i) = getindex(ext, i)
-   |  ext_sub (D.ContState (x, y, ext, extev, ynxt), i) = getindex(ext, i)
+  fun ext_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root), i) = getindex(ext, i)
+   |  ext_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root), i) = getindex(ext, i)
+   |  ext_sub (D.ContState (x, y, ext, extev, ynext, yrsp), i) = getindex(ext, i)
 
-  fun event_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root), i) =
+  fun event_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root), i) =
       getindex(ev, i)
-   |  event_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, root), i) =
+   |  event_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root), i) =
       getindex(ev, i)
-   |  event_sub (D.ContState (x, y, ext, extev, ynext), i) =
+   |  event_sub (D.ContState (x, y, ext, extev, ynext, yrsp), i) =
       (putStrLn TextIO.stdOut "event_sub:"; raise Domain)
 
 
-  fun state_root (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, root)) = root
-   |  state_root (D.EventState (x, y, xev, ev, ext, extev, ynext, root)) = root
+  fun state_root (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, root)) = root
+   |  state_root (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, root)) = root
    |  state_root (D.ContState (x, y, ext, extev, ynext)) = false
 
         
@@ -238,7 +243,10 @@ struct
           val extevinitial = {{pop.value.prototype.name}}.initextevfun ({{pop.name}}_parameters)
       in
           make_initial_vector (optApply {{pop.value.prototype.name}}.condfun ({{pop.name}}_parameters))
-                              (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial,extevinitial)
+                              (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial,extevinitial,
+                              {{pop.value.prototype.name}}.alloc,{{pop.value.prototype.name}}.bool_alloc,
+                              {{pop.value.prototype.name}}.n,{{pop.value.prototype.name}}.nev,{{pop.value.prototype.name}}.ndsc,
+                              {{pop.value.prototype.name}}.nregime)
       end
 
   val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
@@ -441,7 +449,7 @@ struct
 
 {% macro for_each(name, sp, tp, plasticity, component, cstate) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
@@ -456,7 +464,7 @@ struct
 
 {% macro all_to_all(name, sp, tp, plasticity)  %}
              val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
+                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromTensorList [N,N]
@@ -470,7 +478,7 @@ struct
 
 {% macro one_to_one(name, sp, tp, plasticity) %}
              val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
+                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
 
                                in
                                   SparseMatrix.fromTensorList [N,N]
@@ -528,7 +536,7 @@ struct
 
 {% macro random_fan_in(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
                                   val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then weight else 0.0) 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
@@ -543,7 +551,7 @@ struct
 
 {% macro random_fan_out(name, sp, tp, plasticity, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
                                   val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then weight else 0.0)
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
@@ -558,7 +566,7 @@ struct
 
 {% macro random_fan_in_num(name, sp, tp, plasticity, num) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
                                in
                                   SparseMatrix.fromVectors [N,N]
                                   [
@@ -585,7 +593,7 @@ struct
 
 {% macro random_fan_out_num(name, sp, tp, plasticity, num) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial(),0){% else %}1.0{% endif %}
+                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
                                in
                                   SparseMatrix.fromVectors [N,N]
                                   [
