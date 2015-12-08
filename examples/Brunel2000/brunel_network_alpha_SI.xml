@@ -8,7 +8,7 @@
       <nineml:Component name="nrn">
         <nineml:Definition url="BrunelIaF.xml">BrunelIaF</nineml:Definition>
         <nineml:Property units="Mohm" name="R">
-          <nineml:SingleValue>150.0</nineml:SingleValue>
+          <nineml:SingleValue>100.0</nineml:SingleValue>
         </nineml:Property>
         <nineml:Property units="mV" name="Vreset">
           <nineml:SingleValue>10.0</nineml:SingleValue>
@@ -151,7 +151,7 @@
       <nineml:Component name="nrn">
         <nineml:Definition url="BrunelIaF.xml">BrunelIaF</nineml:Definition>
         <nineml:Property units="Mohm" name="R">
-          <nineml:SingleValue>150.0</nineml:SingleValue>
+          <nineml:SingleValue>100.0</nineml:SingleValue>
         </nineml:Property>
         <nineml:Property units="mV" name="Vreset">
           <nineml:SingleValue>10.0</nineml:SingleValue>
