@@ -122,8 +122,7 @@ let
 
             val _ = 
                 if not (List.null log_spike_i)
-                then (putStr out ((showReal t_i) ^ " ");
-                      TensorFile.intListLineWrite out (List.map (fn (i,_,n) => (i+1)) log_spike_i))
+                then (List.app (fn (i,t,nv) => putStr out ((showReal t) ^ " " (putStrLn (Int.toString (i + 1))))) log_spike_i)
                 else (putStrLn out ("# " ^ (showReal t_i)))
                          
                          
