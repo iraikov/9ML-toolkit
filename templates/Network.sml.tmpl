@@ -174,26 +174,6 @@ struct
 {% endfor %}
 {% endif %}
 
-  val h = {{ timestep }}
-
-  structure TEventPriority = 
-  struct
-       type priority     = int
-       (* Given a delay (positive real number), compute the priority given a time step *)
-       fun delayPriority (delay) = Real.round (Real./ (delay, h))
-       (*  Given a priority and a time step, computes the corresponding delay *)
-       fun priorityDelay (priority,h) = Real.* (Real.fromInt priority, h)
-       
-       fun compare (x,y) = Int.compare (x,y)
-       type item         = real * (int * (real IntMap.map))
-       fun priority (x : item) = delayPriority (#1(x))
-  end
-
-  structure TEQ = FixTEventQueue (structure P = TEventPriority
-                                  type value = (int * (real IntMap.map))
-                                  fun value (x : P.item) = (#2(x)))
-  val DQ = TEQ.empty
-
   (* network propagation delays for each projection *)
 
   val D: real list = 
@@ -250,7 +230,7 @@ struct
 
   val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
                            
-  val {{pop.name}}_f = 
+  fun {{pop.name}}_f h = 
       let
           val p = {{pop.name}}_parameters 
       in 
@@ -264,7 +244,7 @@ struct
       end
 
 
-  fun {{pop.name}}_run (Wmap,n0) (i,input,(nstates,spikes)) =
+  fun {{pop.name}}_run f (Wmap,n0) (i,input,(nstates,spikes)) =
     let 
 
         fun log (nstate) =
@@ -332,11 +312,11 @@ struct
                               else spikes
             in
                 if state_root nstate 
-                then (log nstate; recur ({{pop.name}}_f nstate, spikes'))
+                then (log nstate; recur (f nstate, spikes'))
                 else (nstate,spikes')
             end
 
-        val (nstate,spikes') = recur ({{pop.name}}_f input,spikes)
+        val (nstate,spikes') = recur (f input,spikes)
  
     in 
         (nstate::nstates, spikes')
@@ -377,7 +357,7 @@ struct
         {% endfor %}
     ]
          
-    fun frun I
+    fun frun h I
              (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
@@ -386,7 +366,7 @@ struct
         let
 {% for pop in dict (group.populations) %}
             val ({{pop.name}}_states,{{pop.name}}_spikes) = 
-                Vector.foldri ({{pop.name}}_run (I,{{pop.name}}_n0))
+                Vector.foldri ({{pop.name}}_run ({{pop.name}}_f h) (I,{{pop.name}}_n0))
                               ([],[]) {{pop.name}}_state_vector
 
 {% endfor %}

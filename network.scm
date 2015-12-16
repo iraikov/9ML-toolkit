@@ -77,8 +77,6 @@
   `(
     (platform . mlton)
     (method . rkdp)
-    (duration . 100.0)
-    (timestep . 0.1)
     ))
 
 (define (defopt x)
@@ -109,29 +107,6 @@
 			    (transformer ,string->symbol)
                             )
                      (single-char #\m)
-                     )
-
-    (duration        "simulation duration in milliseconds"
-		     (value (required VALUE)
-			    (predicate 
-			     ,(lambda (x) 
-				(let ((n (string->number x)))
-                                  (if (> n 0) n
-                                      (error '9ML-network "duration must be a positive number" x)))))
-			    (transformer ,string->number)
-                            )
-                     (single-char #\d)
-                     )
-
-    (timestep       "simulation timestep milliseconds"
-		     (value (required VALUE)
-			    (predicate 
-			     ,(lambda (x) 
-				(let ((n (string->number x)))
-                                  (if (> n 0) n
-                                      (error '9ML-network "timestep must be a positive number" x)))))
-			    (transformer ,string->number)
-                            )
                      )
 
     (spikerecord     "name of population for spike recording"
@@ -1262,10 +1237,6 @@
                                (or (opt 'evsample) 0)
                                (append properties ul-properties) ))
 
-             (simcontrol-tenv
-              (alist->tenv
-               `((duration . ,(or (opt 'duration) (defopt 'duration)))
-                 (timestep . ,(or (opt 'timestep) (defopt 'timestep))))))
              )
 
         (d "projection-ports = ~A~%" (ersatz:tvalue->sexpr projection-ports))
@@ -1345,7 +1316,7 @@
                      (print (ersatz:from-file 
                              network-tmpl
                              env: (template-std-env search-path: `(,template-dir))
-                             models: (append simcontrol-tenv group-tenv))))))
+                             models: group-tenv)))))
               ))
            (list group-path))
           )
@@ -1358,7 +1329,7 @@
                              (print (ersatz:from-file 
                                      sim-tmpl
                                      env: (template-std-env search-path: `(,template-dir))
-                                     models: (append simcontrol-tenv group-tenv)))))
+                                     models: group-tenv))))
                          )
                
                (mlb-path (group-path)

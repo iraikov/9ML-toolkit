@@ -30,7 +30,22 @@ fun timing (action) =
         (result, Time.+ (#usr times, #sys times))
     end
                              
+val h = ref 0.01
 
+structure TEventPriority = 
+struct
+       type priority     = real
+
+       fun compare (x,y) = Real.compare (x,y)
+       type item         = real * (int * int * real)
+       fun priority (x : item) = (#1(x))
+end
+    
+structure TEQ = TEventQueue (structure P = TEventPriority
+                             type value = (int * int * real)
+                             fun value (x : P.item) = (#2(x)))
+val DQ = TEQ.empty
+               
 exception Index
 exception Shape
 fun dimVals [m,n] = (m,n) | dimVals _ = raise Shape
@@ -62,7 +77,7 @@ fun printProjectionSummary S k =
 
 
 
-fun start (tmax, N, S, D, DQ, Pn, initial_vector, frun, fspikes, finfo, out) =
+fun start (N, S, D, DQ, Pn, initial_vector, frun, fspikes, finfo, tstop, out) =
 
 let
     val sub = Unsafe.Real64Array.sub
@@ -72,24 +87,24 @@ let
         
     fun netrun (DQ,t,state_vector) =
         let 
-            val tn  = t+{{group.name}}.h
-            val t_i = case {{group.name}}.TEQ.findMin DQ of
+            val tn  = t+(!h)
+            val t_i = case TEQ.findMin DQ of
                           SOME (t,_) => Real.min(t, tn)
                         | NONE => tn
 
-            val (I,DQ') = {{group.name}}.TEQ.nextEventsFold 
-                                        (fn (t,_) => Real.<=(t,t_i),
-                                         fn (t,(i,port,w),I) => 
-                                            let 
-                                                val im = IntMap.find (I, i)
-                                                val im = case im of 
-                                                             SOME m => IntMap.insert (m,port,(t,w))
-                                                           | NONE => IntMap.singleton (port,(t,w))
-                                            in
-                                                IntMap.insert (I,i,im)
-                                            end,
-                                         IntMap.empty,
-                                         DQ)
+            val (I,DQ') = TEQ.nextEventsFold 
+                              (fn (t,_) => Real.<=(t,t_i),
+                               fn (t,(i,port,w),I) => 
+                                  let 
+                                      val im = IntMap.find (I, i)
+                                      val im = case im of 
+                                                   SOME m => IntMap.insert (m,port,(t,w))
+                                                 | NONE => IntMap.singleton (port,(t,w))
+                                  in
+                                      IntMap.insert (I,i,im)
+                                  end,
+                               IntMap.empty,
+                               DQ)
             
             val (state_vector_i, spikes_i) = frun (t_i,I) state_vector
             val (spike_i, log_spike_i) = fspikes spikes_i
@@ -110,7 +125,7 @@ let
                                                  let 
                                                      val tev = Real.+ (t_i,del)
                                                  in
-                                                     {{group.name}}.TEQ.addEvent ((tev, (j,port,x)), dq)
+                                                     TEQ.addEvent ((tev, (j,port,x)), dq)
                                                  end)
                                              dq sl)
                                     end)
@@ -127,7 +142,7 @@ let
                          
                          
         in
-            if t_i  > tmax
+            if t_i  > tstop
             then (putStrLn out "# All done!"; state_vector_i)
             else netrun (DQ'',t_i,state_vector_i)
         end
@@ -135,10 +150,42 @@ in
     netrun (DQ,0.0,initial_vector)
 end
 
+exception Exit of OS.Process.status 
+
+fun exitError (prog, msg) = 
+    let 
+	val _ = TextIO.output(TextIO.stdErr, prog ^ ": " ^ msg ^ "\n")
+    in 
+	raise Exit OS.Process.failure 
+    end
+	    
+fun exitHelp prog = 
+    let 
+	val _ = TextIO.output(TextIO.stdOut, (Options.usage prog) ^ "\n")
+    in 
+	raise Exit OS.Process.success 
+    end
+
 fun main (name,args) =
     let
         open {{group.name}}
         fun finfo (_,out) = ()
+
+        val optStatus = ref NONE
+        val (opts, _) = (Options.getopt optStatus) args
+                                                   
+        val _ = (case !optStatus of 
+	             SOME msg => exitError (CommandLine.name(), msg)
+	           | NONE => ())
+		    
+        val {is_help, is_time, is_timestep, is_tol} = Options.getstate (opts)
+						                       
+        val _ = if is_help then exitHelp (CommandLine.name()) else ()
+                                                                       
+        val _     = case is_timestep of SOME dt => (h := dt) | NONE => ()
+        val tstop = case is_time of SOME t => t | NONE => 150.0
+
+        val _ = case is_tol of SOME tol => ({{group.name}}.D.tol := tol) | NONE => ()
     in
         (let
             val     _ = putStrLn TextIO.stdOut ("starting fprojection...")
@@ -172,7 +219,7 @@ fun main (name,args) =
                      ]);
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")
-                val (_,t) = timing (fn () => start ({{duration}}, N, S, D, DQ, Pn, initial, frun, fspikes, finfo, out))
+                val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, initial, frun, fspikes, finfo, tstop, out))
             in
                 putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
             end;
