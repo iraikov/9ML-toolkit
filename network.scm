@@ -77,8 +77,6 @@
   `(
     (platform . mlton)
     (method . rkdp)
-    (duration . 100.0)
-    (timestep . 0.1)
     ))
 
 (define (defopt x)
@@ -98,40 +96,17 @@
 			    (transformer ,string->symbol)
                             ))
 
-    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, koz, rkdp)"
+    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, rkoz, rkdp, crk3, crkdp, crkbs)"
 		     (value (required PLATFORM)
 			    (predicate 
 			     ,(lambda (x) 
 				(let ((s (string->symbol (string-downcase x))))
 				  (case s
-				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 rkoz rkdp ) s)
+				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crk3 crkdp crkbs ) s)
 				    (else (error '9ML-network "unrecognized method" x))))))
 			    (transformer ,string->symbol)
                             )
                      (single-char #\m)
-                     )
-
-    (duration        "simulation duration in milliseconds"
-		     (value (required VALUE)
-			    (predicate 
-			     ,(lambda (x) 
-				(let ((n (string->number x)))
-                                  (if (> n 0) n
-                                      (error '9ML-network "duration must be a positive number" x)))))
-			    (transformer ,string->number)
-                            )
-                     (single-char #\d)
-                     )
-
-    (timestep       "simulation timestep milliseconds"
-		     (value (required VALUE)
-			    (predicate 
-			     ,(lambda (x) 
-				(let ((n (string->number x)))
-                                  (if (> n 0) n
-                                      (error '9ML-network "timestep must be a positive number" x)))))
-			    (transformer ,string->number)
-                            )
                      )
 
     (spikerecord     "name of population for spike recording"
@@ -1213,15 +1188,21 @@
              (shared-dir    (chicken-home))
              (template-dir  (make-pathname (make-pathname shared-dir "9ML") "templates"))
              (network-tmpl  (case (ivp-simulation-method)
-                              ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65) "Network.sml.adaptive.tmpl")
+                              ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Network.sml.adaptive.tmpl")
                               (else "Network.sml.tmpl")))
              (sim-tmpl      (case (ivp-simulation-method)
-                              ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65) "Sim.sml.adaptive.tmpl")
+                              ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.sml.adaptive.tmpl")
                               (else "Sim.sml.tmpl")))
              (mlb-tmpl      (case (ivp-simulation-method)
                               ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65) "Sim.mlb.adaptive.tmpl")
+                              ((crk3) "Sim.mlb.crk.tmpl")
+                              ((crkbs crkdp) "Sim.mlb.crk.adaptive.tmpl")
                               (else "Sim.mlb.tmpl")))
-             (makefile-tmpl "Makefile.tmpl")
+             (makefile-tmpl (case  (ivp-simulation-method)
+                              ((crk3) "Makefile.crk3.tmpl")
+                              ((crkbs) "Makefile.crkbs.tmpl")
+                              ((crkdp) "Makefile.crkdp.tmpl")
+                              (else "Makefile.tmpl")))
              (group-path    (make-pathname source-directory (conc group-name ".sml")))
              (sim-path      (make-pathname source-directory (conc "Sim_" group-name ".sml")))
              (mlb-path      (make-pathname source-directory (conc "Sim_" group-name ".mlb")))
@@ -1256,10 +1237,6 @@
                                (or (opt 'evsample) 0)
                                (append properties ul-properties) ))
 
-             (simcontrol-tenv
-              (alist->tenv
-               `((duration . ,(or (opt 'duration) (defopt 'duration)))
-                 (timestep . ,(or (opt 'timestep) (defopt 'timestep))))))
              )
 
         (d "projection-ports = ~A~%" (ersatz:tvalue->sexpr projection-ports))
@@ -1290,9 +1267,17 @@
                      (append (salt:astdecls-decls model-eqset) response-dynamics))))
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
-                (let ((port (open-output-file (make-pathname source-directory (sprintf "~A.sml" node-name)))))
-                  (salt:codegen-ODE/ML sim out: port solver: (ivp-simulation-method) libs: '(random))
-                  (close-output-port port))
+                (let ((sml-port (open-output-file (make-pathname source-directory (sprintf "~A.sml" node-name)))))
+                  (salt:codegen-ODE/ML node-name sim out: sml-port solver: (ivp-simulation-method) libs: '(random))
+                  (close-output-port sml-port)
+                  (case (ivp-simulation-method) 
+                    ((crk3 crkbs crkdp)
+                     (let ((c-port (open-output-file (make-pathname source-directory (sprintf "~A.c" node-name)))))
+                       (salt:codegen-ODE/C node-name sim out: c-port solver: (ivp-simulation-method) libs: '(random))
+                       (close-output-port c-port)
+                       ))
+                    (else (begin)))
+                  )
                 ))
             ))
           )
@@ -1309,7 +1294,7 @@
             (d "plasticity node name = ~A model-eqset = ~A~%" node-name model-eqset)
               (let* ((sim (salt:simcreate (salt:elaborate model-eqset))))
                 (let ((port (open-output-file (make-pathname source-directory (sprintf "~A.sml" node-name)))))
-                  (salt:codegen-ODE/ML sim out: port solver: (ivp-simulation-method) libs: '(random))
+                  (salt:codegen-ODE/ML node-name sim out: port solver: (ivp-simulation-method) libs: '(random))
                   (close-output-port port))
                 ))
             ))
@@ -1331,7 +1316,7 @@
                      (print (ersatz:from-file 
                              network-tmpl
                              env: (template-std-env search-path: `(,template-dir))
-                             models: (append simcontrol-tenv group-tenv))))))
+                             models: group-tenv)))))
               ))
            (list group-path))
           )
@@ -1344,7 +1329,7 @@
                              (print (ersatz:from-file 
                                      sim-tmpl
                                      env: (template-std-env search-path: `(,template-dir))
-                                     models: (append simcontrol-tenv group-tenv)))))
+                                     models: group-tenv))))
                          )
                
                (mlb-path (group-path)

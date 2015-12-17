@@ -204,6 +204,7 @@ EOF
 			  `(("$(SML_LIB)/basis/basis.mlb" ,nl )
                             ("$(SML_LIB)/basis/unsafe.mlb" ,nl )
 			    ("$(RK_LIB)/rk.mlb" ,nl )
+			    ,(case solver ((crkdp) `("$(RK_LIB)/crk.mlb" ,nl )) (else '()))
 			    ("$(LASTN_LIB)/lastn-buffer.mlb" ,nl )
 			    ("$(RANDMTZIG_LIB)/randmtzig.mlb" ,nl )
 			    ("local " ,nl)
@@ -215,13 +216,15 @@ EOF
 			 )))
 	   
 	   (exec-path (solver-path run-path mlb-path)
-		      (run (,mlton-path -link-opt -s 
-					-mlb-path-var ,(string-append "'LASTN_LIB " salt-dir "/sml-lib/lastn-buffer'") 
-					-mlb-path-var ,(string-append "'RK_LIB " salt-dir "/sml-lib/rk'") 
-					-mlb-path-var ,(string-append "'RANDMTZIG_LIB " salt-dir "/sml-lib/randmtzig'") 
-					,mlb-path
-                                        ,(string-append salt-dir "/sml-lib/randmtzig/randmtziglib.c")
-                                        )))
+		      (run (,mlton-path 
+                            -default-ann "'allowFFI true'"
+                            -link-opt -s 
+                            -mlb-path-var ,(string-append "'LASTN_LIB " salt-dir "/sml-lib/lastn-buffer'") 
+                            -mlb-path-var ,(string-append "'RK_LIB " salt-dir "/sml-lib/rk'") 
+                            -mlb-path-var ,(string-append "'RANDMTZIG_LIB " salt-dir "/sml-lib/randmtzig'") 
+                            ,mlb-path
+                            ,(string-append salt-dir "/sml-lib/randmtzig/randmtziglib.c")
+                            )))
 	   
 	   (log-path (exec-path)
 		     (run (,exec-path > ,log-path)))
@@ -260,6 +263,7 @@ EOF
 			 (print-fragments
 			  `(("$(SML_LIB)/basis/basis.mlb" ,nl )
 			    ("$(RK_LIB)/rk.mlb" ,nl )
+			    ,(case solver ((crkdp) `("$(RK_LIB)/crk.mlb" ,nl )) (else '()))
 			    ("$(LASTN_LIB)/lastn-buffer.mlb" ,nl )
 			    ("$(RANDMTZIG_LIB)/randmtzig.mlb" ,nl )
 			    ("local " ,nl)
