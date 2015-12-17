@@ -323,7 +323,6 @@ struct
                 0
                 {{pop.name}}_ext_ports
 
-        val _ = log(input)
 
         fun recur (nstate,spikes) = 
             let
@@ -336,6 +335,7 @@ struct
                 else (nstate,spikes')
             end
 
+        val _ = log(input)
         val (nstate,spikes') = recur ({{pop.name}}_f input,spikes)
  
     in 
