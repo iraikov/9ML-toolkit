@@ -189,22 +189,6 @@ struct
 {% endfor %}
 {% endif %}
 
-  val h = {{ timestep }}
-
-  structure TEventPriority = 
-  struct
-       type priority     = real
-
-       fun compare (x,y) = Real.compare (x,y)
-       type item         = real * (int * int * real)
-       fun priority (x : item) = (#1(x))
-  end
-
-  structure TEQ = TEventQueue (structure P = TEventPriority
-                               type value = (int * int * real)
-                               fun value (x : P.item) = (#2(x)))
-  val DQ = TEQ.empty
-
   (* network propagation delays for each projection *)
 
   val D: real list = 
@@ -242,6 +226,7 @@ struct
 
   val {{pop.name}}_initial_vector = 
       let
+          val h0          = 1e~3
           val initial     = {{pop.value.prototype.name}}.initfun({{pop.name}}_parameters)
           val evinitial   = {{pop.value.prototype.name}}.initcondfun 
           val dinitial    = {{pop.value.prototype.name}}.dinitfun
@@ -250,7 +235,7 @@ struct
           val extevinitial  = {{pop.value.prototype.name}}.initextevfun ({{pop.name}}_parameters)
       in
           make_initial_vector (optApply {{pop.value.prototype.name}}.condfun ({{pop.name}}_parameters))
-                              (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial,extevinitial,h,
+                              (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial,extevinitial,h0,
                               {{pop.value.prototype.name}}.alloc,{{pop.value.prototype.name}}.bool_alloc,
                               {{pop.value.prototype.name}}.n,{{pop.value.prototype.name}}.nev,{{pop.value.prototype.name}}.ndsc,
                               {{pop.value.prototype.name}}.nregime)

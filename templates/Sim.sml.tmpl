@@ -29,6 +29,26 @@ fun timing (action) =
     in
         (result, Time.+ (#usr times, #sys times))
     end
+
+val h = ref 0.1
+
+structure TEventPriority = 
+struct
+       type priority     = int
+       (* Given a delay (positive real number), compute the priority given a time step *)
+       fun delayPriority (delay) = Real.round (Real./ (delay, (!h)))
+       (*  Given a priority and a time step, computes the corresponding delay *)
+       fun priorityDelay (priority,h) = Real.* (Real.fromInt priority, (!h))
+       
+       fun compare (x,y) = Int.compare (x,y)
+       type item         = real * (int * (real IntMap.map))
+       fun priority (x : item) = delayPriority (#1(x))
+  end
+
+structure TEQ = FixTEventQueue (structure P = TEventPriority
+                                type value = (int * (real IntMap.map))
+                                fun value (x : P.item) = (#2(x)))
+val DQ = TEQ.empty
                              
 
 exception Index
@@ -62,7 +82,7 @@ fun printProjectionSummary S k =
 
 
 
-fun start (tmax, N, S, D, DQ, Pn, initial_vector, frun, ftime, fspikes, finfo, out) =
+fun start (N, S, D, DQ, Pn, initial_vector, frun, ftime, fspikes, finfo, tstop, out) =
 
 let
     val sub = Unsafe.Real64Array.sub
@@ -73,19 +93,19 @@ let
     fun netrun (DQ,state_vector) =
         let 
             val t = ftime state_vector
-            val prio = {{group.name}}.TEventPriority.delayPriority t
+            val prio = TEventPriority.delayPriority (t)
 
-            val (I,DQ') = {{group.name}}.TEQ.nextEventsFold 
-                                        (fn (prio',_) => prio' <= prio,
-                                         fn (prio,(port,w),ax) => 
-                                            let val t = {{group.name}}.TEventPriority.priorityDelay (prio, {{group.name}}.h)
-                                            in
-                                                IntMap.insert (ax,port,(t,w))
-                                            end,
-                                         IntMap.empty,
-                                         DQ)
+            val (I,DQ') = TEQ.nextEventsFold 
+                              (fn (prio',_) => prio' <= prio,
+                               fn (prio,(port,w),ax) => 
+                                  let val t = TEventPriority.priorityDelay (prio, h)
+                                  in
+                                      IntMap.insert (ax,port,(t,w))
+                                  end,
+                               IntMap.empty,
+                               DQ)
 
-            val (state_vector_i, spikes_i) = frun I state_vector
+            val (state_vector_i, spikes_i) = frun (!h) I state_vector
 
             val t_i = ftime state_vector_i
 
@@ -135,14 +155,14 @@ let
                                 (fn(del: real,w: real IntMap.map,(port,dq)) => 
                                     let val tev = Real.+ (t_i,del)
                                     in
-                                        (port+1, {{group.name}}.TEQ.addEvent ((tev, (port,w)), dq))
+                                        (port+1, TEQ.addEvent ((tev, (port,w)), dq))
                                     end)
                                 (0, DQ') 
                                 DW))
                     end
                   | NONE => DQ'
         in
-            if t_i  > tmax
+            if t_i  > tstop
             then (putStrLn out "# All done!"; state_vector_i)
             else netrun (DQ'',state_vector_i)
         end
@@ -150,10 +170,41 @@ in
     netrun (DQ,initial_vector)
 end
 
+exception Exit of OS.Process.status 
+
+fun exitError (prog, msg) = 
+    let 
+	val _ = TextIO.output(TextIO.stdErr, prog ^ ": " ^ msg ^ "\n")
+    in 
+	raise Exit OS.Process.failure 
+    end
+	    
+fun exitHelp prog = 
+    let 
+	val _ = TextIO.output(TextIO.stdOut, (Options.usage prog) ^ "\n")
+    in 
+	raise Exit OS.Process.success 
+    end
+
 fun main (name,args) =
     let
         open {{group.name}}
         fun finfo (_,out) = ()
+
+        val optStatus = ref NONE
+        val (opts, _) = (Options.getopt optStatus) args
+                                                   
+        val _ = (case !optStatus of 
+	             SOME msg => exitError (CommandLine.name(), msg)
+	           | NONE => ())
+		    
+        val {is_help, is_time, is_timestep, is_tol} = Options.getstate (opts)
+						                       
+        val _ = if is_help then exitHelp (CommandLine.name()) else ()
+                                                                       
+        val _     = case is_timestep of SOME dt => (h := dt) | NONE => ()
+        val tstop = case is_time of SOME t => t | NONE => 150.0
+
     in
         (let
             val     _ = putStrLn TextIO.stdOut ("starting fprojection...")
@@ -187,7 +238,7 @@ fun main (name,args) =
                      ]);
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")
-                val (_,t) = timing (fn () => start ({{duration}}, N, S, D, DQ, Pn, initial, frun, ftime, fspikes, finfo, out))
+                val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, initial, frun, ftime, fspikes, finfo, tstop, out))
             in
                 putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
             end;
