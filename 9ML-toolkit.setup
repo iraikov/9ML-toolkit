@@ -139,7 +139,7 @@
 
       (make (
              ("9ML-singlecell" 
-              ("singlecellx.scm" )
+              ("singlecell.scm" )
               (compile -O -d2 -S singlecell.scm -o 9ML-singlecell ))
              )
         "9ML-singlecell")
@@ -196,20 +196,14 @@
 (copy-file-to-9ML-dir "templates/Sim.mlb.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.tmpl")
-(copy-file-to-9ML-dir "templates/Sim.mlb.crk.tmpl")
-(copy-file-to-9ML-dir "templates/Sim.mlb.crk.adaptive.tmpl")
 
 (copy-file-to-9ML-dir "templates/Sim.sml.single.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.single.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.sml.single.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.single.tmpl")
-(copy-file-to-9ML-dir "templates/Sim.mlb.single.crk.tmpl")
-(copy-file-to-9ML-dir "templates/Sim.mlb.single.crk.adaptive.tmpl")
 
 (copy-file-to-9ML-dir "templates/Makefile.tmpl")
-(copy-file-to-9ML-dir "templates/Makefile.crk3.tmpl")
-(copy-file-to-9ML-dir "templates/Makefile.crkbs.tmpl")
-(copy-file-to-9ML-dir "templates/Makefile.crkdp.tmpl")
+(copy-file-to-9ML-dir "templates/Makefile.single.tmpl")
 
 (copy-file-to-9ML-dir "sml-lib/options.sml")
 (copy-file-to-9ML-dir "sml-lib/IntMap.sml")

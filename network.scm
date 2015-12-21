@@ -1198,11 +1198,7 @@
                               ((crk3) "Sim.mlb.crk.tmpl")
                               ((crkbs crkdp) "Sim.mlb.crk.adaptive.tmpl")
                               (else "Sim.mlb.tmpl")))
-             (makefile-tmpl (case  (ivp-simulation-method)
-                              ((crk3) "Makefile.crk3.tmpl")
-                              ((crkbs) "Makefile.crkbs.tmpl")
-                              ((crkdp) "Makefile.crkdp.tmpl")
-                              (else "Makefile.tmpl")))
+             (makefile-tmpl  "Makefile.tmpl")
              (group-path    (make-pathname source-directory (conc group-name ".sml")))
              (sim-path      (make-pathname source-directory (conc "Sim_" group-name ".sml")))
              (mlb-path      (make-pathname source-directory (conc "Sim_" group-name ".mlb")))
@@ -1338,7 +1334,14 @@
                              (print (ersatz:from-file 
                                      mlb-tmpl
                                      env: (template-std-env search-path: `(,template-dir))
-                                         models: group-tenv))))
+                                         models: (append 
+                                                  group-tenv
+                                                  `((UseCSolver . ,(Tbool (case (ivp-simulation-method)
+                                                                            ((crk3 crkbs crkdp) #t)
+                                                                            (else #f))))
+                                                    ))
+                                         ))
+                             ))
                          )
 
                (makefile-path ()
@@ -1355,6 +1358,15 @@
                                                      (nineml_lib_home . ,(Tstr (make-pathname 
                                                                                 (make-pathname shared-dir "9ML")
                                                                                 "sml-lib")))
+                                                     (UseCSolver . ,(Tbool (case (ivp-simulation-method)
+                                                                             ((crk3 crkbs crkdp) #t)
+                                                                             (else #f))))
+                                                     (CSolverFiles . ,(Tlist (case (ivp-simulation-method)
+                                                                               ((crk3) (list "crk3.c"))
+                                                                               ((crkbs) (list "crkbs.c"))
+                                                                               ((crkdp) (list "crkdp.c"))
+                                                                               (else (list)))))
+                                                                                
                                                      ))
                                           ))
                                   ))
