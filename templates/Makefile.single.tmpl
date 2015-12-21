@@ -1,0 +1,6 @@
+all: Sim_{{modelName}}
+
+
+Sim_{{modelName}}: Sim_{{modelNname}}.mlb Sim_{{modelName}}.sml {{modelName}}.sml 
+	mlton -default-ann 'allowFFI true' -cc-opt "-O3" -mlb-path-var "SALT_LIB {{sml_lib_home}}" -mlb-path-var "RK_LIB {{sml_lib_home}}/rk" -mlb-path-var "RANDMTZIG_LIB {{sml_lib_home}}/randmtzig" -mlb-path-var "DYNAMICS_LIB {{sml_lib_home}}/dynamics" -mlb-path-var "TENSOR_LIB {{nineml_lib_home}}" -mlb-path-var "NINEML_LIB {{nineml_lib_home}}"   $< {{sml_lib_home}}/randmtzig/randmtziglib.c {{csolver}}
+

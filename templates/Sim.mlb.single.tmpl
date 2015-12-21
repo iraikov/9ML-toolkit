@@ -1,0 +1,27 @@
+
+$(SML_LIB)/basis/basis.mlb
+$(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+
+$(SML_LIB)/basis/unsafe.mlb
+$(RK_LIB)/rk.mlb
+{% if crk  %}
+$(RK_LIB)/crk.mlb
+{% endif %}
+
+$(DYNAMICS_LIB)/dynamics.mlb
+
+structure Dynamics = FunctionalHybridDynamics1
+
+local
+        options.sml
+in
+	structure Options
+end
+
+local
+	{{modelName}}.sml
+in
+	structure Model
+end
+Sim_{{modelName}}.sml
+

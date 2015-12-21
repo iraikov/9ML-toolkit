@@ -3,7 +3,7 @@
 (define (dynld-name fn)		
   (make-pathname #f fn ##sys#load-dynamic-extension))	
 
-(define version "3.1")
+(define version "3.2")
 
 (use make)
 
@@ -122,8 +122,12 @@
 
 (if (deployment-mode)
 
-    (compile -deploy -uses files -O -d2 network.scm 
-             -o ,(make-pathname (installation-prefix) "/bin/9ML-network"))
+    (begin
+      (compile -deploy -uses files -O -d2 network.scm 
+               -o ,(make-pathname (installation-prefix) "/bin/9ML-network"))
+      (compile -deploy -uses files -O -d2 singlecell.scm 
+               -o ,(make-pathname (installation-prefix) "/bin/9ML-singlecell"))
+      )
 
     (begin
       (make (
@@ -133,12 +137,27 @@
              )
         "9ML-network")
 
+      (make (
+             ("9ML-singlecell" 
+              ("singlecellx.scm" )
+              (compile -O -d2 -S singlecell.scm -o 9ML-singlecell ))
+             )
+        "9ML-singlecell")
+
       (install-program 
        '9ML-network 
        
        `("9ML-network" )
        
        `((version ,version)))
+
+      (install-program 
+       '9ML-singlecell 
+       
+       `("9ML-singlecell" )
+       
+       `((version ,version)))
+
       )
     )
 
@@ -171,13 +190,22 @@
 (copy-file-to-9ML-dir "examples/LIF_UL.xml")
 
 (copy-file-to-9ML-dir "templates/Network.sml.adaptive.tmpl")
+(copy-file-to-9ML-dir "templates/Network.sml.tmpl")
+
 (copy-file-to-9ML-dir "templates/Sim.sml.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.adaptive.tmpl")
-(copy-file-to-9ML-dir "templates/Network.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.crk.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.crk.adaptive.tmpl")
+
+(copy-file-to-9ML-dir "templates/Sim.sml.single.adaptive.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.mlb.single.adaptive.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.sml.single.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.mlb.single.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.mlb.single.crk.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.mlb.single.crk.adaptive.tmpl")
+
 (copy-file-to-9ML-dir "templates/Makefile.tmpl")
 (copy-file-to-9ML-dir "templates/Makefile.crk3.tmpl")
 (copy-file-to-9ML-dir "templates/Makefile.crkbs.tmpl")
