@@ -1,8 +1,7 @@
 #!/bin/sh
 
-mv IzhikevichFS_UL_TestIzhikevichFS_Iext100ivp118.log IzhikevichFS_Iext100.dat
-mv IzhikevichFS_UL_TestIzhikevichFS_Iext200ivp141.log IzhikevichFS_Iext200.dat
-mv IzhikevichFS_UL_TestIzhikevichFS_Iext400ivp164.log IzhikevichFS_Iext400.dat
+plotvar.scm -t "Izhikevich 2007 (FS)" -f time,spike,tspike,V,U -x time -y V --x-range=0:85 --y-range=-80:40 --data-filename=IzhikevichFS_Iext100.dat
+plotvar.scm -t "Izhikevich 2007 (FS)" -f time,spike,tspike,V,U -x time -y V --x-range=0:85 --y-range=-80:40 --data-filename=IzhikevichFS_Iext200.dat
+plotvar.scm -t "Izhikevich 2007 (FS)" -f time,spike,tspike,V,U -x time -y V --x-range=0:85 --y-range=-80:40 --data-filename=IzhikevichFS_Iext400.dat
 
-~/bin/chicken/bin/csi -s IzhikevichFS_plot.scm
 

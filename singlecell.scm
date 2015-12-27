@@ -1,5 +1,5 @@
 ;;
-;; NineML network level descriptions.
+;; NineML single cell descriptions.
 ;;
 ;;
 ;; Copyright 2015 Ivan Raikov
@@ -762,6 +762,40 @@
         ))
     )
 
+
+(define (resolve-ul-components node)
+
+  (define (rename-component component name)
+    (let ((kids (sxml:kids component)))
+      `(nml:Component (@ (name ,name)) . ,kids)))
+
+  (let ((components-list (make-parameter '())))
+
+    (let (
+          (component-template 
+           (sxml:match 'nml:Component
+                       (lambda (node bindings root env) 
+                         (let ((component-name (sprintf "~A_~A" name (sxml:attr node 'name))))
+                           (components-list (cons (rename-component node component-name)
+                                                  (components-list)))
+                           `(nml:Component (@ (name ,name))
+                                           . ,(sxml:kids node))
+                           ))
+                       ))
+          )
+      
+      (let ((result 
+             (stx:apply-templates 
+              node
+              (sxml:make-identity-ss 
+               component-template
+               )
+              node (list))))
+        
+        (values (components-list) result)
+        
+        ))
+    ))
 
 
 

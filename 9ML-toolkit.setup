@@ -161,6 +161,20 @@
       )
     )
 
+(let ((plotvar-script (with-input-from-file "plotvar.scm" read-lines))
+      (plotraster-script (with-input-from-file "plotraster.scm" read-lines))
+      (header (string-append "#! "(installation-prefix) "/bin/csi -script")))
+  (with-output-to-file "plotvar" 
+    (lambda ()
+      (for-each print (cons header plotvar-script))))
+  (with-output-to-file "plotraster" 
+    (lambda ()
+      (for-each print (cons header plotraster-script))))
+)
+
+(install-script '9ML-plotvar "plotvar")
+(install-script '9ML-plotraster "plotraster")
+
 (define (installation-chicken-home)
   (if (not (installation-prefix)) (chicken-home)
     (make-pathname `(,(installation-prefix) "share") "chicken") ) )

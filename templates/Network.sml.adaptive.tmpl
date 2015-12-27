@@ -4,6 +4,19 @@ struct
 
   structure D = Dynamics
 
+  structure SEventPriority = 
+  struct
+       type priority     = real
+
+       fun compare (x,y) = Real.compare (x,y)
+       type item         = real * int
+       fun priority (x : item) = (#1(x))
+  end
+      
+  structure SEQ = TEventQueue (structure P = TEventPriority
+                               type value = int
+                               fun value (x : P.item) = (#2(x)))
+
   fun putStrLn out str = 
       (TextIO.output (out, str);
        TextIO.output (out, "\n"))
@@ -399,25 +412,29 @@ struct
         end
                          
                          
+
     fun fspikes (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_spike_i{% if not loop.last %},{% endif %}
 {% endfor %} ) =
 
         let
+            fun enqueueSpikes xs =
+                List.foldl (fn(xs,ax) => List.foldl (fn((t,i),ax) => SEQ.addEvent (t,i,ax)) ax xs) SEQ.empty
 
-           val ext_spike_i = List.concat ( {% for pop in dict (group.populations) %}{% if not pop.name in group.spikepoplst %}{{pop.name}}_spike_i ::{% endif %}{% endfor %} [] )
+           val ext_spike_i = enqueueSpikes (
+{% for pop in dict (group.populations) %}
+                                 {% if not pop.name in group.spikepoplst %}{{pop.name}}_spike_i :: {% endif %}
+{% endfor %} [])
 
                 
-           val neuron_spike_i = List.concat [ 
+           val neuron_spike_i =  enqueueSpikes [
 {% for name in (group.spikepoplst) %}
                                  {{name}}_spike_i{% if not loop.last %},{% endif %}
-{% endfor %}
-                                 ]
+{% endfor %} ]
 
-            val all_spike_i    = List.concat [neuron_spike_i, ext_spike_i]
         in
-            (all_spike_i, neuron_spike_i)
+            (ext_spike_i, neuron_spike_i)
         end
 
 {% macro cartesian_product(sp, tp) %}

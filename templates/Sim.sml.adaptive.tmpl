@@ -83,8 +83,30 @@ let
     val sub = Unsafe.Real64Array.sub
     val isub = Unsafe.IntArray.sub
     val update = Unsafe.Real64Array.update
+                     
+    fun enqueueSpikes (spike_i, S, D, DQ) =
+        List.foldl
+            (fn ((i,t,nv),dq) => 
+                (#2(ListPair.foldl
+                        (fn (del,W,(port,dq)) =>
+                            let
+                                val sl = SparseMatrix.slice (W,1,i)
+                            in
+                                (port+1,
+                                 SparseMatrix.sliceFoldi 
+                                     (fn (j,x,dq) => 
+                                         let 
+                                             val tev = Real.+ (t_i,del)
+                                         in
+                                             TEQ.addEvent ((tev, (j,port,x)), dq)
+                                         end)
+                                     dq sl)
+                            end)
+                        (0,dq)
+                        (D,S))
+            ))
+            DQ spike_i
 
-        
     fun netrun (DQ,t,state_vector) =
         let 
             val tn  = t+(!h)
@@ -107,44 +129,23 @@ let
                                DQ)
             
             val (state_vector_i, spikes_i) = frun (t_i,I) state_vector
-            val (spike_i, log_spike_i) = fspikes spikes_i
+            val (ext_spike_i, log_spike_i) = fspikes spikes_i
                 
             val _   = finfo (state_vector_i, out)
 
-            val DQ'' = 
-                List.foldl
-                    (fn ((i,t,nv),dq) => 
-                        (#2(ListPair.foldl
-                                (fn (del,W,(port,dq)) =>
-                                    let
-                                        val sl = SparseMatrix.slice (W,1,i)
-                                    in
-                                        (port+1,
-                                         SparseMatrix.sliceFoldi 
-                                             (fn (j,x,dq) => 
-                                                 let 
-                                                     val tev = Real.+ (t_i,del)
-                                                 in
-                                                     TEQ.addEvent ((tev, (j,port,x)), dq)
-                                                 end)
-                                             dq sl)
-                                    end)
-                                (0,dq)
-                                (D,S))
-                    ))
-                    DQ' spike_i
-
+            val DQ'' = enqueueSpikes (ext_spike_i, S, D, DQ')
+            val DQ''' = enqueueSpikes (log_spike_i, S, D, DQ'')
 
             val _ = 
                 if not (List.null log_spike_i)
-                then (List.app (fn (i,t,nv) => putStrLn out ((showReal t) ^ " " ^ (Int.toString (i + 1)))) log_spike_i)
+                then ({{group.name}}.SEQ.nextEventsApp (fn (i,t,nv) => putStrLn out ((showReal t) ^ " " ^ (Int.toString (i + 1)))) log_spike_i)
                 else (putStrLn out ("# " ^ (showReal t_i)))
                          
                          
         in
             if t_i  > tstop
             then (putStrLn out "# All done!"; state_vector_i)
-            else netrun (DQ'',t_i,state_vector_i)
+            else netrun (DQ''',t_i,state_vector_i)
         end
 in
     netrun (DQ,0.0,initial_vector)
