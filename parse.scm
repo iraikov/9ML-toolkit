@@ -157,7 +157,7 @@
 
 (define nineml-xmlns-base "http://nineml.net/9ML/")
 
-(define (parse-al-sxml-dynamics sxml)
+(define (parse-al-sxml-dynamics formals sxml)
 
   ;; TODO: ensure that parameters and state variables are consistent in the equations
 
@@ -191,13 +191,28 @@
                     ))
                 relations))
            
+          (unknown-assign-decls
+           (filter-map
+            (lambda (x)
+              (let ((quantity (string->symbol (sxml:attr x 'name)))
+                    (rhs      (parse-string-expr 
+                               (sxml:kidn-cadr 'nml:MathInline x )
+                               'parse-al-sxml-dynamics)))
+                (and (not (member quantity formals))
+                     `(define ,quantity = unknown 0.0))
+                ))
+            aliases))
+           
           (assign-decls
            (map (lambda (x)
                   (let ((quantity (string->symbol (sxml:attr x 'name)))
                         (rhs      (parse-string-expr 
                                    (sxml:kidn-cadr 'nml:MathInline x )
                                    'parse-al-sxml-dynamics)))
-                    `((reduce (+ ,quantity)) = ,rhs)
+                    (if (member quantity formals)
+                        `((reduce (+ ,quantity)) = ,rhs)
+                        `(,quantity = ,rhs)
+                        )
                     ))
                 aliases))
            
@@ -274,10 +289,11 @@
                         (lambda (c)
                           (let (
                                 ( trigger (sxml:kidn-cadr 'nml:Trigger c))
-                                ( event-output (or ((lambda (x) (and x (string->symbol (sxml:attr x 'port))))
-                                                    (sxml:kidn 'nml:OutputEvent c))
-                                                   (gensym 'event)))
-                                ( target-regime (string->symbol (sxml:attr c 'target_regime)) )
+                                ( event-output ((lambda (x) (or (and x (string->symbol (sxml:attr x 'port)))
+                                                                (gensym 'event)))
+                                                (sxml:kidn 'nml:OutputEvent c)))
+                                ( target-regime ((lambda (x) (or (and x (string->symbol x)) regime-name))
+                                                 (sxml:attr c 'target_regime)) )
                                 )
                             
                             (if (not trigger) 
@@ -317,6 +333,7 @@
                   (pp `(transition-decls . ,transition-decls) (current-error-port))
 
                   (append 
+                   unknown-assign-decls
                    assign-decls
                    constant-decls
                    (if (null? on-conditions)
@@ -408,14 +425,14 @@
     (cond
 
      (dynamics 
-      (let (
-            (dynamics-body (parse-al-sxml-dynamics dynamics))
-            (dynamics-formals
-             (map (lambda (x) (string->symbol (sxml:attr x 'name)))
-                  (append (reverse states)
-                          (reverse ports)
-                          (reverse parameters))))
-            )
+      (let* (
+             (dynamics-formals
+              (delete-duplicates
+               (map (lambda (x) (string->symbol (sxml:attr x 'name)))
+                    (append (reverse ports)
+                            (reverse parameters)))))
+             (dynamics-body (parse-al-sxml-dynamics dynamics-formals dynamics))
+             )
         (make-dynamics-node name dynamics-formals dynamics-body)
         ))
      

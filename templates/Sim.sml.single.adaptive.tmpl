@@ -98,8 +98,12 @@ fun start (f,initial,SOME evinitial,SOME dinitial,SOME rinitial,extinitial,extev
 val p           = Model.paramfun ()
 val initial     = Model.initfun (p) (Model.alloc Model.n)
 val evinitial   = optApply Model.initcondfun (Model.alloc Model.nev)
-val dinitial    = optApply (optApply Model.dinitfun (p)) (Model.alloc Model.ndsc)
 val rinitial    = optApply Model.initregfun (Model.bool_alloc Model.nregime)
+val dinitial    = case (optApply Model.dinitfun (p)) of 
+                      SOME f => SOME (f (Model.alloc Model.ndsc))
+                    | NONE => (case rinitial of 
+                                   SOME _ => SOME (Model.alloc Model.ndsc) 
+                                 | NONE => NONE)
 val extinitial  = Model.initextfun (p)
 val extevinitial  = Model.initextevfun (p)
 val next        = Model.initfun (p) (Model.alloc Model.n)

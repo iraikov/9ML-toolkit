@@ -347,6 +347,7 @@
 (define default-units
   `(
     (current . nA)
+    (Current . nA)
     ))
 
 
@@ -365,15 +366,10 @@
   (let (
         (node-name  (sxml:attr x 'name))
         (definition ((sxpath `(// (*or* nml:Definition nml:definition)))  x))
-	(propns     ((sxpath `(// (*or* nml:Property nml:property) @ name))  x))
-	(propvs     ((sxpath `(// (*or* nml:Property nml:property) nml:SingleValue))  x))
-	(propunits  ((sxpath `(// (*or* nml:Property nml:property) @ units))  x))
+	(props      ((sxpath `(// (*or* nml:Property nml:property))) x))
 	(fieldns    ((sxpath `(// (*or* nml:Field nml:field) @ name))  x))
 	(fieldvs    ((sxpath `(// (*or* nml:Field nml:field) nml:SingleValue))  x))
-	(initialns  ((sxpath `(// (*or* nml:Initial nml:initial) @ name))  x))
-	(initialvs  ((sxpath `(// (*or* nml:Initial nml:initial) nml:SingleValue))  x))
-	(initialunits  ((sxpath `(// (*or* nml:Initial nml:initial) @ units))  x))
-        (ivp        (safe-car ((sxpath `(// nml:IVP))  x)))
+        (initials   ((sxpath `(// (*or* nml:Initial nml:initial)))  x))
         )
 
     (if (null? definition)
@@ -381,17 +377,6 @@
 
     (let ((al-definition-name (string->symbol (sxml:text (safe-car definition))))
           (uri (sxml-string->uri (sxml:attr (safe-car definition) 'url))))
-
-      (d "NineML abstraction layer URI: ~A~%" (uri->string uri))
-      (d "NineML abstraction layer definition name: ~A~%" al-definition-name)
-      (d "NineML component propns: ~A~%" propns)
-      (d "NineML component propvs: ~A~%" propvs)
-      (d "NineML component propunits: ~A~%" propunits)
-      (d "NineML component initialns: ~A~%" initialns)
-      (d "NineML component initialvs: ~A~%" initialvs)
-      (d "NineML component initialunits: ~A~%" initialunits)
-      (d "NineML component fieldns: ~A~%" fieldns)
-      (d "NineML component fieldvs: ~A~%" fieldvs)
       
       (let* (
              (model-src (fetch uri))
@@ -422,6 +407,48 @@
              (model  (alist-ref al-definition-name model-env))
              (dd     (d "NineML abstraction layer model intermediate form: ~A~%" model))
 
+
+             (initialns  (map (lambda (x) 
+                                (let ((name (sxml:attr x 'name)))
+                                  (if (not name)
+                                      (error 'eval-ul-component "initial element without name attribute" x))
+                                  name))
+                              initials))
+             (initialvs  (map (lambda (x) 
+                                (let ((val (sxml:kidn 'nml:SingleValue x)))
+                                  (if (not val)
+                                      (error 'eval-ul-component "initial element without value element" x))
+                                  val))
+                              initials))
+             (initialunits  (map (lambda (x) (sxml:attr x 'units)) initials))
+             
+             (propns  (map (lambda (x) 
+                             (let ((name (sxml:attr x 'name)))
+                               (if (not name)
+                                   (error 'eval-ul-component "property element without name attribute" x))
+                               name))
+                           props))
+             (propvs  (map (lambda (x) 
+                                (let ((val (sxml:kidn 'nml:SingleValue x)))
+                                  (if (not val)
+                                      (error 'eval-ul-component "property element without value element" x))
+                                  val))
+                              props))
+             (propunits  (map (lambda (x) (sxml:attr x 'units)) props))
+             (prop-env   (map cons propns propvs))
+
+             (dd (begin
+                   (d "NineML abstraction layer URI: ~A~%" (uri->string uri))
+                   (d "NineML abstraction layer definition name: ~A~%" al-definition-name)
+                   (d "NineML component propns: ~A~%" propns)
+                   (d "NineML component propvs: ~A~%" propvs)
+                   (d "NineML component propunits: ~A~%" propunits)
+                   (d "NineML component initialns: ~A~%" initialns)
+                   (d "NineML component initialvs: ~A~%" initialvs)
+                   (d "NineML component initialunits: ~A~%" initialunits)
+                   (d "NineML component fieldns: ~A~%" fieldns)
+                   (d "NineML component fieldvs: ~A~%" fieldvs)
+                   ))
 
              (model-parameters
               (map (lambda (x) 
@@ -470,16 +497,18 @@
         
         (let* (
                (parameter-decls
-                  (map (lambda (n v u) 
-                         (let* ((vtext (sxml:text v))
-                                (name (string->symbol (sxml:text n)))
-                                (unit (string->symbol (sxml:text u)))
-                                (dim  (alist-ref name model-parameters)))
-                           (if unit
-                               `(define ,name = parameter (dim ,dim) (,(parse-string-expr vtext) * ,unit))
-                               `(define ,name = parameter ,(parse-string-expr vtext)))
-                           ))
-                       propns propvs propunits))
+                  (filter-map
+                   (lambda (n v u) 
+                     (let* ((vtext (sxml:text v))
+                            (name (string->symbol n))
+                            (unit (and u (string->symbol u)))
+                            (dim  (alist-ref name model-parameters)))
+                       (and dim
+                            (if unit
+                                `(define ,name = parameter (dim ,dim) (,(parse-string-expr vtext) * ,unit))
+                                `(define ,name = parameter ,(parse-string-expr vtext))))
+                       ))
+                   propns propvs propunits))
                  
                (field-decls
                 (map (lambda (n v) 
@@ -495,9 +524,9 @@
                  
                (state-decls
                 (map (lambda (n v u) 
-                       (let* ((name (string->symbol (sxml:text n)))
+                       (let* ((name (string->symbol n))
                               (vtext (sxml:text v))
-                              (unit (string->symbol (sxml:text u)))
+                              (unit (and u (string->symbol u)))
                               (dim  (alist-ref name model-variables)))
                          (if unit
                              `(define ,name = unknown (dim ,dim) (,(parse-string-expr vtext) * ,unit))
@@ -538,17 +567,18 @@
                (reduce-decls
                 (map (match-lambda 
                       ((name . dim) 
-                       (let ((unit (alist-ref dim default-units )))
+                       (let* ((unit (alist-ref dim default-units ))
+                              (val (or (alist-ref name prop-env) 
+                                       `(0.0 * ,unit))))
                          (if (not unit) 
                              (error 'eval-ul-component
                                     "cannot find default unit for dimension in reduce port definition"
                                     dim name))
-                         `(define ,name = unknown (dim ,dim) (0.0 * ,unit)))))
+                         `(define ,name = unknown (dim ,dim) ,val))))
                      model-reduce-ports))
                  
                  
                )
-
 
           (match model
                  (($ dynamics-node model-name model-formals model-decls) 
@@ -653,7 +683,7 @@
   )
 
 
-(define (codegen-ul-component name ul-properties node)
+(define (codegen-ul-component operand ul-properties node)
   
   (let* (
          (shared-dir    (chicken-home))
@@ -665,61 +695,60 @@
                           ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crkbs crkdp) "Sim.mlb.single.adaptive.tmpl")
                           (else "Sim.mlb.single.tmpl")))
          (makefile-tmpl "Makefile.single.tmpl")
-         (sim-path      (make-pathname source-directory (conc "Sim_" name ".sml")))
-         (mlb-path      (make-pathname source-directory (conc "Sim_" name ".mlb")))
-         (exec-path     (make-pathname source-directory (conc "Sim_" name)))
-         (makefile-path (make-pathname source-directory (conc "Makefile." name)))
+         (source-dir    (pathname-directory operand))
 
          )
 
-
     (match-let
      (
-      (($ dynamics-node model-name model-formals model-eqset) node)
+      ((node-name . ($ dynamics-node model-name model-formals model-eqset)) node)
       )
-     (d "node name = ~A model-eqset = ~A responses = ~A~%" name model-eqset responses)
+     (d "node name = ~A model-eqset = ~A~%" node-name model-eqset)
      (let* (
+            (sim-path      (make-pathname source-dir (conc "Sim_" node-name ".sml")))
+            (mlb-path      (make-pathname source-dir (conc "Sim_" node-name ".mlb")))
+            (exec-path     (make-pathname source-dir (conc "Sim_" node-name)))
+            (makefile-path (make-pathname source-dir (conc "Makefile." node-name)))
             (prototype-decls
              (salt:make-astdecls
               (salt:astdecls-decls model-eqset)))
             )
        (d "prototype-decls = ~A~%" prototype-decls)
        (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
-         (let ((sml-port (open-output-file (make-pathname source-directory (sprintf "~A.sml" node-name)))))
+         (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))
            (salt:codegen-ODE/ML node-name sim out: sml-port solver: (ivp-simulation-method) libs: '(random))
            (close-output-port sml-port)
            (case (ivp-simulation-method) 
              ((crk3 crkbs crkdp)
-              (let ((c-port (open-output-file (make-pathname source-directory (sprintf "~A.c" node-name)))))
+              (let ((c-port (open-output-file (make-pathname source-dir (sprintf "~A.c" node-name)))))
                 (salt:codegen-ODE/C node-name sim out: c-port solver: (ivp-simulation-method) libs: '(random))
                 (close-output-port c-port)
                 ))
              (else (begin)))
-           )
-         ))
-     
-     (make (
+           ))
+       
+       (make (
             
-            (sim-path (group-path)
+            (sim-path (operand)
                       (with-output-to-file sim-path 
                         (lambda ()
                           (print (ersatz:from-file 
                                   sim-tmpl
                                   env: (template-std-env search-path: `(,template-dir))
                                   models: `(
-                                            (modelName . ,(Tstr model-name))
+                                            (modelName . ,(Tstr (->string node-name)))
                                             ))
                                  ))
                         ))
             
-            (mlb-path (group-path)
+            (mlb-path (operand)
                       (with-output-to-file mlb-path 
                         (lambda ()
                           (print (ersatz:from-file 
                                   mlb-tmpl
                                   env: (template-std-env search-path: `(,template-dir))
                                   models: `(
-                                            (modelName . ,(Tstr model-name))
+                                            (modelName . ,(Tstr (->string node-name)))
                                             (UseCSolver . ,(Tbool (case (ivp-simulation-method)
                                                                     ((crk3 crkdp crkbs) #t)
                                                                     (else #f))))
@@ -733,7 +762,7 @@
                                (print (ersatz:from-file 
                                        makefile-tmpl
                                        env: (template-std-env search-path: `(,template-dir))
-                                       models: `((modelName . ,(Tstr model-name))
+                                       models: `((modelName . ,(Tstr (->string node-name)))
                                                  (sml_lib_home . ,(Tstr (make-pathname 
                                                                          (make-pathname shared-dir "salt")
                                                                          "sml-lib")))
@@ -753,21 +782,17 @@
                                ))
                            )
 
-            (exec-path (group-path sim-path mlb-path makefile-path)
+            (exec-path (operand sim-path mlb-path makefile-path)
                        (run (make -f ,makefile-path)))
             
             )
 
           (list exec-path) )
         ))
-    )
+    ))
 
 
 (define (resolve-ul-components node)
-
-  (define (rename-component component name)
-    (let ((kids (sxml:kids component)))
-      `(nml:Component (@ (name ,name)) . ,kids)))
 
   (let ((components-list (make-parameter '())))
 
@@ -775,11 +800,9 @@
           (component-template 
            (sxml:match 'nml:Component
                        (lambda (node bindings root env) 
-                         (let ((component-name (sprintf "~A_~A" name (sxml:attr node 'name))))
-                           (components-list (cons (rename-component node component-name)
-                                                  (components-list)))
-                           `(nml:Component (@ (name ,name))
-                                           . ,(sxml:kids node))
+                         (let ((component-name (sxml:attr node 'name)))
+                           (components-list (cons node (components-list)))
+                           node
                            ))
                        ))
           )
@@ -816,13 +839,16 @@
   (ivp-simulation-platform (simulation-platform))
   (alsys-simulation-platform (simulation-platform))
   (ivp-simulation-method (simulation-method))
+
+  (salt:model-quantities (cons (cons 'dimensionless Unity) (salt:model-quantities)))
   
   (for-each
    
    (lambda (operand)
      
      (let* (
-            (nineml-sxml ((sxpath `(// nml:NineML)) (parse-xml (read-all operand))))
+            (content-sxml (parse-xml (read-all operand)))
+            (nineml-sxml ((sxpath `(// nml:NineML)) content-sxml)) 
             (model-sxml (sxml:kids nineml-sxml))
             (ul-imports ((sxpath `(// (*or* nml:Import nml:import)))  model-sxml))
             (ul-import-sxmls (map (lambda (x) (parse-xml (fetch (sxml-string->uri (sxml:text x))))) ul-imports))
@@ -830,9 +856,6 @@
             )
        
        (let-values (((component-env ul-sxml) (resolve-ul-components all-sxml)))
-         
-         (pp `(all-sxml . ,all-sxml) (current-error-port))
-         (pp `(component-env . ,component-env) (current-error-port))
          
          (let ((dimensions-sxml (sxml:kidsn 'nml:Dimension `(nml:NineML . ,all-sxml)))
                (units-sxml (sxml:kidsn 'nml:Unit `(nml:NineML . ,all-sxml))))

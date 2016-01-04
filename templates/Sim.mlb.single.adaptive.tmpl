@@ -7,16 +7,11 @@ $(RK_LIB)/rk.mlb
 {% if UseCSolver  %}
 $(RK_LIB)/crk.mlb
 {% endif %}
-
+$(RANDMTZIG_LIB)/randmtzig.mlb
 $(DYNAMICS_LIB)/dynamics.mlb
+$(NINEML_LIB)/options.sml
 
 structure Dynamics = FunctionalHybridDynamics2
-
-local
-        options.sml
-in
-	structure Options
-end
 
 local
 	{{modelName}}.sml
