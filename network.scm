@@ -403,7 +403,7 @@
   (let (
         (node-name  (sxml:attr x 'name))
         (definition ((sxpath `(// (*or* nml:Definition nml:definition)))  x))
-	(prop       ((sxpath `(// (*or* nml:Property nml:property)))  x))
+	(props      ((sxpath `(// (*or* nml:Property nml:property)))  x))
 	(fieldns    ((sxpath `(// (*or* nml:Field nml:field) @ name))  x))
 	(fieldvs    ((sxpath `(// (*or* nml:Field nml:field) nml:SingleValue))  x))
 	(initials   ((sxpath `(// (*or* nml:Initial nml:initial)))  x))
@@ -641,11 +641,11 @@
                   (cons (string->symbol node-name) node))
                  ((and ($ connection-rule-node model-name model-formals model-stdlib) node)
                   (let ((parameters
-                         (map (lambda (n v) 
-                                (let* ((vtext (sxml:text v))
-                                       (name (string->symbol (sxml:text n))))
-                                  `(,name . ,vtext)))
-                              propns propvs)))
+                          (map (lambda (n v) 
+                                 (let* ((vtext (sxml:text v))
+                                        (name (string->symbol (if (string? n) n (sxml:text n)))))
+                                   `(,name . ,vtext)))
+                               propns propvs)))
                   (cons (string->symbol node-name) 
                         (make-connection-rule-node model-name model-formals 
                                                    (cons model-stdlib parameters)))
@@ -822,6 +822,7 @@
   
 
 (define (make-projection-tenv name type source destination connectivity response response-ports plasticity del properties)
+    (d "make-projection-tenv: type = ~A~%" type)
     (d "make-projection-tenv: source = ~A~%" source)
     (d "make-projection-tenv: destination = ~A~%" destination)
     (d "make-projection-tenv: connectivity = ~A~%" connectivity)
@@ -858,7 +859,8 @@
                     (append
                     `((name  . ,sys-name)
                       (stdlib . ,(car connection-rule)))
-                    (cdr connection-rule))))
+                    (cdr connection-rule)
+                    )))
                   (else (error 'make-connection-tenv "unknown stdlib connection"))))
 
    ((lookup-def sys-name node-env) =>
@@ -1393,11 +1395,17 @@
                                                      (UseCSolver . ,(Tbool (case (ivp-simulation-method)
                                                                              ((crk3 crkbs crkdp) #t)
                                                                              (else #f))))
-                                                     (CSolverFiles . ,(Tlist (case (ivp-simulation-method)
-                                                                               ((crk3) (list "crk3.c"))
-                                                                               ((crkbs) (list "crkbs.c"))
-                                                                               ((crkdp) (list "crkdp.c"))
-                                                                               (else (list)))))
+                                                     (CSolverFiles . ,(let ((csolver-path 
+                                                                             (make-pathname
+                                                                              (make-pathname 
+                                                                               (make-pathname shared-dir "salt")
+                                                                               "sml-lib")
+                                                                              "rk")))
+                                                                        (Tlist (case (ivp-simulation-method)
+                                                                                 ((crk3) (list (Tstr (make-pathname csolver-path "crk3.c"))))
+                                                                                 ((crkbs) (list (Tstr (make-pathname csolver-path "crkbs.c"))))
+                                                                                 ((crkdp) (list (Tstr (make-pathname csolver-path "crkdp.c"))))
+                                                                                 (else (list))))))
                                                                                 
                                                      ))
                                           ))

@@ -196,8 +196,7 @@
     (create-directory/parents 9ML-DIR))
 
 
-(copy-file-to-9ML-dir "examples/IzhikevichFS_AL.xml")
-(copy-file-to-9ML-dir "examples/IzhikevichFS_UL.xml")
+(copy-file-to-9ML-dir "examples/IzhikevichFS.xml")
 (copy-file-to-9ML-dir "examples/AEIF_AL.xml")
 (copy-file-to-9ML-dir "examples/AEIF_UL.xml")
 (copy-file-to-9ML-dir "examples/LIF_AL.xml")
