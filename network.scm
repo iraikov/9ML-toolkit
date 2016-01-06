@@ -398,7 +398,7 @@
       ))
 
 
-(define (eval-ul-component x) 
+(define (eval-ul-component x al-component-env) 
 
   (let (
         (node-name  (sxml:attr x 'name))
@@ -413,15 +413,20 @@
     (if (null? definition)
 	(error 'eval-ul-component "component without definition" x))
 
-    (let ((al-definition-name (string->symbol (sxml:text (safe-car definition))))
-          (uri (sxml-string->uri (sxml:attr (safe-car definition) 'url))))
+    (let (
+          (al-definition-name (string->symbol (sxml:text (safe-car definition))))
+          (uri (let ((str (sxml:attr (safe-car definition) 'url)))
+                 (and str (sxml-string->uri str))))
+          )
       
       (let* (
-             (model-src (fetch uri))
-             (model-sxml
-              (if (not model-src)
-                  (error 'eval-ul-component "resource not found" (uri->string uri))
-                  (parse-xml model-src)))
+             (model-src (and uri (fetch uri)))
+             (model-sxml (if (not model-src)
+                             (or (alist-ref al-definition-name al-component-env)
+                                 (error 'eval-ul-component "resource not found" al-definition-name))
+                             (parse-xml model-src)))
+             (dd     (d "NineML abstraction layer model XML: ~A~%" model-sxml))
+
              (model-decls (parse-al-sxml model-sxml))
              (dd     (d "NineML abstraction layer model declarations: ~A~%" model-decls))
 
@@ -624,7 +629,7 @@
                                        extev-decls
                                        reduce-decls
                                        (list model-decls))))
-                    (pp `(model-decls = ,decls) (current-error-port))
+                    ;;(pp `(model-decls = ,decls) (current-error-port))
                     (cons (string->symbol node-name)
                           (make-dynamics-node 
                            model-name model-formals 
@@ -943,7 +948,7 @@
       (fold (lambda (x ax) (+ (alist-ref 'size x) ax)) 0 destination-union)
       ))
 
-  (pp `("UL node" . ,node) (current-error-port))
+  ;;(pp `("UL node" . ,node) (current-error-port))
 
   (let* (
          (source-dir       (pathname-directory operand))
@@ -1496,6 +1501,35 @@
             ))
     ))
 
+
+(define (resolve-al-components node)
+
+  (let ((components-env (make-parameter '())))
+
+    (let (
+          (component-template 
+           (sxml:match 'nml:ComponentClass
+                       (lambda (node bindings root env) 
+                         (let ((component-name (string->symbol (sxml:attr node 'name))))
+                           (components-env (cons (cons component-name `(nml:NineML ,node)) (components-env)))
+                           node
+                           ))
+                       ))
+          )
+      
+      (let ((result 
+             (stx:apply-templates 
+              node
+              (sxml:make-identity-ss 
+               component-template
+               )
+              node (list))))
+        
+        (components-env) 
+        
+        ))
+    ))
+
            
 (define (find-duplicates lis)
   (let recur ((xs lis) (res '()))
@@ -1540,10 +1574,7 @@
             (all-sxml (fold append model-sxml ul-import-sxmls))
             )
        
-       (let-values (((component-env ul-sxml) (resolve-ul-components all-sxml)))
-         
-         (pp `(all-sxml . ,all-sxml) (current-error-port))
-         (pp `(component-env . ,component-env) (current-error-port))
+       (let-values (((ul-component-list ul-sxml) (resolve-ul-components all-sxml)))
          
          (let ((dimensions-sxml (sxml:kidsn 'nml:Dimension `(nml:NineML . ,all-sxml)))
                (units-sxml (sxml:kidsn 'nml:Unit `(nml:NineML . ,all-sxml))))
@@ -1556,9 +1587,11 @@
                 
                 (dd (d "ul-properties = ~A~%" ul-properties))
                 
-                (ul-component-eval-env
-                 (map eval-ul-component component-env))
-                
+                (al-component-env (resolve-al-components all-sxml))
+                (dd (d "al-component-env = ~A~%" al-component-env))
+
+                (ul-component-eval-env (map (lambda (x) (eval-ul-component x al-component-env)) ul-component-list))
+
                 )
            
            (let ((names (map car ul-component-eval-env)))
@@ -1567,7 +1600,7 @@
                    (error '9ML-network "Duplicate component names found" dups))
                ))
            
-           (d "ul-component-eval-env = ~%") (pp ul-component-eval-env (current-error-port))
+           ;;(d "ul-component-eval-env = ~%") (pp ul-component-eval-env (current-error-port))
            (eval-ul-group operand ul-properties `(nml:Group . ,ul-sxml) ul-component-eval-env)
            
            ))

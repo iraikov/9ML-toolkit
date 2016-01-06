@@ -69,6 +69,8 @@
 	     [else (error loc-str (conc msg arg))]
 	     ))))
 
+(define nineml-xmlns-base "http://nineml.net/9ML/")
+
 
 (define (op->signal-function op)
   (let ((name (case op
@@ -152,10 +154,25 @@
 )
 
 
+(define (subst-expr expr subst)
+
+  (let recur ((expr expr))
+
+    (cond ((number? expr)  expr)
+
+          ((symbol? expr) 
+           (let ((v (alist-ref expr subst)))
+             (or v expr)))
+
+          ((pair? expr) (map recur expr))
+
+          (else expr)
+          ))
+)
 
 
 
-(define nineml-xmlns-base "http://nineml.net/9ML/")
+
 
 (define (parse-al-sxml-dynamics formals sxml)
 
@@ -190,8 +207,8 @@
                     `(fun (,quantity ,var) = ,rhs)
                     ))
                 relations))
-           
-          (unknown-assign-decls
+
+          (subst-env
            (filter-map
             (lambda (x)
               (let ((quantity (string->symbol (sxml:attr x 'name)))
@@ -199,22 +216,21 @@
                                (sxml:kidn-cadr 'nml:MathInline x )
                                'parse-al-sxml-dynamics)))
                 (and (not (member quantity formals))
-                     `(define ,quantity = unknown 0.0))
+                     `(,quantity . ,rhs))
                 ))
             aliases))
            
           (assign-decls
-           (map (lambda (x)
-                  (let ((quantity (string->symbol (sxml:attr x 'name)))
-                        (rhs      (parse-string-expr 
-                                   (sxml:kidn-cadr 'nml:MathInline x )
-                                   'parse-al-sxml-dynamics)))
-                    (if (member quantity formals)
-                        `((reduce (+ ,quantity)) = ,rhs)
-                        `(,quantity = ,rhs)
-                        )
-                    ))
-                aliases))
+           (filter-map
+            (lambda (x)
+              (let ((quantity (string->symbol (sxml:attr x 'name)))
+                    (rhs      (parse-string-expr 
+                               (sxml:kidn-cadr 'nml:MathInline x )
+                               'parse-al-sxml-dynamics)))
+                (and (member quantity formals)
+                    `((reduce (+ ,quantity)) = ,rhs))
+                ))
+            aliases))
            
           (constant-decls
            (map (lambda (x)
@@ -244,9 +260,11 @@
                                     (fold (match-lambda*
                                            ((x (vars decls))
                                             (let ((var (string->symbol (sxml:attr x 'variable )))
-                                                  (rhs (parse-string-expr 
-                                                        (sxml:kidn-cadr 'nml:MathInline x )
-                                                        'parse-al-sxml-dynamics)))
+                                                  (rhs (subst-expr
+                                                        (parse-string-expr 
+                                                         (sxml:kidn-cadr 'nml:MathInline x )
+                                                         'parse-al-sxml-dynamics)
+                                                        subst-env)))
                                               (list (cons var vars)
                                                     (cons `((der (,var)) = ,rhs) decls)))))
                                           '(() ()) time-derivatives)))
@@ -271,9 +289,11 @@
                                          e-state-assignments))
                                    (e-assign-rhss
                                     (map (lambda (x)
-                                           (parse-string-expr 
-                                            (sxml:kidn-cadr 'nml:MathInline x) 
-                                            'parse-al-sxml-dynamics))
+                                           (subst-expr
+                                            (parse-string-expr 
+                                             (sxml:kidn-cadr 'nml:MathInline x) 
+                                             'parse-al-sxml-dynamics)
+                                            subst-env))
                                          e-state-assignments))
                                    (e-port
                                     (string->symbol (or (sxml:attr e 'src_port)
@@ -314,9 +334,11 @@
                                                             c-state-assignments))
                                    
                                    (c-assign-rhss      (map (lambda (x)
-                                                              (parse-string-expr 
-                                                               (sxml:kidn-cadr 'nml:MathInline x) 
-                                                               'parse-al-sxml-dynamics))
+                                                              (subst-expr
+                                                               (parse-string-expr 
+                                                                (sxml:kidn-cadr 'nml:MathInline x) 
+                                                                'parse-al-sxml-dynamics)
+                                                               subst-env))
                                                             c-state-assignments))
                                    )
                               `(,event-output 
@@ -330,10 +352,9 @@
                       
                       )
 
-                  (pp `(transition-decls . ,transition-decls) (current-error-port))
+                  ;;(pp `(transition-decls . ,transition-decls) (current-error-port))
 
                   (append 
-                   unknown-assign-decls
                    assign-decls
                    constant-decls
                    (if (null? on-conditions)
