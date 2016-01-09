@@ -1,0 +1,128 @@
+(use srfi-1 utils extras ssax sxpath sxpath-lolevel )
+(require-library sxml-transforms)
+(import (prefix sxml-transforms sxml:))
+(define shared-dir (make-pathname (chicken-home) "9ML"))
+
+(load (make-pathname shared-dir "stx-engine.scm"))
+(load (make-pathname shared-dir "SXML-to-XML.scm"))
+
+;; based on SRV:send-reply by Oleg Kiselyov
+(define (print-fragments b #!key (out (current-output-port)))
+  (let loop ((fragments b) (result #f))
+    (cond
+      ((null? fragments) result)
+      ((not (car fragments)) (loop (cdr fragments) result))
+      ((null? (car fragments)) (loop (cdr fragments) result))
+      ((eq? #t (car fragments)) (loop (cdr fragments) #t))
+      ((pair? (car fragments))
+        (loop (cdr fragments) (loop (car fragments) result)))
+      ((procedure? (car fragments))
+        ((car fragments))
+        (loop (cdr fragments) #t))
+      (else
+       (display (car fragments) out)
+       (loop (cdr fragments) #t)))))
+
+
+(define (Prelude . content)
+  `(NineML
+    (@ (xmlns "http://nineml.net/9ML/1.0"))
+    
+    (Dimension (@ (name "current") (i "1") (k "0") (j "0") (m "0") (l "0") (n "0") (t "0")))
+    (Dimension (@ (name "capacitance") (i "2") (l "-2") (m "-1") (t "4" )))
+    (Dimension (@ (name="voltage") (i "-1") (t "-3") (m "1") (l "2" )))
+    (Unit (@ (symbol "mV") (dimension "voltage") (power "-3")))
+    (Unit (@ (symbol "uF") (dimension "capacitance") (power "-6")))
+
+    ,@content))
+
+  
+
+(define IzhikevichFSdef
+  `(ComponentClass
+    (@ (name "IzhikevichFS")) 
+
+    (Parameter (@ (name "a") (dimension "dimensionless"))) 
+    (Parameter (@ (name "b") (dimension "current"))) 
+    (Parameter (@ (name "c") (dimension "voltage"))) 
+    (Parameter (@ (name "k") (dimension "dimensionless"))) 
+    (Parameter (@ (name "Vpeak") (dimension "voltage"))) 
+    (Parameter (@ (name "Vt") (dimension "voltage"))) 
+    (Parameter (@ (name "Vr") (dimension "voltage"))) 
+    (Parameter (@ (name "Vb") (dimension "voltage"))) 
+    (Parameter (@ (name "Cm") (dimension "capacitance"))) 
+    (Parameter (@ (name "Iext") (dimension "current"))) 
+
+    (AnalogReducePort (@ (name "Isyn") (dimension "current"))) 
+    (AnalogSendPort (@ (name "V") (dimension "voltage"))) 
+    (AnalogSendPort (@ (name "U") (dimension "current"))) 
+    (EventPort (@ (name "spikeOutput") (mode "send"))) 
+
+    (Dynamics 
+     (Constant (@ (units "ms") (name "one_ms")) 1.0) 
+     (Constant (@ (units "mV") (name "one_mV")) 1.0) 
+     (Constant (@ (units "megaohm") (name "one_megaohm")) 1.0) 
+     (StateVariable (@ (name "V") (dimension voltage))) 
+     (StateVariable (@ (name "U") (dimension current))) 
+     (Regime (@ (name "subVb")) 
+                 (OnCondition (@ (target_regime "subthreshold")) 
+                                  (Trigger (MathInline "V > Vb"))) 
+                 (TimeDerivative (@ (variable U)) 
+                                     (MathInline "(a * -U) / one_ms")) 
+                 (TimeDerivative (@ (variable V)) 
+                                     (MathInline "(((k * (V - Vr) * (V - Vt) / one_mV) + (((- U) + Iext) * one_megaohm)) / Cm) / one_megaohm"))) 
+     (Regime (@ (name "subthreshold")) 
+                 (OnCondition (@ (target_regime "subVb")) 
+                                  (Trigger (MathInline "V > Vpeak")) 
+                                  (OutputEvent (@ (port "spikeOutput"))) 
+                                  (StateAssignment (@ (variable "V")) (MathInline "c")))
+                 (TimeDerivative 
+                  (@ (variable "U")) 
+                  (MathInline "(a*((b*(((V - Vb) / one_mV)^3)) - U)) / one_ms"))
+                 (TimeDerivative
+                  (@ (variable "V")) 
+                  (MathInline "(((k * (V - Vr) * (V - Vt) / one_mV) + (((- U) + Iext) * one_megaohm)) / Cm) / one_megaohm"))
+                 )
+     ))
+  )
+
+
+(define (IzhikevichFS name #!key (a 0.2) (b 0.025) (c 45.0)
+                       (k 1.0) (Vpeak 25.0) (Vt -55.0) (Vr -40.0) (Vb -55.0)
+                       (Cm 20.0) (Iext 0.0) (Isyn 0.0)
+                       )
+  `(Component 
+    (@ (name ,name)) 
+    (Definition "IzhikevichFS") 
+    (Property (@ (name "a")) (SingleValue ,a)) 
+    (Property (@ (units "nA") (name "b")) (SingleValue ,b)) 
+    (Property (@ (units "mV") (name "c")) (SingleValue ,c)) 
+    (Property (@ (name "k")) (SingleValue ,k)) 
+    (Property (@ (units "mV") (name "Vpeak")) (SingleValue ,Vpeak))
+    (Property (@ (units "mV") (name "Vt")) (SingleValue ,Vt))
+    (Property (@ (units "mV") (name "Vr")) (SingleValue ,Vr))
+    (Property (@ (units "mV") (name "Vb")) (SingleValue ,Vb))
+    (Property (@ (units "uF") (name "Cm")) (SingleValue ,Cm)) 
+    (Property (@ (units "nA") (name "Iext")) (SingleValue ,Iext)) 
+    (Property (@ (units "nA") (name "Isyn")) (SingleValue ,Isyn)) 
+    
+    (Initial (@ (units "mV") (name "V")) (SingleValue -65.0)) 
+    (Initial (@ (units "nA") (name "U")) (SingleValue -1.625)))
+  
+  )
+
+
+(with-output-to-file 
+    "IzhikevichFS.xml" 
+  (lambda ()
+    (print-fragments 
+     (generate-XML
+      (Prelude 
+       IzhikevichFSdef
+       (IzhikevichFS "IzhikevichFS_Iext100" Iext: 100.0)
+       (IzhikevichFS "IzhikevichFS_Iext200" Iext: 200.0)
+       (IzhikevichFS "IzhikevichFS_Iext400" Iext: 400.0)
+       ))
+     ))
+  )
+

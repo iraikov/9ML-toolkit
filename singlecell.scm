@@ -374,6 +374,7 @@
         )
 
     (d "NineML UL component name = ~A~%" node-name)
+    (d "NineML UL component XML = ~A~%" x)
 
     (if (null? definition)
 	(error 'eval-ul-component "component without definition" x))
