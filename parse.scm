@@ -460,7 +460,8 @@
      (connection-rule 
       (let (
             (connection-stdlib
-             (string->symbol (sxml:attr connection-rule 'standardLibrary)))
+             (string->symbol (or (sxml:attr connection-rule 'standard_library)
+                                 (sxml:attr connection-rule 'standardLibrary))))
             (connection-formals
              (map (lambda (x) (string->symbol (sxml:attr x 'name)))
                   (append (reverse ports)
