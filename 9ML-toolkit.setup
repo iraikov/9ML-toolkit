@@ -163,7 +163,11 @@
 
 (let ((plotvar-script (with-input-from-file "plotvar.scm" read-lines))
       (plotraster-script (with-input-from-file "plotraster.scm" read-lines))
+      (simstats-script (with-input-from-file "simstats.scm" read-lines))
       (header (string-append "#! "(installation-prefix) "/bin/csi -script")))
+  (with-output-to-file "simstats" 
+    (lambda ()
+      (for-each print (cons header simstats-script))))
   (with-output-to-file "plotvar" 
     (lambda ()
       (for-each print (cons header plotvar-script))))
@@ -172,6 +176,7 @@
       (for-each print (cons header plotraster-script))))
 )
 
+(install-script '9ML-simstats "simstats")
 (install-script '9ML-plotvar "plotvar")
 (install-script '9ML-plotraster "plotraster")
 
