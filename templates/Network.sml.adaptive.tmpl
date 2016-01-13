@@ -13,7 +13,7 @@ struct
        fun priority (x : item) = (#1(x))
   end
       
-  structure SEQ = TEventQueue (structure P = TEventPriority
+  structure SEQ = TEventQueue (structure P = SEventPriority
                                type value = int
                                fun value (x : P.item) = (#2(x)))
 
@@ -420,18 +420,12 @@ struct
 
         let
             fun enqueueSpikes xs =
-                List.foldl (fn(xs,ax) => List.foldl (fn((t,i),ax) => SEQ.addEvent (t,i,ax)) ax xs) SEQ.empty
+                List.foldl (fn(xs,ax) => List.foldl (fn((i,t,nv),ax) => SEQ.addEvent ((t,i),ax)) ax xs) SEQ.empty xs
 
-           val ext_spike_i = enqueueSpikes (
-{% for pop in dict (group.populations) %}
-                                 {% if not pop.name in group.spikepoplst %}{{pop.name}}_spike_i :: {% endif %}
-{% endfor %} [])
+           val ext_spike_i = enqueueSpikes ({% for pop in dict (group.populations) %}{% if not pop.name in group.spikepoplst %}{{pop.name}}_spike_i :: {% endif %}{% endfor %} [])
 
                 
-           val neuron_spike_i =  enqueueSpikes [
-{% for name in (group.spikepoplst) %}
-                                 {{name}}_spike_i{% if not loop.last %},{% endif %}
-{% endfor %} ]
+           val neuron_spike_i =  enqueueSpikes [{% for name in (group.spikepoplst) %}{{name}}_spike_i{% if not loop.last %},{% endif %}{% endfor %} ]
 
         in
             (ext_spike_i, neuron_spike_i)

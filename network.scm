@@ -76,7 +76,7 @@
 (define opt-defaults
   `(
     (platform . mlton)
-    (method . rkdp)
+    (method . rk3)
     ))
 
 (define (defopt x)
@@ -410,6 +410,7 @@
         (ivp        (safe-car ((sxpath `(// nml:IVP))  x)))
         )
 
+    (d "NineML user layer XML: ~A~%" x)
     (if (null? definition)
 	(error 'eval-ul-component "component without definition" x))
 
