@@ -6,6 +6,25 @@
 (load (make-pathname shared-dir "stx-engine.scm"))
 (load (make-pathname shared-dir "SXML-to-XML.scm"))
 
+(define (model-name s)
+  (let ((cs (string->list (->string s))))
+    (let loop ((lst (list)) (cs cs))
+      (cond ((null? cs) (list->string (reverse lst)))
+	    ((null? (cdr cs))
+	     (let ((c (car cs)))
+	       (if (or (char-alphabetic? c) (char-numeric? c))
+		   (loop (cons c lst) (cdr cs))
+		   (loop (append (reverse (string->list (->string (gensym 't)))) lst) (cdr cs))
+		   )))
+	    (else
+	     (let* ((c (car cs))
+		    (c1 (cond ((or (char-alphabetic? c) (char-numeric? c) 
+				   (char=? c #\_) (char=? c #\#)) c)
+			      (else #\_))))
+	       (loop (cons c1 lst) (cdr cs))))))))
+			    
+
+
 ;; based on SRV:send-reply by Oleg Kiselyov
 (define (print-fragments b #!key (out (current-output-port)))
   (let loop ((fragments b) (result #f))
@@ -32,7 +51,7 @@
     (Dimension (@ (name "frequency") (t "-1") ))
     (Dimension (@ (name "current") (i "1") (k "0") (j "0") (m "0") (l "0") (n "0") (t "0")))
     (Dimension (@ (name "capacitance") (i "2") (l "-2") (m "-1") (t "4" )))
-    (Dimension (@ (name="voltage") (i "-1") (t "-3") (m "1") (l "2" )))
+    (Dimension (@ (name "voltage") (i "-1") (t "-3") (m "1") (l "2" )))
     (Dimension (@ (name "resistance") (t "-3") (m "1") (l "2") (i "-2")))
 
     (Unit (@ (symbol "mV") (dimension "voltage") (power "-3")))
@@ -189,7 +208,7 @@
    (for-each
     (lambda (eta)
       (with-output-to-file 
-          (sprintf "Brunel_network_alpha_g~A_eta~A.xml" g eta)
+          (string-append (model-name (sprintf "Brunel_network_alpha_g~A_eta~A" g eta)) ".xml")
         (lambda ()
           (print-fragments 
            (generate-XML
