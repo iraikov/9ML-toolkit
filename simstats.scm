@@ -11,8 +11,13 @@
 (define comment-pat (string->irregex "^#.*"))
 
 (define (diffs xs)
-  (fold (match-lambda* ((x (prev lst)) (list x (cons (- x prev) lst))))
-        0.0 xs))
+  (if (null? xs) '()
+      (reverse
+       (cadr
+        (fold (match-lambda* ((x (prev lst)) (list x (cons (- x prev) lst))))
+              (list (car xs) '()) (cdr xs))
+        ))
+      ))
 
 (define (sum xs) (fold + 0.0 xs))
 
@@ -63,10 +68,11 @@
                        (reverse data))
              v))
 
-          (event-intervals (map diffs (vector->list event-times)))
+          (event-intervals (map diffs (filter pair? (vector->list event-times))))
           (mean-event-intervals (map mean event-intervals))
           (mean-event-interval (mean mean-event-intervals))
-          (stdev-event-interval (sqrt (variance mean-event-intervals)))
+          (stdev-event-interval (if (null? mean-event-intervals) 0.0 
+                                    (sqrt (variance mean-event-intervals))))
 
           (nevents (map (lambda (x) (if (null? x) 0 (length (cdr x)))) (vector->list event-times)))
           (mean-rates (map (lambda (x) (* 1000 (/ x tmax))) nevents))
@@ -76,28 +82,16 @@
 
      (with-output-to-file output-file
        (lambda ()
-         (printf "nmax: ~A" nmax)
-         (printf "t max: ~A" tmax)
-         (printf "mean event frequency: ~A " mean-event-frequency)
-         (printf "mean event interval: ~A " mean-event-frequency)
-         (printf "mean event interval: ~A " mean-event-interval)
-         (printf "stdev event interval: ~A " stdev-event-interval)
+         (printf "nmax: ~A~%" nmax)
+         (printf "t max: ~A~%" tmax)
+         (printf "mean event frequency: ~A~%" mean-event-frequency)
+         (printf "mean event interval: ~A~%" mean-event-interval)
+         (printf "stdev event interval: ~A~%" stdev-event-interval)
          ))
     
      ))
   )
 
-
-(define opts    (getopt-long (command-line-arguments) opt-grammar))
-(define opt     (make-option-dispatch opts opt-grammar))
-
-
-(define opt-defaults
-  `(
-    ))
-
-(define (defopt x)
-  (lookup-def x opt-defaults))
 
 
 
@@ -120,6 +114,17 @@
   
   ))
 
+(define opts    (getopt-long (command-line-arguments) opt-grammar))
+(define opt     (make-option-dispatch opts opt-grammar))
+
+
+(define opt-defaults
+  `(
+    ))
+
+(define (defopt x)
+  (lookup-def x opt-defaults))
+
 
 ;; Use args:usage to generate a formatted list of options (from OPTS),
 ;; suitable for embedding into help text.
@@ -138,7 +143,7 @@
   (if (options 'help) (simstats:usage))
 
   (if (not (opt 'data-filename))
-      (plotraster:usage))
+      (simstats:usage))
 
   (let* (
          (data-filename (or (opt 'data-filename) 
@@ -146,7 +151,7 @@
          (output-filename (or (opt 'output-filename)
                               (pathname-replace-extension 
                                data-filename
-                               (sprintf ".~A" simstats))))
+                               ".simstats")))
          )
     
     (event-stats data-filename output-filename)

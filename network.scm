@@ -1582,7 +1582,9 @@
             (ul-import-sxmls (map (lambda (x) (parse-xml (fetch (sxml-string->uri (sxml:text x))))) ul-imports))
             (all-sxml (fold append model-sxml ul-import-sxmls))
             )
-       
+
+       (pp `("ULXML" . ,all-sxml) (current-error-port))       
+
        (let-values (((ul-component-list ul-sxml) (resolve-ul-components all-sxml)))
          
          (let ((dimensions-sxml (sxml:kidsn 'nml:Dimension `(nml:NineML . ,all-sxml)))
