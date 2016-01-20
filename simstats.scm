@@ -87,6 +87,7 @@
          (printf "mean event frequency: ~A~%" mean-event-frequency)
          (printf "mean event interval: ~A~%" mean-event-interval)
          (printf "stdev event interval: ~A~%" stdev-event-interval)
+         (printf "cv event interval: ~A~%" (/ stdev-event-interval mean-event-interval))
          ))
     
      ))
