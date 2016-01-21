@@ -73,6 +73,8 @@
           (mean-event-interval (mean mean-event-intervals))
           (stdev-event-interval (if (null? mean-event-intervals) 0.0 
                                     (sqrt (variance mean-event-intervals))))
+          (cv-event-interval (if (zero? mean-event-interval) 0.0
+                                 (/ stdev-event-interval mean-event-interval)))
 
           (nevents (map (lambda (x) (if (null? x) 0 (length (cdr x)))) (vector->list event-times)))
           (mean-rates (map (lambda (x) (* 1000 (/ x tmax))) nevents))
@@ -84,10 +86,11 @@
        (lambda ()
          (printf "nmax: ~A~%" nmax)
          (printf "t max: ~A~%" tmax)
+         (printf "mean number of events: ~A~%" (mean nevents))
          (printf "mean event frequency: ~A~%" mean-event-frequency)
          (printf "mean event interval: ~A~%" mean-event-interval)
          (printf "stdev event interval: ~A~%" stdev-event-interval)
-         (printf "cv event interval: ~A~%" (/ stdev-event-interval mean-event-interval))
+         (printf "cv event interval: ~A~%" cv-event-interval)
          ))
     
      ))
