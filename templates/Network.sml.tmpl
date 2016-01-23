@@ -244,24 +244,24 @@ struct
       end
 
 
-  fun {{pop.name}}_run f (Wmap,n0) (i,input,(nstates,spikes)) =
+  fun {{pop.name}}_run f (statesample,extsample,evsample) (Wmap,n0) (i,input,(nstates,spikes)) =
     let 
 
         fun log (nstate) =
             let
-                val _ = if (i<{{group.statesample}})
+                val _ = if (i<statesample)
                         then putStrLn (!{{pop.name}}_state_out)
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_y nstate))) 
                         else ()
                                  
-                val _ = if (i<{{group.extsample}})
+                val _ = if (i<extsample)
                         then putStrLn (!{{pop.name}}_ext_out)
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_ext nstate)) ^ ", " ^
                                        (showRealArray (state_extev nstate)))
                         else ()
-                val _ = if (i<{{group.evsample}})
+                val _ = if (i<evsample)
                         then putStrLn (!{{pop.name}}_event_out)
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_event nstate)))
@@ -356,7 +356,7 @@ struct
         {% endfor %}
     ]
          
-    fun frun h I
+    fun frun (statesample,extsample,evsample) h I
              (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
@@ -365,7 +365,7 @@ struct
         let
 {% for pop in dict (group.populations) %}
             val ({{pop.name}}_states,{{pop.name}}_spikes) = 
-                Vector.foldri ({{pop.name}}_run ({{pop.name}}_f h) (I,{{pop.name}}_n0))
+                Vector.foldri ({{pop.name}}_run ({{pop.name}}_f h) (statesample,extsample,evsample) (I,{{pop.name}}_n0))
                               ([],[]) {{pop.name}}_state_vector
 
 {% endfor %}

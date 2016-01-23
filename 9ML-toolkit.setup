@@ -227,6 +227,7 @@
 (copy-file-to-9ML-dir "templates/Makefile.single.tmpl")
 
 (copy-file-to-9ML-dir "sml-lib/options.sml")
+(copy-file-to-9ML-dir "sml-lib/netoptions.sml")
 (copy-file-to-9ML-dir "sml-lib/IntMap.sml")
 (copy-file-to-9ML-dir "sml-lib/DynArray.sml")
 (copy-file-to-9ML-dir "sml-lib/SkewBinomialHeap.sml")

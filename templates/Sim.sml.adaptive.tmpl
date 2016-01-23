@@ -179,7 +179,8 @@ fun main (name,args) =
 	             SOME msg => exitError (CommandLine.name(), msg)
 	           | NONE => ())
 		    
-        val {is_help, is_time, is_timestep, is_tol} = Options.getstate (opts)
+        val {is_help, is_time, is_timestep, is_tol,
+            is_statesample, is_extsample, is_evsample} = Options.getstate (opts)
 						                       
         val _ = if is_help then exitHelp (CommandLine.name()) else ()
                                                                        
@@ -187,6 +188,10 @@ fun main (name,args) =
         val tstop = case is_time of SOME t => t | NONE => 150.0
 
         val _ = case is_tol of SOME tol => ({{group.name}}.D.tol := tol) | NONE => ()
+
+        val statesample = case is_statesample of SOME n => n | NONE => 0
+        val extsample = case is_extsample of SOME n => n | NONE => 0
+        val evsample = case is_evsample of SOME n => n | NONE => 0
     in
         (let
             val     _ = putStrLn TextIO.stdOut ("starting fprojection...")
@@ -195,21 +200,10 @@ fun main (name,args) =
             val out   = TextIO.openOut (label ^ ".dat")
 
 {% for pop in dict (group.populations) %}
-{% if group.statesample > 0 %}
+            val _ = (if statesample > 0 then ({{pop.name}}_state_out := TextIO.openOut ("{{pop.name}}_state.dat")) else ();
+                     if extsample > 0 then ({{pop.name}}_ext_out := TextIO.openOut ("{{pop.name}}_ext.dat")) else ();
+                     if evsample > 0 then ({{pop.name}}_event_out := TextIO.openOut ("{{pop.name}}_event.dat")) else ())
 
-            val _ = ({{pop.name}}_state_out := TextIO.openOut ("{{pop.name}}_state.dat"))
-
-{% endif %}
-{% if group.extsample > 0 %}
-
-            val _ = ({{pop.name}}_ext_out := TextIO.openOut ("{{pop.name}}_ext.dat"))
-
-{% endif %}
-{% if group.evsample > 0 %}
-
-            val _ = ({{pop.name}}_event_out := TextIO.openOut ("{{pop.name}}_event.dat"))
-
-{% endif %}
 {% endfor %}
 
         in
@@ -220,7 +214,8 @@ fun main (name,args) =
                      ]);
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")
-                val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, initial, frun, fspikes, finfo, tstop, out))
+                val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, initial, frun (statesample,extsample,evsample), 
+                                                    fspikes, finfo, tstop, out))
             in
                 putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
             end;
@@ -229,26 +224,20 @@ fun main (name,args) =
             TextIO.closeOut (out);
 
 {% for pop in dict (group.populations) %}
-{% if group.statesample > 0 %}
+            if statesample > 0 then
+                (TextIO.flushOut (!{{pop.name}}_state_out); 
+                 TextIO.closeOut (!{{pop.name}}_state_out))
+            else ();
+            if extsample > 0 then
+                (TextIO.flushOut (!{{pop.name}}_ext_out); 
+                 TextIO.closeOut (!{{pop.name}}_ext_out))
+            else ();
+            if evsample > 0 then
+                (TextIO.flushOut (!{{pop.name}}_event_out); 
+                 TextIO.closeOut (!{{pop.name}}_event_out))
+            else ();
 
-            TextIO.flushOut (!{{pop.name}}_state_out); 
-            TextIO.closeOut (!{{pop.name}}_state_out);
-
-{% endif %}
-{% if group.extsample > 0 %}
-
-            TextIO.flushOut (!{{pop.name}}_ext_out); 
-            TextIO.closeOut (!{{pop.name}}_ext_out);
-
-{% endif %}
-{% if group.evsample > 0 %}
-
-            TextIO.flushOut (!{{pop.name}}_event_out); 
-            TextIO.closeOut (!{{pop.name}}_event_out);
-
-{% endif %}
 {% endfor %}
-
            ()
         end)
     end

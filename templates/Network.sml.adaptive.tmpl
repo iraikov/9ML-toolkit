@@ -272,23 +272,23 @@ struct
                      {{pop.value.prototype.name}}.regfun)
       end
 
-  fun {{pop.name}}_run (tend,Wmap,n0) (i,input,(nstates,spikes)) =
+  fun {{pop.name}}_run (statesample,extsample,evsample) (tend,Wmap,n0) (i,input,(nstates,spikes)) =
     let 
         fun log (nstate) =
             let
-                val _ = if (i<{{group.statesample}})
+                val _ = if (i<statesample)
                         then putStrLn (!{{pop.name}}_state_out)
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_y nstate))) 
                         else ()
                                  
-                val _ = if (i<{{group.extsample}})
+                val _ = if (i<extsample)
                         then putStrLn (!{{pop.name}}_ext_out)
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_ext nstate)) ^ ", " ^
                                        (showRealArray (state_extev nstate)))
                         else ()
-                val _ = if (i<{{group.evsample}})
+                val _ = if (i<evsample)
                         then putStrLn (!{{pop.name}}_event_out)
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_event nstate)))
@@ -383,7 +383,7 @@ struct
     ]
          
 
-    fun frun (tend,I)
+    fun frun (statesample,extsample,evsample) (tend,I)
              (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
@@ -392,7 +392,7 @@ struct
         let
 {% for pop in dict (group.populations) %}
             val ({{pop.name}}_states,{{pop.name}}_spikes) = 
-                Vector.foldri ({{pop.name}}_run (tend,I,{{pop.name}}_n0))
+                Vector.foldri ({{pop.name}}_run (statesample,extsample,evsample) (tend,I,{{pop.name}}_n0))
                               ([],[]) {{pop.name}}_state_vector
 
 {% endfor %}
