@@ -194,10 +194,7 @@ struct
 
   val N_{{pop.name}} = {{ pop.value.size }}
 
-{% for pop in dict (group.populations) %}
-    val {{pop.name}}_n0 = {{pop.value.start}}
-
-{% endfor %}
+  val {{pop.name}}_n0 = {{pop.value.start}}
 
   val {{pop.name}}_parameters = {{pop.value.prototype.name}}.paramfun()
 
@@ -323,6 +320,14 @@ struct
     end
 
 {% endfor %}
+
+
+  val popmap = [
+{% for s in dict (group.sets) %}
+   "{{s.name}}"::s.populations
+{% endfor %} ]
+
+
 
 {% if group.plastypes %}{% for pl in dict (group.plastypes) %}
   val {{pl.name}}_parameters: real array = {{pl.name}}.paramfun()
