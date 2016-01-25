@@ -180,7 +180,8 @@ fun main (name,args) =
 	           | NONE => ())
 		    
         val {is_help, is_time, is_timestep, is_tol,
-            is_statesample, is_extsample, is_evsample} = Options.getstate (opts)
+            is_statesample, is_extsample, is_evsample,
+            is_spikerecord} = Options.getstate (opts)
 						                       
         val _ = if is_help then exitHelp (CommandLine.name()) else ()
                                                                        
@@ -192,6 +193,8 @@ fun main (name,args) =
         val statesample = case is_statesample of SOME n => n | NONE => 0
         val extsample = case is_extsample of SOME n => n | NONE => 0
         val evsample = case is_evsample of SOME n => n | NONE => 0
+        val spikelog = case is_spikerecord of SOME n => fspikeidxs n | NONE => []
+
     in
         (let
             val     _ = putStrLn TextIO.stdOut ("starting fprojection...")
@@ -215,7 +218,7 @@ fun main (name,args) =
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")
                 val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, initial, frun (statesample,extsample,evsample), 
-                                                    fspikes, finfo, tstop, out))
+                                                    fspikes spikelog, finfo, tstop, out))
             in
                 putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
             end;

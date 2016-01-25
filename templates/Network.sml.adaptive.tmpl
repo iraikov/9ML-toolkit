@@ -85,6 +85,11 @@ struct
                      end)))
       end
 
+  fun assoc ((k,v)::rst) x = if k=x then SOME v else assoc rst x
+    | assoc [] x = NONE 
+
+  fun member (k,lst) = case List.find (fn(x)=>k=x) lst of SOME _ => true | NONE => false
+
   fun index_foldri (a, b, f, init) =
       if a <= b then
           index_foldri (a, b-1, f, f (b, init))
@@ -185,6 +190,7 @@ struct
 
         
   exception Index        
+  exception InvalidPopulationSet of string
 
   val label = "{{group.name}}"
             
@@ -350,6 +356,12 @@ struct
 
 {% endfor %}
 
+  val popmap = [
+{% for s in dict (group.sets) %}
+   ("{{s.name}}"{% for p in s.value.populations %}::"{{p.name}}"{% endfor %}::[]){% if not loop.last %},{% endif %}
+{% endfor %} ]
+
+
 {% if group.plastypes %}{% for pl in dict (group.plastypes) %}
   val {{pl.name}}_parameters: real array = {{pl.name}}.paramfun()
   val {{pl.name}}_initial = {{pl.name}}.initfun({{pl.name}}_parameters)
@@ -411,9 +423,19 @@ struct
             ))
         end
                          
+    fun fspikeidxs spikesetName = 
+        let 
+            val spikesetPops = case List.find (fn(x) => spikesetName = (hd x)) popmap of
+                                   SOME lst => tl lst
+                                 | NONE => raise InvalidPopulationSet spikesetName
+            val pops = [{% for pop in dict (group.populations) %}"{{pop.name}}"{% if not loop.last %},{% endif %}{% endfor %}]
+            val popIdxs = ListPair.zip (pops, List.tabulate (List.length pops, fn (i) => i))
+        in
+            List.map (valOf o assoc popIdxs) spikesetPops
+        end
                          
 
-    fun fspikes (
+    fun fspikes spikelogIdxs (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_spike_i{% if not loop.last %},{% endif %}
 {% endfor %} ) =
@@ -422,13 +444,13 @@ struct
             fun enqueueSpikes xs =
                 List.foldl (fn(xs,ax) => List.foldl (fn((i,t,nv),ax) => SEQ.addEvent ((t,i),ax)) ax xs) SEQ.empty xs
 
-           val ext_spike_i = enqueueSpikes ({% for pop in dict (group.populations) %}{% if not pop.name in group.spikepoplst %}{{pop.name}}_spike_i :: {% endif %}{% endfor %} [])
+            val all_spike_i = [{% for pop in dict (group.populations) %}{{pop.name}}_spike_i{% if not loop.last %},{% endif %}{% endfor %}]
+            val labeled_spike_i = ListPair.zip (List.tabulate (List.length all_spike_i, fn (i) => i), all_spike_i)
 
-                
-           val neuron_spike_i =  enqueueSpikes [{% for name in (group.spikepoplst) %}{{name}}_spike_i{% if not loop.last %},{% endif %}{% endfor %} ]
+            val (log_spike_i,ext_spike_i) = List.partition (fn(i,x) => member (i, spikelogIdxs)) labeled_spike_i
 
         in
-            (ext_spike_i, neuron_spike_i)
+            (enqueueSpikes all_spike_i, enqueueSpikes (map #2 log_spike_i))
         end
 
 {% macro cartesian_product(sp, tp) %}
