@@ -78,6 +78,11 @@ struct
       else
           init
 
+  fun assoc ((k,v)::rst) x = if k=x then SOME v else assoc rst x
+    | assoc [] x = NONE 
+
+  fun member (k,lst) = case List.find (fn(x)=>k=x) lst of SOME _ => true | NONE => false
+
   val getindex = Unsafe.Array.sub
 
 
@@ -162,6 +167,7 @@ struct
 
         
   exception Index        
+  exception InvalidPopulationSet of string
 
   val label = "{{group.name}}"
             
@@ -324,7 +330,7 @@ struct
 
   val popmap = [
 {% for s in dict (group.sets) %}
-   "{{s.name}}"::s.populations
+   ("{{s.name}}"{% for p in s.value.populations %}::"{{p.name}}"{% endfor %}::[]){% if not loop.last %},{% endif %}
 {% endfor %} ]
 
 
@@ -400,25 +406,30 @@ struct
             state_indep (Vector.sub ({{pop.name}}_state_vector,0))
 {% endwith %}
     
+    fun fspikeidxs spikesetName = 
+        let 
+            val spikesetPops = case List.find (fn(x) => spikesetName = (hd x)) popmap of
+                                   SOME lst => tl lst
+                                 | NONE => raise InvalidPopulationSet spikesetName
+            val pops = [{% for pop in dict (group.populations) %}"{{pop.name}}"{% if not loop.last %},{% endif %}{% endfor %}]
+            val popIdxs = ListPair.zip (pops, List.tabulate (List.length pops, fn (i) => i))
+        in
+            List.map (valOf o assoc popIdxs) spikesetPops
+        end
         
-    fun fspikes (
+    fun fspikes spikelogIdxs (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_spike_i{% if not loop.last %},{% endif %}
 {% endfor %} ) =
 
         let
-           val ext_spike_i = List.concat ( {% for pop in dict (group.populations) %}{% if not pop.name in group.spikepoplst %}{{pop.name}}_spike_i ::{% endif %}{% endfor %} [] )
+            val all_spike_i = [{% for pop in dict (group.populations) %}{{pop.name}}_spike_i{% if not loop.last %},{% endif %}{% endfor %}]
+            val labeled_spike_i = ListPair.zip (List.tabulate (List.length all_spike_i, fn (i) => i), all_spike_i)
 
-                
-           val neuron_spike_i = List.concat [ 
-{% for name in (group.spikepoplst) %}
-                                 {{name}}_spike_i{% if not loop.last %},{% endif %}
-{% endfor %}
-                                 ]
-
-            val all_spike_i    = List.concat [neuron_spike_i, ext_spike_i]
+            val (log_spike_i,ext_spike_i) = List.partition (fn(i,x) => member (i, spikelogIdxs)) labeled_spike_i
+                                                           
         in
-            (all_spike_i, neuron_spike_i)
+            (all_spike_i, List.map #2 log_spike_i)
         end
 
 {% macro cartesian_product(sp, tp) %}

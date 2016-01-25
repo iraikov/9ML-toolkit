@@ -123,14 +123,17 @@ let
                                       val T = Real64Array.array (N, 0.0)
                                   in
                                       (List.app
-                                           (fn (i,nv) => 
-                                               let
-                                                   val sl = SparseMatrix.slice (W,1,i)
-                                               in
-                                                   SparseMatrix.sliceAppi 
-                                                       (fn (j,x) => update (T,j,Real.+ (Real.* (nv,x), sub(T,j))))
-                                                       sl
-                                               end)
+                                           (fn (lst) =>
+                                               List.app
+                                                   (fn (i,nv) => 
+                                                       let
+                                                           val sl = SparseMatrix.slice (W,1,i)
+                                                       in
+                                                           SparseMatrix.sliceAppi 
+                                                               (fn (j,x) => update (T,j,Real.+ (Real.* (nv,x), sub(T,j))))
+                                                               sl
+                                                       end)
+                                                   lst)
                                            spike_i;
                                        Real64Array.foldli 
                                            (fn (i,v,m) => if not (Real.==(v, 0.0)) then IntMap.insert(m,i,v) else m)
@@ -141,7 +144,10 @@ let
             val _ = 
                 if not (List.null log_spike_i)
                 then (putStr out ((showReal t_i) ^ " ");
-                      TensorFile.intListLineWrite out (List.map (fn (i,n) => (i+1)) log_spike_i))
+                      List.app (fn(lst) => List.app (fn x => (TextIO.output(out, " " ^ (Int.toString x))))
+                                                    (List.map (fn (i,n) => (i+1)) lst))
+                               log_spike_i;
+                      TextIO.output(out, "\n"))
                 else (putStrLn out ("# " ^ (showReal t_i)))
                          
                          
@@ -199,7 +205,8 @@ fun main (name,args) =
 	           | NONE => ())
 		    
         val {is_help, is_time, is_timestep, is_tol,
-             is_statesample, is_extsample, is_evsample} = Options.getstate (opts)
+             is_statesample, is_extsample, is_evsample,
+             is_spikerecord} = Options.getstate (opts)
 						                       
         val _ = if is_help then exitHelp (CommandLine.name()) else ()
                                                                        
@@ -209,6 +216,7 @@ fun main (name,args) =
         val statesample = case is_statesample of SOME n => n | NONE => 0
         val extsample = case is_extsample of SOME n => n | NONE => 0
         val evsample = case is_evsample of SOME n => n | NONE => 0
+        val spikelog = case is_spikerecord of SOME n => fspikeidxs n | NONE => []
 
     in
         (let
@@ -233,7 +241,7 @@ fun main (name,args) =
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")
                 val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, initial, frun (statesample,extsample,evsample), 
-                                                    ftime, fspikes, finfo, tstop, out))
+                                                    ftime, fspikes spikelog, finfo, tstop, out))
             in
                 putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
             end;

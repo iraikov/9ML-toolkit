@@ -109,12 +109,6 @@
                      (single-char #\m)
                      )
 
-    (spikerecord     "name of population for spike recording"
-		     (value (required POPULATION))
-                     (single-char #\s)
-                     )
-
-
     (verbose          "print commands as they are executed"
 		      (single-char #\v))
 
@@ -861,13 +855,13 @@
 
 (define (make-group-tenv name order populations sets projections 
                          psr-types plas-types connection-types projection-ports
-                         spikepoplst properties)
+                         properties)
   (let ((alst 
          `((group 
             . 
             ((name        . ,name)
              (order       . ,order)
-             (sets        . ,sets)
+             (sets        . ,(alist->tenv sets))
              (populations . ,populations)
              (projections . ,projections)
              (projectionPorts . ,projection-ports)
@@ -875,7 +869,6 @@
              (plastypes   . ,(if (null? plas-types) #f plas-types))
              (conntypes   . ,(if (null? connection-types) #f connection-types))
              (properties  . ,(if (null? properties) (ersatz:sexpr->tvalue '()) properties))
-             (spikepoplst . ,spikepoplst)
              ))
            ))
         )
@@ -1205,17 +1198,6 @@
              (mlb-path      (make-pathname source-dir (conc "Sim_" group-name ".mlb")))
              (exec-path     (make-pathname source-dir (conc "Sim_" group-name)))
              (makefile-path (make-pathname source-dir (conc "Makefile." group-name)))
-             (spikelst
-              (fold (lambda (name ax)
-                      (let ((set (alist-ref ($ name) sets-tenv)))
-                        (if (not set) (error '9ML-network "Population set not found" name))
-                        (let ((populations
-                               (let ((poplst (alist-ref 'populations set)))
-                                 (ersatz:tvalue->sexpr poplst))))
-                          (append
-                           (map (lambda (x) (->string (alist-ref 'name x))) populations)
-                           ax))))
-                    '() (filter identity (list (opt 'spikerecord)))))
              
              (projection-ports
               (ersatz:sexpr->tvalue 
@@ -1230,7 +1212,7 @@
              (group-tenv
               (make-group-tenv group-name order populations sets-tenv projections 
                                psr-types plas-types connection-types projection-ports
-                               spikelst (append properties ul-properties) ))
+                               (append properties ul-properties) ))
 
              )
 

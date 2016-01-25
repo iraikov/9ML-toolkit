@@ -9,15 +9,17 @@ exception Error
 
 datatype flag =  Help | Time of real | Timestep of real | Tol of real
                  | Statesample of int | Extsample of int | Evsample of int
+                 | Spikerecord of string
 
 
 fun showflag (Help)       = "Help"
-  | showflag (Time x)     = ("Time" ^ (Real.toString x))
-  | showflag (Timestep x) = ("Timestep" ^ (Real.toString x))
-  | showflag (Tol x)      = ("Tol" ^ (Real.toString x))
-  | showflag (Statesample x) = ("Statesample" ^ (Int.toString x))
-  | showflag (Extsample x)   = ("Extsample" ^ (Int.toString x))
-  | showflag (Evsample x)     = ("Evsample" ^ (Int.toString x))
+  | showflag (Time x)     = ("Time " ^ (Real.toString x))
+  | showflag (Timestep x) = ("Timestep " ^ (Real.toString x))
+  | showflag (Tol x)      = ("Tol " ^ (Real.toString x))
+  | showflag (Statesample x) = ("Statesample " ^ (Int.toString x))
+  | showflag (Extsample x)   = ("Extsample " ^ (Int.toString x))
+  | showflag (Evsample x)     = ("Evsample " ^ (Int.toString x))
+  | showflag (Spikerecord x)  = ("Spikerecord " ^ x)
 		   
 
 val options = 
@@ -55,7 +57,12 @@ val options =
      {short="",
       long=["evsample"],
       desc=G.ReqArg (fn(x) => Evsample (valOf(Int.fromString x)),"N"),
-      help="sample size of neurons for event recording"}
+      help="sample size of neurons for event recording"},
+
+     {short="",
+      long=["spikerecord"],
+      desc=G.ReqArg (fn(x) => Spikerecord (x),"NAME"),
+      help="name of population set to be used for spike recording"}
 
 
     ]
@@ -79,6 +86,7 @@ fun getstate (opts) =
 	val O_STATESAMPLE   = ref NONE
 	val O_EXTSAMPLE     = ref NONE
 	val O_EVSAMPLE      = ref NONE
+	val O_SPIKERECORD   = ref NONE
 
 	fun getstate' (opt) = 
 	    (case opt of 
@@ -89,6 +97,7 @@ fun getstate (opts) =
 	       | Statesample x => O_STATESAMPLE := SOME x
 	       | Extsample   x => O_EXTSAMPLE := SOME x
 	       | Evsample x    => O_EVSAMPLE := SOME x
+	       | Spikerecord x => O_SPIKERECORD := SOME x
             )
 
 	val _ = app getstate' opts
@@ -100,7 +109,8 @@ fun getstate (opts) =
 	is_timestep=(!O_TIMESTEP),
 	is_statesample=(!O_STATESAMPLE),
 	is_extsample=(!O_EXTSAMPLE),
-	is_evsample=(!O_EVSAMPLE)
+	is_evsample=(!O_EVSAMPLE),
+	is_spikerecord=(!O_SPIKERECORD)
        }
     end
 
