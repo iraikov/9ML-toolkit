@@ -95,14 +95,14 @@ export PATH
 
 > 9ML-network operand1... [options...] 
 
-Where operands are NineML user layer files.
+Where operands are NineML user layer files containing network description.
 
 The following options are recognized: 
 
 * `--platform=PLATFORM`:   simulation platform (one of mlton, chicken)
 * `-m, --method=PLATFORM`:  integration method (one of rkfe, rk3, rk4a, rk4b, rkoz, rkdp)
 
-The `9ML-network` program will compile an executable named `Sim_{model name}` which accepts the following arguments:
+The `9ML-network` program will create an executable named `Sim_{model name}` which accepts the following arguments:
 
 * `-d, --duration=VALUE`:  simulation duration in milliseconds
 * `--timestep=VALUE`:  simulation timestep milliseconds
@@ -120,7 +120,7 @@ The following options are recognized:
 * `--platform=PLATFORM`:   simulation platform (one of mlton, chicken)
 * `-m, --method=PLATFORM`:  integration method (one of rkfe, rk3, rk4a, rk4b, rkoz, rkdp)
 
-The `9ML-singlecell` program will compile an executable named `Sim_{model name}` which accepts the following arguments:
+The `9ML-singlecell` program will create an executable named `Sim_{model name}` which accepts the following arguments:
 
 * `-d, --duration=VALUE`:  simulation duration in milliseconds
 * `--timestep=VALUE`:  simulation timestep milliseconds
