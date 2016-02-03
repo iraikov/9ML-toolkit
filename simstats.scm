@@ -76,7 +76,7 @@
           (cv-event-interval (if (zero? mean-event-interval) 0.0
                                  (/ stdev-event-interval mean-event-interval)))
 
-          (nevents (map (lambda (x) (if (null? x) 0 (length (cdr x)))) (vector->list event-times)))
+          (nevents (filter-map (lambda (x) (and (not (null? x)) (length (cdr x)))) (vector->list event-times)))
           (mean-rates (map (lambda (x) (* 1000 (/ x tmax))) nevents))
           (mean-event-frequency (round (mean mean-rates)))
 
