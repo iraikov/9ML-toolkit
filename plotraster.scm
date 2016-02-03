@@ -42,9 +42,6 @@
         (list data-file)))
     )
 
-   (print "tmax = " tmax)
-   (print "nmax = " nmax)
-
    (let* (
 
           (nsample 50)
@@ -59,6 +56,7 @@
                                    ns)))
                        (reverse data))
              v))
+
 
           (sampled-event-times (sample nsample event-times))
 
@@ -76,13 +74,14 @@
                         ))
              ))
 
+          (eventnz (fold (lambda (x ax) (if (null? x) ax (+ 1 ax))) 0 (vector->list event-times)))
           (nevents (map (lambda (x) (if (null? x) 0 (length (cdr x)))) (vector->list event-times)))
           (average-rates (map (lambda (x) (* 1000 (/ x tmax))) nevents))
           
-          (average-event-frequency (round (/ (fold + 0.0 average-rates) (vector-length event-times))))
+          (average-event-frequency (round (/ (fold + 0.0 average-rates) eventnz)))
 
           )
-
+     
      (print "average event frequency = " average-event-frequency)
     
   (let-values (
@@ -96,12 +95,13 @@
            (fold (lambda (ts i) (for-each (lambda (t) (fprintf dataport "~A,~A~%" t i)) ts) (+ 1 i)) 1 sampled-event-times)
 	   (close-output-port dataport))
 	 
+
 	 (let ((dataport (open-output-file temp-path2)))
 	   (for-each (match-lambda ((tbin nbin) (fprintf dataport "~A,~A~%" tbin nbin))) (reverse event-bins))
 	   (close-output-port dataport))
 	 
-	 (plot:init plot-format output-filename)
-	 
+	 (plot:init plot-format output-file)
+
 	 (plot:arg "-cm" )
 	 (plot:arg "-pagesize"   "12,20");;PAPER
 	 (plot:arg "-textsize"   "12")
@@ -126,7 +126,7 @@
 ;;		    ("rectangle" . "2 5 10 14")
 		    ("areacolor" . "white")
 
-		    ("xrange"          . ,xrange)
+		    ("xrange"          . ,(sprintf "~A ~A" (car xrange) (cdr xrange)))
 		    ("xaxis.axisline"  . "no")
 		    ("xaxis.tics"      . "no")
 ;;		    ("xaxis.stubs"     . "inc 50")
@@ -170,7 +170,7 @@
 ;;		    ("rectangle" . "2 1 10 4")
 		    ("areacolor" . "white")
                     
-		    ("xrange"          . ,xrange)
+		    ("xrange"          . ,(sprintf "~A ~A" (car xrange) (cdr xrange)))
 		    ("xaxis.axisline"  . "no")
 		    ("xaxis.tics"      . "no")
 		    ("xaxis.stubs"     . "inc 50")
@@ -178,13 +178,13 @@
 		    ("xaxis.label"     . "Time [ms]")
 		    ("xaxis.labeldistance" . "1.25")
 ;;		    ("xaxis.stubdetails" . "adjust=0,1")
-		    ("yrange"      . ,(sprintf "0 ~A" yrange))
+		    ("yrange"      . ,(sprintf "~A ~A" (car yrange) (cdr yrange)))
 ;;                  ("yautorange"      . "datafield=count")
 ;;		    ("yaxis.label"     . "# events")
 ;;		    ("yaxis.labeldistance" . "1.5")
 		    ("yaxis.axisline"  . "no")
 		    ("yaxis.tics"      . "no")
-		    ("yaxis.stubs"     . ,(sprintf "inc ~A" (/ (string->number yrange) 5)))
+		    ("yaxis.stubs"     . ,(sprintf "inc ~A" (/ (- (cdr yrange) (car yrange)) 5)))
 		    )
 		  )
 		    
@@ -198,18 +198,6 @@
 
        ))
 ))
-
-(define opts    (getopt-long (command-line-arguments) opt-grammar))
-(define opt     (make-option-dispatch opts opt-grammar))
-
-
-(define opt-defaults
-  `(
-    (plot-format . eps)
-    ))
-
-(define (defopt x)
-  (lookup-def x opt-defaults))
 
 
 
@@ -247,11 +235,11 @@
                  (value (required FIELD-RANGE)
                         (predicate 
                          ,(lambda (x) 
-                            (let ((sl (map (string->number (string-split x ":")))))
+                            (let ((sl (map string->number (string-split x ":"))))
                               (cond ((and (pair? sl) (number? (car sl)) (number? (cadr sl))) sl)
                                     (else (error 'plotraster "invalid range" x))))))
                         (transformer ,(lambda (x) 
-                                        (let ((sl (map (string->number (string-split x ":")))))
+                                        (let ((sl (map string->number (string-split x ":"))))
                                           (cons (car sl) (cadr sl)))))
                         ))
 
@@ -259,11 +247,11 @@
                  (value (required FIELD-RANGE)
                         (predicate 
                          ,(lambda (x) 
-                            (let ((sl (map (string->number (string-split x ":")))))
+                            (let ((sl (map string->number (string-split x ":"))))
                               (cond ((and (pair? sl) (number? (car sl)) (number? (cadr sl))) sl)
                                     (else (error 'plotraster "invalid range" x))))))
                         (transformer ,(lambda (x) 
-                                        (let ((sl (map (string->number (string-split x ":")))))
+                                        (let ((sl (map string->number (string-split x ":"))))
                                           (cons (car sl) (cadr sl)))))
                         ))
 
@@ -272,6 +260,18 @@
 	    (single-char #\h))
   
   ))
+
+(define opts    (getopt-long (command-line-arguments) opt-grammar))
+(define opt     (make-option-dispatch opts opt-grammar))
+
+
+(define opt-defaults
+  `(
+    (plot-format . eps)
+    ))
+
+(define (defopt x)
+  (alist-ref x opt-defaults))
 
 
 ;; Use args:usage to generate a formatted list of options (from OPTS),
@@ -290,7 +290,7 @@
 
   (if (options 'help) (plotraster:usage))
 
-  (if (not (and (opt 'data-filename) (opt 'x-range) (opt 'y-range)))
+  (if (not (opt 'data-filename))
       (plotraster:usage))
 
   (let* (
@@ -301,7 +301,7 @@
          (output-filename (or (opt 'output-filename)
                               (pathname-replace-extension 
                                data-filename
-                               (sprintf ".~A" output-format))))
+                               (sprintf ".~A" (or (opt 'plot-format) (defopt 'plot-format))))))
          (title (or (opt 'title) (sprintf "Event raster plot ~A" (pathname-file data-filename))))
          (x-range (or (opt 'x-range) "xautorange"))
          (y-range (or (opt 'y-range) "yautorange"))
