@@ -59,7 +59,7 @@ val options =
       desc=G.ReqArg (fn(x) => Evsample (valOf(Int.fromString x)),"N"),
       help="sample size of neurons for event recording"},
 
-     {short="",
+     {short="s",
       long=["spikerecord"],
       desc=G.ReqArg (fn(x) => Spikerecord (x),"NAME"),
       help="name of population set to be used for spike recording"}
