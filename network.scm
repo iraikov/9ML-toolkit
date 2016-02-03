@@ -1189,8 +1189,6 @@
                               (else "Sim.sml.tmpl")))
              (mlb-tmpl      (case (ivp-simulation-method)
                               ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65) "Sim.mlb.adaptive.tmpl")
-                              ((crk3) "Sim.mlb.crk.tmpl")
-                              ((crkbs crkdp) "Sim.mlb.crk.adaptive.tmpl")
                               (else "Sim.mlb.tmpl")))
              (makefile-tmpl  "Makefile.tmpl")
              (group-path    (make-pathname source-dir (conc group-name ".sml")))
