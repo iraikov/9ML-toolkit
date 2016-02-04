@@ -3,7 +3,7 @@
 (define (dynld-name fn)		
   (make-pathname #f fn ##sys#load-dynamic-extension))	
 
-(define version "3.4")
+(define version "3.5")
 
 (use make)
 
