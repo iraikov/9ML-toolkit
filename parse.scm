@@ -215,7 +215,7 @@
                     (rhs      (parse-string-expr 
                                (sxml:kidn-cadr 'nml:MathInline x )
                                'parse-al-sxml-dynamics)))
-                (and (not (member quantity formals))
+                (and (not (assoc quantity formals))
                      `(,quantity . ,rhs))
                 ))
             aliases))
@@ -227,7 +227,7 @@
                     (rhs      (parse-string-expr 
                                (sxml:kidn-cadr 'nml:MathInline x )
                                'parse-al-sxml-dynamics)))
-                (and (member quantity formals)
+                (and (assoc quantity formals)
                     `((reduce (+ ,quantity)) = ,rhs))
                 ))
             aliases))
@@ -449,7 +449,12 @@
       (let* (
              (dynamics-formals
               (delete-duplicates
-               (map (lambda (x) (string->symbol (sxml:attr x 'name)))
+               (map (lambda (x) 
+                      (let ((name (sxml:attr x 'name))
+                            (dimension (sxml:attr x 'dimension)))
+                        (cons (string->symbol name)
+                              (or (and dimension (string->symbol dimension))
+                                  'unitless))))
                     (append (reverse ports)
                             (reverse parameters)))))
              (dynamics-body (parse-al-sxml-dynamics dynamics-formals dynamics))

@@ -1020,14 +1020,15 @@
                       (response-name (and response-node (sxml:text (sxml:kidn* 'nml:Reference response-node ))))
                       
                       (response-plasticity-ports 
-                       (and response-node
-                            (let ((from-plasticity
-                                   (sxml:kidn* 'nml:FromPlasticity response-node )))
+                       (if response-node
+                           (let ((from-plasticity
+                                  (sxml:kidn* 'nml:FromPlasticity response-node )))
                               (d "response-node: response-node = ~A from-plasticity = ~A~%" 
                                  response-node from-plasticity)
                               (list ($ (sxml:attr from-plasticity 'send_port))
                                     ($ (sxml:attr from-plasticity 'receive_port)))
-                              )))
+                              )
+                           (list 'send_port 'receive_port)))
 
                       (response-ports `(
                                         (projection-port . ,(projection-port))
@@ -1051,10 +1052,13 @@
                       )
 
                      (d "group-ul-eval: projection node = ~A~%" node)
-                     (d "group-ul-eval: response = ~A response-name = ~A~%" response-node response-name)
+                     (d "group-ul-eval: response = ~A response-name = ~A~%" 
+                        response-node response-name)
+                     (d "group-ul-eval: response-ports = ~A~%" response-ports)
                      (d "group-ul-eval: delay = ~A~%" del)
                      (d "group-ul-eval: type = ~A ~%" type)
-                     (d "group-ul-eval: plasticity = ~A plasticity-name = ~A~%" plasticity-node plasticity-name)
+                     (d "group-ul-eval: plasticity = ~A plasticity-name = ~A~%" 
+                        plasticity-node plasticity-name)
                      (d "group-ul-eval: properties = ~A ~%" properties)
                      (d "group-ul-eval: connectivity-name = ~A ~%" connectivity-name)
                      (d "group-ul-eval: connectivity-port = ~A ~%" connectivity-port)
@@ -1227,16 +1231,31 @@
              (($ dynamics-node model-name model-formals model-eqset)
               (alist-ref node-name ul-node-env))
              )
-            (d "node name = ~A model-eqset = ~A responses = ~A~%" node-name model-eqset responses)
+            (d "node name = ~A model-formals = ~A model-eqset = ~A responses = ~A~%" 
+               node-name model-formals model-eqset responses)
             (let* ((response-dynamics
-                    (map (match-lambda 
-                          ((source-population response-node . ports)
+                    (map
+                     (match-lambda 
+                      ((source-population response-node . ports)
+                       (if response-node 
                            (match-let (
                                        (($ dynamics-node model-name model-formals model-eqset)
                                         (alist-ref (string->symbol response-node) ul-node-env))
                                        )
-                                      model-eqset)))
-                         responses))
+                                      model-eqset)
+                           (let* ((projection-port (alist-ref 'projection-port ports))
+                                  (destination-port (cadr (alist-ref 'destination-ports ports)))
+                                  (ext-port (cadr (alist-ref 'plasticity-ports ports)))
+                                  (ext-event (gensym 'event))
+                                  (dim (alist-ref destination-port model-formals))
+                                  (decls `((define ,ext-port = external (dim ,dim) ,destination-port)
+                                           (define ,ext-event = external-event +inf.0)
+                                           ((reduce (+ ,destination-port)) = ,ext-port)))
+                                  )
+                             (salt:parse decls)
+                             ))
+                       ))
+                     responses))
                    (prototype-decls
                     (salt:make-astdecls
                      (append (salt:astdecls-decls model-eqset) response-dynamics))))

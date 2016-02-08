@@ -1,27 +1,8 @@
 (use srfi-1 utils extras ssax sxpath sxpath-lolevel )
-(require-library sxml-transforms)
-(import (prefix sxml-transforms sxml:))
+(require-library sxml-transforms sxml-serializer)
+(import (prefix sxml-transforms sxml:)
+        (prefix sxml-serializer sxml:))
 (define shared-dir (make-pathname (chicken-home) "9ML"))
-
-(load (make-pathname shared-dir "stx-engine.scm"))
-(load (make-pathname shared-dir "SXML-to-XML.scm"))
-
-;; based on SRV:send-reply by Oleg Kiselyov
-(define (print-fragments b #!key (out (current-output-port)))
-  (let loop ((fragments b) (result #f))
-    (cond
-      ((null? fragments) result)
-      ((not (car fragments)) (loop (cdr fragments) result))
-      ((null? (car fragments)) (loop (cdr fragments) result))
-      ((eq? #t (car fragments)) (loop (cdr fragments) #t))
-      ((pair? (car fragments))
-        (loop (cdr fragments) (loop (car fragments) result)))
-      ((procedure? (car fragments))
-        ((car fragments))
-        (loop (cdr fragments) #t))
-      (else
-       (display (car fragments) out)
-       (loop (cdr fragments) #t)))))
 
 
 (define (Prelude . content)
@@ -112,17 +93,16 @@
   )
 
 
-(with-output-to-file 
+(call-with-output-file 
     "IzhikevichFS.xml" 
-  (lambda ()
-    (print-fragments 
-     (generate-XML
-      (Prelude 
-       IzhikevichFSdef
-       (IzhikevichFS "IzhikevichFS_Iext100" Iext: 100.0)
-       (IzhikevichFS "IzhikevichFS_Iext200" Iext: 200.0)
-       (IzhikevichFS "IzhikevichFS_Iext400" Iext: 400.0)
-       ))
+  (lambda (output)
+    (sxml:serialize-sxml
+     (Prelude 
+      IzhikevichFSdef
+      (IzhikevichFS "IzhikevichFS_Iext100" Iext: 100.0)
+      (IzhikevichFS "IzhikevichFS_Iext200" Iext: 200.0)
+      (IzhikevichFS "IzhikevichFS_Iext400" Iext: 400.0)
+      )
+     output: output)
      ))
-  )
 
