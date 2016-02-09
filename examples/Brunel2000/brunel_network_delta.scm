@@ -59,7 +59,7 @@
          (R        1.5)
          (del      1.5)
          (J        0.1)
-         (JE       133.33)
+         (JE       130.25)
          (JI       (* (- g) JE))
          (CE       (* epsilon NE))
          (CI       (* epsilon NI))
