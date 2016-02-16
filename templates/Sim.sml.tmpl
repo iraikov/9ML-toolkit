@@ -209,6 +209,11 @@ fun main (name,args) =
              is_spikerecord} = Options.getstate (opts)
 						                       
         val _ = if is_help then exitHelp (CommandLine.name()) else ()
+        val _ = case (is_statesample, is_extsample, is_evsample, is_spikerecord) of
+                    (NONE, NONE, NONE, NONE) => 
+                    (putStrLn TextIO.stdErr ("No options for state sampling or event recording have been specified;");
+                     putStrLn TextIO.stdErr ("State traces and spike event times will not be recorded."))
+                    | (_, _, _, _) => ()
                                                                        
         val _     = case is_timestep of SOME dt => (h := dt) | NONE => ()
         val tstop = case is_time of SOME t => t | NONE => 150.0
@@ -220,9 +225,9 @@ fun main (name,args) =
 
     in
         (let
-            val     _ = putStrLn TextIO.stdOut ("starting fprojection...")
+            val     _ = putStrLn TextIO.stdOut ("constructing projections...")
             val (S,t) = timing fprojection
-            val     _ = putStrLn TextIO.stdOut ("fprojection took " ^ (Time.toString t) ^ " s")
+            val     _ = putStrLn TextIO.stdOut ("projections took " ^ (Time.toString t) ^ " s")
             val out   = TextIO.openOut (label ^ ".dat")
 
 {% for pop in dict (group.populations) %}
