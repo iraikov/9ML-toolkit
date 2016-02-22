@@ -205,8 +205,7 @@
 (copy-file-to-9ML-dir "stx-engine.scm")
 
 (copy-file-to-9ML-dir "examples/IzhikevichFS.xml")
-(copy-file-to-9ML-dir "examples/AEIF_AL.xml")
-(copy-file-to-9ML-dir "examples/AEIF_UL.xml")
+(copy-file-to-9ML-dir "examples/AEIF.xml")
 (copy-file-to-9ML-dir "examples/LIF_AL.xml")
 (copy-file-to-9ML-dir "examples/LIF_UL.xml")
 

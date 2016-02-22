@@ -11,7 +11,7 @@
     
     (Dimension (@ (name "current") (i "1") (k "0") (j "0") (m "0") (l "0") (n "0") (t "0")))
     (Dimension (@ (name "capacitance") (i "2") (l "-2") (m "-1") (t "4" )))
-    (Dimension (@ (name="voltage") (i "-1") (t "-3") (m "1") (l "2" )))
+    (Dimension (@ (name "voltage") (i "-1") (t "-3") (m "1") (l "2" )))
     (Unit (@ (symbol "mV") (dimension "voltage") (power "-3")))
     (Unit (@ (symbol "uF") (dimension "capacitance") (power "-6")))
 
