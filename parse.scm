@@ -244,6 +244,17 @@
                         `(define ,name = constant  ,rhs))
                     ))
                 constants))
+
+          (ode-state-names 
+           (delete-duplicates
+            (fold
+             (lambda (regime lst)
+               (let (
+                     (time-derivatives  ((sxpath `(nml:TimeDerivative)) regime))
+                     )
+                 (map (lambda (x) (string->symbol (sxml:attr x 'variable ))) time-derivatives)
+                 ))
+             '() regimes)))
            
           (regimes-decls 
            (fold
@@ -273,8 +284,13 @@
                                                       ((var (vars decls))
                                                        (if (member var vars)
                                                            (list vars decls)
-                                                           (list (cons var vars)
-                                                                 (cons `((der (,var)) = 0.0) decls)))))
+                                                           (if (member var ode-state-names)
+                                                               (list (cons var vars)
+                                                                     (cons `((der (,var)) = 0.0) decls))
+                                                               (list (cons var vars)
+                                                                     (cons `(,var = ,var) decls))
+                                                               ))
+                                                       ))
                                                      `(,vars ,decls) state-names)))
                                              decls)))
                       (event-decls 

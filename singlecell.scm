@@ -443,7 +443,13 @@
                                   val))
                               props))
              (propunits  (map (lambda (x) (sxml:attr x 'units)) props))
-             (prop-env   (map cons propns propvs))
+             (prop-env   (map cons 
+                              (map string->symbol propns) 
+                              (map (compose parse-string-expr sxml:text)
+                                   propvs)))
+             (prop-unit-env (map cons
+                                 (map string->symbol propns) 
+                                 (map (lambda (x) (and x (string->symbol x))) propunits)))
 
              (dd (begin
                    (d "NineML abstraction layer URI: ~A~%" (uri->string uri))
@@ -549,7 +555,7 @@
                          ((Unity)
                           `(define ,name = external 0.0))
                          (else
-                          (let ((unit (alist-ref dim default-units )))
+                          (let ((unit (or (alist-ref name prop-unit-env) (alist-ref dim default-units ))))
                             (if (not unit) 
                                 (error 'eval-ul-component
                                        "cannot find default unit for dimension in receive port definition"
@@ -564,7 +570,7 @@
                          ((Unity)
                           `(define ,name = external-event +inf.0))
                          (else
-                          (let ((unit (alist-ref dim default-units )))
+                          (let ((unit (or (alist-ref name prop-unit-env) (alist-ref dim default-units))))
                             (if (not unit) 
                                 (error 'eval-ul-component
                                        "cannot find default unit for dimension in receive port definition"
@@ -575,7 +581,8 @@
                (reduce-decls
                 (map (match-lambda 
                       ((name . dim) 
-                       (let* ((unit (alist-ref dim default-units ))
+                       (let* ((unit (or (alist-ref name prop-unit-env) 
+                                        (alist-ref dim default-units )))
                               (val (or (alist-ref name prop-env) 
                                        `(0.0 * ,unit))))
                          (if (not unit) 

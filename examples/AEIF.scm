@@ -69,7 +69,9 @@
                           )
              (TimeDerivative 
               (@ (variable "V")) 
-              (MathInline "(- g_L * (V - E_L) + (g_L * Delta * exp ((V - V_T) / Delta)) - W*one_pA + Isyn + Iext) / C_m"))
+              (MathInline "(- g_L * (V - E_L) + (g_L * Delta * exp ((V - V_T) / Delta)) - W*one_pA + Isyn + Iext) / C_m")
+              
+              )
              (TimeDerivative
               (@ (variable "W")) 
               (MathInline "(a * (V - E_L) - W*one_mV) / tau_w"))
@@ -100,6 +102,7 @@
               (a       2.0)
               (b      100.0)
               (Iext   0.0)
+              (Isyn    0.0)
               )
 
   `(Component 
@@ -118,6 +121,7 @@
     (Property (@ (name "a")) (SingleValue ,a))
     (Property (@ (name "b")) (SingleValue ,b))
 
+    (Property (@ (units "pA") (name "Isyn")) (SingleValue ,Isyn)) 
     (Property (@ (units "pA") (name "Iext")) (SingleValue ,Iext)) 
     
     (Initial (@ (units "mV") (name "V")) (SingleValue -65.0))

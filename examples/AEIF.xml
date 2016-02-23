@@ -107,6 +107,9 @@
     <Property name="b">
       <SingleValue>100.0</SingleValue>
     </Property>
+    <Property units="pA" name="Isyn">
+      <SingleValue>0.0</SingleValue>
+    </Property>
     <Property units="pA" name="Iext">
       <SingleValue>210.0</SingleValue>
     </Property>
