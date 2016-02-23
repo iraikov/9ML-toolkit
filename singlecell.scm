@@ -112,6 +112,12 @@
     (verbose          "print commands as they are executed"
 		      (single-char #\v))
 
+    (trace        "trace one or more procedures in the code generation backend"
+                  (value (required NAMES)
+                         (transformer ,(lambda (x) (map string->symbol (string-split x ","))))
+                         )
+                  )
+
     (help  "Print help"
 	    (single-char #\h))
   
@@ -882,6 +888,9 @@
       (begin
         (salt:verbose 1)
         (singlecell-verbose 1)))
+
+  (if (options 'trace) 
+      (for-each (lambda (name) (salt:add-trace name)) (options 'trace)))
   
   (simulation-platform (or (options 'platform) (defopt 'platform) ))
   (simulation-method (or (options 'method) (defopt 'method) ))
