@@ -38,8 +38,8 @@
     (Parameter (@ (name "theta") (dimension "voltage"))) 
     (Parameter (@ (name "tau_w") (dimension "time"))) 
     (Parameter (@ (name "tau_rp") (dimension "time"))) 
-    (Parameter (@ (name "a") (dimension "dimensionless"))) 
-    (Parameter (@ (name "b") (dimension "dimensionless"))) 
+    (Parameter (@ (name "a") (dimension "conductance"))) 
+    (Parameter (@ (name "b") (dimension "current"))) 
     (Parameter (@ (name "Iext") (dimension "current"))) 
 
     (AnalogReducePort (@ (name "Isyn") (dimension "current"))) 
@@ -51,12 +51,9 @@
     (EventPort (@ (name "spikeOutput") (mode "send"))) 
 
     (Dynamics 
-     (Constant (@ (units "ms") (name "one_ms")) 1.0) 
-     (Constant (@ (units "mV") (name "one_mV")) 1.0) 
-     (Constant (@ (units "pA") (name "one_pA")) 1.0) 
 
      (StateVariable (@ (name "V") (dimension "voltage"))) 
-     (StateVariable (@ (name "W") (dimension "dimensionless"))) 
+     (StateVariable (@ (name "W") (dimension "current"))) 
      (StateVariable (@ (name "t_rpend") (dimension "time"))) 
 
      (Regime (@ (name "subthresholdRegime")) 
@@ -69,12 +66,11 @@
                           )
              (TimeDerivative 
               (@ (variable "V")) 
-              (MathInline "(- g_L * (V - E_L) + (g_L * Delta * exp ((V - V_T) / Delta)) - W*one_pA + Isyn + Iext) / C_m")
-              
+              (MathInline "(- g_L * (V - E_L) + (g_L * Delta * exp ((V - V_T) / Delta)) - W + Isyn + Iext) / C_m")
               )
              (TimeDerivative
               (@ (variable "W")) 
-              (MathInline "(a * (V - E_L) - W*one_mV) / tau_w"))
+              (MathInline "(a * (V - E_L) - W) / tau_w"))
              )
      
      (Regime (@ (name "refractoryRegime"))
@@ -118,14 +114,14 @@
     (Property (@ (units "ms") (name "tau_w")) (SingleValue ,tau_w))
     (Property (@ (units "ms") (name "tau_rp")) (SingleValue ,tau_rp))
     (Property (@ (units "mV") (name "Delta")) (SingleValue ,Delta))
-    (Property (@ (name "a")) (SingleValue ,a))
-    (Property (@ (name "b")) (SingleValue ,b))
+    (Property (@ (units "nS") (name "a")) (SingleValue ,a))
+    (Property (@ (units "pA") (name "b")) (SingleValue ,b))
 
     (Property (@ (units "pA") (name "Isyn")) (SingleValue ,Isyn)) 
     (Property (@ (units "pA") (name "Iext")) (SingleValue ,Iext)) 
     
     (Initial (@ (units "mV") (name "V")) (SingleValue -65.0))
-    (Initial (@ (name "W"))  (SingleValue 0.0))
+    (Initial (@ (units "pA") (name "W"))  (SingleValue 0.0))
     (Initial (@ (units "ms") (name "t_rpend")) (SingleValue 0.0))
   
   ))

@@ -583,8 +583,7 @@
                       ((name . dim) 
                        (let* ((unit (or (alist-ref name prop-unit-env) 
                                         (alist-ref dim default-units )))
-                              (val (or (alist-ref name prop-env) 
-                                       `(0.0 * ,unit))))
+                              (val `(,(or (alist-ref name prop-env) 0.0) * ,unit)))
                          (if (not unit) 
                              (error 'eval-ul-component
                                     "cannot find default unit for dimension in reduce port definition"

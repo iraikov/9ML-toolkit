@@ -252,10 +252,12 @@
                (let (
                      (time-derivatives  ((sxpath `(nml:TimeDerivative)) regime))
                      )
-                 (map (lambda (x) (string->symbol (sxml:attr x 'variable ))) time-derivatives)
+                 (append
+                  (map (lambda (x) (string->symbol (sxml:attr x 'variable ))) time-derivatives)
+                  lst)
                  ))
              '() regimes)))
-           
+
           (regimes-decls 
            (fold
             (lambda (regime lst)
@@ -286,7 +288,7 @@
                                                            (list vars decls)
                                                            (if (member var ode-state-names)
                                                                (list (cons var vars)
-                                                                     (cons `((der (,var)) = 0.0) decls))
+                                                                     (cons `((der (,var)) = UNITZERO) decls))
                                                                (list (cons var vars)
                                                                      (cons `(,var = ,var) decls))
                                                                ))
