@@ -10,7 +10,7 @@
     (@ (xmlns "http://nineml.net/9ML/1.0"))
     
     (Dimension (@ (name "current") (i "1")))
-    (Dimension (@ (name "time") (i "1")))
+    (Dimension (@ (name "time") (t "1")))
     (Dimension (@ (name "capacitance") (i "2") (l "-2") (m "-1") (t "4" )))
     (Dimension (@ (name "conductance") (i "2") (l "-2") (m "-1") (t "3" )))
     (Dimension (@ (name "voltage") (i "-1") (t "-3") (m "1") (l "2" )))
@@ -71,6 +71,7 @@
              (TimeDerivative
               (@ (variable "W")) 
               (MathInline "(a * (V - E_L) - W) / tau_w"))
+
              )
      
      (Regime (@ (name "refractoryRegime"))

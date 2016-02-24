@@ -196,6 +196,18 @@
 
     (let* (
           (state-names (map (lambda (x) (string->symbol (sxml:attr x 'name))) state-variables))
+          (ode-state-names 
+           (delete-duplicates
+            (fold
+             (lambda (regime lst)
+               (let (
+                     (time-derivatives  ((sxpath `(nml:TimeDerivative)) regime))
+                     )
+                 (append
+                  (map (lambda (x) (string->symbol (sxml:attr x 'variable ))) time-derivatives)
+                  lst)
+                 ))
+             '() regimes)))
 
           (relations-decls
            (map (lambda (x)
@@ -245,18 +257,6 @@
                     ))
                 constants))
 
-          (ode-state-names 
-           (delete-duplicates
-            (fold
-             (lambda (regime lst)
-               (let (
-                     (time-derivatives  ((sxpath `(nml:TimeDerivative)) regime))
-                     )
-                 (append
-                  (map (lambda (x) (string->symbol (sxml:attr x 'variable ))) time-derivatives)
-                  lst)
-                 ))
-             '() regimes)))
 
           (regimes-decls 
            (fold
@@ -289,8 +289,7 @@
                                                            (if (member var ode-state-names)
                                                                (list (cons var vars)
                                                                      (cons `((der (,var)) = UNITZERO) decls))
-                                                               (list (cons var vars)
-                                                                     (cons `(,var = ,var) decls))
+                                                               (list vars decls)
                                                                ))
                                                        ))
                                                      `(,vars ,decls) state-names)))
@@ -387,7 +386,11 @@
             '() regimes))
           )
                                  
-      (append relations-decls regimes-decls)
+      `(
+        (state-names . ,state-names)
+        (ode-state-names . ,ode-state-names)
+        (decls . ,(append relations-decls regimes-decls))
+        )
 
       ))
   )
@@ -475,9 +478,16 @@
                                   'unitless))))
                     (append (reverse ports)
                             (reverse parameters)))))
-             (dynamics-body (parse-al-sxml-dynamics dynamics-formals dynamics))
+             (dynamics-info (parse-al-sxml-dynamics dynamics-formals dynamics))
+             (dynamics-body (alist-ref 'decls dynamics-info))
+             (dynamics-env `((states . ,(alist-ref 'state-names dynamics-info))
+                             (ode-states . ,(alist-ref 'ode-state-names dynamics-info))))
+             (dynamics-body (alist-ref 'decls dynamics-info))
              )
-        (make-dynamics-node name dynamics-formals dynamics-body)
+        (make-dynamics-node name
+                            dynamics-formals 
+                            dynamics-env 
+                            dynamics-body)
         ))
      
      (connection-rule 

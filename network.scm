@@ -405,8 +405,8 @@
              (units-env (eval-sxml-units model-dimensions-sxml model-units-sxml))
 
              (model-env (map (match-lambda
-                              (($ dynamics-node model-name model-formals model-decls) 
-                               (cons model-name (make-dynamics-node model-name model-formals 
+                              (($ dynamics-node model-name model-formals model-env model-decls) 
+                               (cons model-name (make-dynamics-node model-name model-formals model-env
                                                                     (salt:parse model-decls))))
                               ((and ($ alsys-node model-name model-formals model-decls) node)
                                (cons model-name node))
@@ -538,10 +538,13 @@
                        (let* ((name (string->symbol n))
                               (vtext (sxml:text v))
                               (unit (and u (string->symbol u)))
-                              (dim  (alist-ref name model-variables)))
+                              (dim  (alist-ref name model-variables))
+                              (ty (if (member name (alist-ref 'ode-states (dynamics-node-env model)))
+                                      'unknown 'discrete))
+                              )
                          (if unit
-                             `(define ,name = unknown (dim ,dim) (,(parse-string-expr vtext) * ,unit))
-                             `(define ,name = unknown ,(parse-string-expr vtext)))
+                             `(define ,name = ,ty (dim ,dim) (,(parse-string-expr vtext) * ,unit))
+                             `(define ,name = ,ty ,(parse-string-expr vtext)))
                          ))
                      initialns initialvs initialunits))
                  
@@ -591,7 +594,7 @@
 
 
           (match model
-                 (($ dynamics-node model-name model-formals model-decls) 
+                 (($ dynamics-node model-name model-formals model-env model-decls) 
                   (let ((decls (append parameter-decls
                                        state-decls
                                        ext-decls
@@ -601,7 +604,7 @@
                     ;;(pp `(model-decls = ,decls) (current-error-port))
                     (cons (string->symbol node-name)
                           (make-dynamics-node 
-                           model-name model-formals 
+                           model-name model-formals model-env
                            (salt:parse decls)
                            ))
                     ))
@@ -1234,7 +1237,7 @@
           ((population node-name . responses)
            (match-let
             (
-             (($ dynamics-node model-name model-formals model-eqset)
+             (($ dynamics-node model-name model-formals model-env model-eqset)
               (alist-ref node-name ul-node-env))
              )
             (d "node name = ~A model-formals = ~A model-eqset = ~A responses = ~A~%" 
@@ -1245,7 +1248,7 @@
                       ((source-population response-node . ports)
                        (if response-node 
                            (match-let (
-                                       (($ dynamics-node model-name model-formals model-eqset)
+                                       (($ dynamics-node model-name model-formals model-env model-eqset)
                                         (alist-ref (string->symbol response-node) ul-node-env))
                                        )
                                       model-eqset)
@@ -1288,7 +1291,7 @@
           ((node-name . plas-type)
            (match-let
             (
-             (($ dynamics-node model-name model-formals model-eqset)
+             (($ dynamics-node model-name model-formals model-env model-eqset)
               (alist-ref node-name ul-node-env))
              )
             (d "plasticity node name = ~A model-eqset = ~A~%" node-name model-eqset)

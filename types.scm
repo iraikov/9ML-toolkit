@@ -21,7 +21,7 @@
 (module 9ML-types
 
 	(
-         make-dynamics-node dynamics-node?
+         make-dynamics-node dynamics-node? dynamics-node-env dynamics-node-formals dynamics-node-body
          make-alsys-node alsys-node?
          make-connection-rule-node connection-rule-node?
          )
@@ -29,10 +29,11 @@
 	(import scheme chicken)
 
 
-(define-record-type dynamics-node (make-dynamics-node name formals body)
+(define-record-type dynamics-node (make-dynamics-node name formals env body)
   dynamics-node? 
   (name dynamics-node-name)
   (formals dynamics-node-formals)
+  (env dynamics-node-env)
   (body dynamics-node-body)
   )
 
