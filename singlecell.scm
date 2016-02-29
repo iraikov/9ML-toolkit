@@ -713,7 +713,7 @@
          (template-dir  (make-pathname (make-pathname shared-dir "9ML") "templates"))
          (sim-tmpl      (case (ivp-simulation-method)
                           ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.sml.single.adaptive.tmpl")
-                          (else "Sim.single.sml.tmpl")))
+                          (else "Sim.sml.single.tmpl")))
          (mlb-tmpl      (case (ivp-simulation-method)
                           ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crkbs crkdp) "Sim.mlb.single.adaptive.tmpl")
                           (else "Sim.mlb.single.tmpl")))
