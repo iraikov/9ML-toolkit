@@ -66,7 +66,7 @@
       <SingleValue>0.025</SingleValue>
     </Property>
     <Property units="mV" name="c">
-      <SingleValue>45.0</SingleValue>
+      <SingleValue>-45.0</SingleValue>
     </Property>
     <Property name="k">
       <SingleValue>1.0</SingleValue>
@@ -108,7 +108,7 @@
       <SingleValue>0.025</SingleValue>
     </Property>
     <Property units="mV" name="c">
-      <SingleValue>45.0</SingleValue>
+      <SingleValue>-45.0</SingleValue>
     </Property>
     <Property name="k">
       <SingleValue>1.0</SingleValue>
@@ -150,7 +150,7 @@
       <SingleValue>0.025</SingleValue>
     </Property>
     <Property units="mV" name="c">
-      <SingleValue>45.0</SingleValue>
+      <SingleValue>-45.0</SingleValue>
     </Property>
     <Property name="k">
       <SingleValue>1.0</SingleValue>

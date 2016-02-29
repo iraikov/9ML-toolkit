@@ -68,7 +68,7 @@
   )
 
 
-(define (IzhikevichFS name #!key (a 0.2) (b 0.025) (c 45.0)
+(define (IzhikevichFS name #!key (a 0.2) (b 0.025) (c -45.0)
                        (k 1.0) (Vpeak 25.0) (Vt -55.0) (Vr -40.0) (Vb -55.0)
                        (Cm 20.0) (Iext 0.0) (Isyn 0.0)
                        )
