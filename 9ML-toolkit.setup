@@ -209,6 +209,30 @@
 (copy-file-to-9ML-dir "examples/LIF_AL.xml")
 (copy-file-to-9ML-dir "examples/LIF_UL.xml")
 
+(for-each
+ (lambda (x) (copy-file-to-9ML-dir (make-pathname "examples/Brunel2000/" x)))
+ '("BrunelIaF.xml"
+   "AlphaPSR.xml"
+   "Poisson.xml"
+   "AllToAllConnection.xml"                    
+   "AllToAll.xml"                              
+   "OneToOneConnectionStd.xml"
+   "OneToOneConnection.xml"
+   "OneToOne.xml"
+   "RandomFanInConnectionStd.xml"
+   "RandomFanInConnection.xml"
+   "RandomFanIn.xml"
+   "StaticConnection.xml"
+   "RandomUniformConnection.xml"
+   "Brunel_network_delta_AI.xml"               
+   "Brunel_network_delta_SI.xml"
+   "Brunel_network_delta_AR.xml"               
+   "Brunel_network_delta_SR.xml"
+   "brunel_network_alpha_SR.xml"               
+   "brunel_network_alpha_SI.xml"               
+   "brunel_network_alpha_AR.xml"               
+   "brunel_network_alpha_AI.xml"))
+
 (copy-file-to-9ML-dir "templates/Network.sml.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Network.sml.tmpl")
 
