@@ -248,7 +248,7 @@ struct
           val h0          = 1e~3
           val initial     = {{pop.value.prototype.name}}.initfun({{pop.name}}_parameters)
           val evinitial   = {{pop.value.prototype.name}}.initcondfun 
-          val dinitial    = {{pop.value.prototype.name}}.dinitfun
+          val dinitial    = optApply {{pop.value.prototype.name}}.dinitfun {{pop.name}}_parameters
           val rinitial    = {{pop.value.prototype.name}}.initregfun 
           val extinitial  = {{pop.value.prototype.name}}.initextfun ({{pop.name}}_parameters)
           val extevinitial  = {{pop.value.prototype.name}}.initextevfun ({{pop.name}}_parameters)
