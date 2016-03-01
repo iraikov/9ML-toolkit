@@ -243,7 +243,7 @@
                                           (cons (car sl) (cadr sl)))))
                         ))
 
-    (y-range     "colon-separated minimum and maximum of x-axis data field"
+    (y-range     "colon-separated minimum and maximum of y-axis data field"
                  (value (required FIELD-RANGE)
                         (predicate 
                          ,(lambda (x) 
