@@ -3,7 +3,7 @@
 (define (dynld-name fn)		
   (make-pathname #f fn ##sys#load-dynamic-extension))	
 
-(define version "3.7")
+(define version "3.8")
 
 (use make)
 
@@ -23,6 +23,12 @@
 
        ((dynld-name "9ML-parse.import") ("9ML-parse.import.scm")
 	(compile  -s 9ML-parse.import.scm))
+
+       ((dynld-name "9ML-utils") ("utils.scm")
+	(compile -O -d2 -S -s utils.scm -o ,(dynld-name "9ML-utils") -j 9ML-utils))
+
+       ((dynld-name "9ML-utils.import") ("9ML-utils.import.scm")
+	(compile  -s 9ML-utils.import.scm))
 
        ;((dynld-name "9ML-ivp-chicken") ("ivp-chicken.scm" )
 	;(compile -O -d2 -S -s ivp-chicken.scm -o ,(dynld-name "9ML-ivp-chicken") -j 9ML-ivp-chicken))
@@ -47,6 +53,7 @@
   (list
 	(dynld-name "9ML-types")       (dynld-name "9ML-types.import") 
 	(dynld-name "9ML-parse")       (dynld-name "9ML-parse.import") 
+	(dynld-name "9ML-utils")       (dynld-name "9ML-utils.import") 
 	;(dynld-name "9ML-ivp-chicken") (dynld-name "9ML-ivp-chicken.import") 
 	(dynld-name "9ML-ivp-mlton")   (dynld-name "9ML-ivp-mlton.import") 
 	(dynld-name "9ML-alsys-mlton") (dynld-name "9ML-alsys-mlton.import") 
@@ -112,6 +119,19 @@
 
   ; Files to install for your extension:
   `(,(dynld-name "9ML-parse") ,(dynld-name "9ML-parse.import") )
+
+  ; Assoc list with properties for your extension:
+  `((version ,version)
+    ))
+
+
+(install-extension
+
+  ; Name of your extension:
+  '9ML-utils
+
+  ; Files to install for your extension:
+  `(,(dynld-name "9ML-utils") ,(dynld-name "9ML-utils.import") )
 
   ; Assoc list with properties for your extension:
   `((version ,version)

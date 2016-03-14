@@ -1,3 +1,14 @@
+;;
+;; A variant of the network model described in:
+;;
+;;   Brunel, N (2000) Dynamics of Sparsely Connected Networks of Excitatory and Inhibitory Spiking Neurons.
+;;   Journal of Computational Neuroscience 8(3):183--208. doi:10.1023/A:1008925309027.
+;;
+;; This implementation uses current-based synapses with an
+;; alpha-function dynamics, rather than voltage-based delta synapses as
+;; in the original paper.
+;;
+
 (use srfi-1 utils extras ssax sxpath sxpath-lolevel )
 (require-library sxml-transforms)
 (import (prefix sxml-transforms sxml:))
@@ -219,3 +230,27 @@
     ))
  range-g
  )
+
+(define variants
+  '(
+    (SI (g . 4.5) (eta . 0.9))
+    (AI (g . 5.0) (eta . 2.0))
+    (AR (g . 6.0) (eta . 4.0))
+    (SR (g . 3.0) (eta . 2.0))
+    ))
+    
+
+(for-each
+ (lambda (var)
+   (let ((label (car var))
+         (g (alist-ref 'g (cdr var)))
+         (eta (alist-ref 'eta (cdr var))))
+     (call-with-output-file 
+         (string-append (model-name (sprintf "Brunel_network_delta_~A" label)) ".xml")
+       (lambda  (output)
+         (sxml:serialize-sxml
+          (Prelude 
+           (BrunelNetworkDelta g eta))
+          output: output)))
+     ))
+ variants)

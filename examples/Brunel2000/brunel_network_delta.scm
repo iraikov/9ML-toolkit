@@ -1,3 +1,12 @@
+;;
+;; A variant of the network model described in:
+;;
+;;   Brunel, N (2000) Dynamics of Sparsely Connected Networks of Excitatory and Inhibitory Spiking Neurons.
+;;   Journal of Computational Neuroscience 8(3):183--208. doi:10.1023/A:1008925309027.
+;;
+;; This implementation uses current-based delta synapses.
+;;
+
 (use srfi-1 utils extras ssax sxpath sxpath-lolevel )
 (require-library sxml-transforms sxml-serializer)
 (import (prefix sxml-transforms sxml:)

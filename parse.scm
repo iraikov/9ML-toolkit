@@ -94,7 +94,7 @@
 
 (define (random-operation? op)
   (case op
-    ((random.int random.normal random.uniform random.poisson random.exponential) #t)
+    ((random.int random.normal random.uniform random.unifrange random.poisson random.exponential) #t)
     (else #f)))
 
     
@@ -132,7 +132,12 @@
 		 `(,(op->signal-function "if") ,(recur a) ,(recur b) ,(recur c)))
 		
 		(((and op (? symbol?)) a b)
-		 `(,(op->signal-function op) ,(recur a) ,(recur b)))
+		 (cond ((signal-operation? op)
+                        `(,(op->signal-function op)  ,(recur a) ,(recur b)))
+                       ((random-operation? op)
+                        `(,op ,(recur a) ,(recur b)))
+                       (else
+                        `(,op ,(recur a) ,(recur b)))))
 		
 		(((and op (? symbol?)) a)
 		 (cond ((signal-operation? op)
@@ -462,6 +467,7 @@
                                        )))  sxml)))
          (states       ((sxpath `(// nml:StateVariable)) dynamics))
          (connection-rule (safe-car ((sxpath `(// nml:ConnectionRule)) sxml)))
+         (random-dist (safe-car ((sxpath `(// nml:RandomDistribution)) sxml)))
          )
 
     (cond
@@ -501,6 +507,18 @@
                           (reverse parameters))))
             )
         (make-connection-rule-node name connection-formals connection-stdlib)
+        ))
+        
+     (random-dist 
+      (let (
+            (random-stdlib
+             (string->symbol (or (sxml:attr random-dist 'standard_library)
+                                 (sxml:attr random-dist 'standardLibrary))))
+            (dist-formals
+             (map (lambda (x) (string->symbol (sxml:attr x 'name)))
+                  (reverse parameters)))
+            )
+        (make-random-dist-node name dist-formals random-stdlib)
         ))
         
 

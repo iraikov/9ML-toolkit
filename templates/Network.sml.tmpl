@@ -652,46 +652,46 @@ struct
                  pr.value.connectivity.name,
                  pr.value.connectivity.port) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "OneToOne" %}
+{% elseif ((pr.value.connectivity.type.stdlib == "OneToOne") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/OneToOne")) %}
 {% call one_to_one(pr.name, 
                    pr.value.source.populations,
                    pr.value.destination.populations,
                    pr.value.plasticity) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "AllToAll" %}
+{% elseif ((pr.value.connectivity.type.stdlib == "AllToAll") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/AllToAll")) %}
 {% call all_to_all(pr.name, 
                    pr.value.source.populations,
                    pr.value.destination.populations,
                    pr.value.plasticity) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "FromFile" %}
+{% elseif ((pr.value.connectivity.type.stdlib == "FromFile") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/OneToOne")) %}
 {% call from_file(pr.name, 
                   pr.value.source.populations,
                   pr.value.destination.populations,
                   pr.value.rule.properties.filename.exprML) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanIn" &&  pr.value.connectivity.type.probability %}
+{% elseif ((pr.value.connectivity.type.stdlib == "RandomFanIn") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanIn")) &&  pr.value.connectivity.type.probability %}
 {% call random_fan_in(pr.name, 
                       pr.value.source.populations,
                       pr.value.destination.populations,
                       pr.value.plasticity,
                       pr.value.connectivity.type.probability) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanIn" &&  pr.value.connectivity.type.number %}
+{% elseif ((pr.value.connectivity.type.stdlib == "RandomFanIn") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanIn")) &&  pr.value.connectivity.type.number %}
 {% call random_fan_in_num(pr.name, 
                           pr.value.source.populations,
                           pr.value.destination.populations,
                           pr.value.plasticity,
                           pr.value.connectivity.type.number) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanOut"  &&  pr.value.connectivity.type.probability %}
+{% elseif ((pr.value.connectivity.type.stdlib == "RandomFanOut") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanOut"))  &&  pr.value.connectivity.type.probability %}
 {% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
                 pr.value.plasticity,
                 pr.value.connectivity.type.probability) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanOut"  &&  pr.value.connectivity.type.number %}
+{% elseif ((pr.value.connectivity.type.stdlib == "RandomFanOut") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanOut"))  &&  pr.value.connectivity.type.number %}
 {% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
