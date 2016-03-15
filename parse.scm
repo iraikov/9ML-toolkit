@@ -236,15 +236,15 @@
                      `(,quantity . ,rhs))
                 ))
             aliases))
-           
-          (assign-decls
+                      
+          (assign-eqs
            (filter-map
             (lambda (x)
               (let ((quantity (string->symbol (sxml:attr x 'name)))
                     (rhs      (parse-string-expr 
                                (sxml:kidn-cadr 'nml:MathInline x )
                                'parse-al-sxml-dynamics)))
-                (and (assoc quantity formals)
+                (and (assoc quantity formals) 
                     `((reduce (+ ,quantity)) = ,rhs))
                 ))
             aliases))
@@ -377,8 +377,8 @@
                   ;;(pp `(transition-decls . ,transition-decls) (current-error-port))
 
                   (append 
-                   assign-decls
                    constant-decls
+                   assign-eqs
                    (if (null? on-conditions)
                        (append ode-decls event-decls)
                        (cons `(structural-event 

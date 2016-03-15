@@ -772,6 +772,7 @@
                    (prototype-decls
                     (salt:make-astdecls
                      (append (salt:astdecls-decls model-eqset) response-dynamics))))
+              (d "response-dynamics = ~A~%" response-dynamics)
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
                 (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))

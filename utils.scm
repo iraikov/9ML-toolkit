@@ -39,8 +39,8 @@
 (import (only files make-pathname pathname-directory pathname-file)
 	(only data-structures conc alist-ref intersperse)
 	(only srfi-13 string-concatenate string-trim-both string-null? string-concatenate-reverse )
-        (only srfi-1 delete-duplicates drop-right last filter-map)
-        (only extras fprintf read-line read-string)
+        (only srfi-1 delete-duplicates drop-right last filter filter-map)
+        (only extras pp fprintf read-line read-string)
         (only utils read-all)
         (only data-structures string-split ->string)
         (only tcp tcp-connect)
@@ -412,6 +412,14 @@
                            `(,name . ,(string->symbol dim))
                            `(,name . Unity))))
                    ((sxpath `(// nml:AnalogReducePort)) model-sxml)))
+             (model-analog-send-ports
+              (map (lambda (x) 
+                     (let ((name (string->symbol (sxml:attr x 'name)))
+                           (dim (sxml:attr x 'dimension)))
+                       (if dim
+                           `(,name . ,(string->symbol dim))
+                           `(,name . Unity))))
+                   ((sxpath `(// nml:AnalogSendPort)) model-sxml)))
              )
 
         (if (not model)
@@ -471,7 +479,8 @@
                                        "cannot find default unit for dimension in receive port definition"
                                        dim name))
                             `(define ,name = external (dim ,dim) (0.0 * ,unit)))))))
-                     model-analog-receive-ports))
+                     model-analog-receive-ports
+                     ))
                  
                (extev-decls
                 (map (match-lambda 
@@ -499,9 +508,13 @@
                                     "cannot find default unit for dimension in reduce port definition"
                                     dim name))
                          `(define ,name = unknown (dim ,dim) ,val))))
-                     model-reduce-ports))
-               )
+                     (append model-reduce-ports
+                             (filter (match-lambda 
+                                      ((name . dim) (not (assoc name model-variables))))
+                                      model-analog-send-ports))
+                     ))
 
+               )
 
           (match model
                  (($ dynamics-node model-name model-formals model-env model-decls) 
