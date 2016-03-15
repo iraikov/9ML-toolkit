@@ -460,7 +460,7 @@
                               (ty (if (member name (alist-ref 'ode-states (dynamics-node-env model)))
                                       'unknown 'discrete))
                               )
-                         (if unit
+                         (if (and unit dim)
                              `(define ,name = ,ty (dim ,dim) (,v * ,unit))
                              `(define ,name = ,ty ,v))
                          ))
