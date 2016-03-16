@@ -776,22 +776,28 @@
                                                        (pp (append 
                                                             (let ((dim (alist-ref (cadr plas-ports) model-formals)))
                                                               (salt:astdecls-decls 
-                                                               (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) UNITZERO)
-                                                                             ;(define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
+                                                               (salt:parse `(;(define ,(car plas-ports) = unknown (dim ,dim) UNITZERO)
+                                                                             (define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
                                                                              ))
                                                                ))
-                                                            (salt:astdecls-decls plas-model-eqset)
-                                                            (salt:astdecls-decls model-eqset)))
+                                                            (append
+                                                             (salt:astdecls-decls model-eqset)
+                                                             (salt:astdecls-decls plas-model-eqset))
+                                                            ))
                                                        (salt:make-astdecls
                                                         (append 
                                                          (let ((dim (alist-ref (cadr plas-ports) model-formals)))
                                                            (salt:astdecls-decls 
-                                                            (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) UNITZERO)
-                                                                          ;(define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
+                                                            (salt:parse `(;(define ,(car plas-ports) = unknown (dim ,dim) UNITZERO)
+                                                                          (define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
                                                                           ))
                                                             ))
-                                                         (list (salt:astdecls-decls plas-model-eqset)
-                                                               (salt:astdecls-decls model-eqset)))))
+                                                         (append
+                                                          (salt:astdecls-decls plas-model-eqset)
+                                                          (salt:astdecls-decls model-eqset)
+                                                          )
+                                                         ))
+                                                       )
                                             model-eqset))
                              (let* (
                                     (dim (alist-ref (cadr destination-ports) model-formals))
@@ -806,7 +812,8 @@
                      responses))
                    (prototype-decls
                     (salt:make-astdecls
-                     (append response-dynamics (salt:astdecls-decls model-eqset)))))
+                     (append (salt:astdecls-decls model-eqset)
+                             response-dynamics))))
               (d "response-dynamics = ~A~%" response-dynamics)
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
