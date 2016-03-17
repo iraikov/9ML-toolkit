@@ -210,12 +210,6 @@
 	      (else (mkdir pn) pn))))))
 
 
-(define default-units
-  `(
-    (current . nA)
-    (Current . nA)
-    ))
-
 
 
 (define (codegen-ivp-ul-component/mlton operand ul-properties node)

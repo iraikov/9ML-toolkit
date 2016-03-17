@@ -732,6 +732,8 @@
                                psr-types plas-types connection-types projection-ports
                                (append properties ul-properties) ))
 
+             
+
              )
 
         (d "projection-ports = ~A~%" (ersatz:tvalue->sexpr projection-ports))
@@ -760,7 +762,6 @@
                             (plas-ports (alist-ref 'plasticity-ports ports))
                             (ext-event (gensym 'event))
                             )
-                         (print "ports = " ports)
                          (if response-node 
                              (match-let (
                                          (($ dynamics-node model-name model-formals model-env model-eqset)
@@ -773,31 +774,19 @@
                                                             plas-model-formals plas-model-env plas-model-eqset)
                                                          (alist-ref (string->symbol plasticity-node) ul-node-env))
                                                         )
-                                                       (pp (append 
-                                                            (let ((dim (alist-ref (cadr plas-ports) model-formals)))
-                                                              (salt:astdecls-decls 
-                                                               (salt:parse `(;(define ,(car plas-ports) = unknown (dim ,dim) UNITZERO)
-                                                                             (define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
-                                                                             ))
-                                                               ))
-                                                            (append
-                                                             (salt:astdecls-decls model-eqset)
-                                                             (salt:astdecls-decls plas-model-eqset))
-                                                            ))
                                                        (salt:make-astdecls
-                                                        (append 
-                                                         (let ((dim (alist-ref (cadr plas-ports) model-formals)))
-                                                           (salt:astdecls-decls 
-                                                            (salt:parse `(;(define ,(car plas-ports) = unknown (dim ,dim) UNITZERO)
-                                                                          (define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
-                                                                          ))
-                                                            ))
-                                                         (append
-                                                          (salt:astdecls-decls plas-model-eqset)
-                                                          (salt:astdecls-decls model-eqset)
-                                                          )
-                                                         ))
-                                                       )
+                                                        `(
+                                                          ,@(let* ((dim (alist-ref (cadr plas-ports) model-formals))
+                                                                   (unit (alist-ref dim default-units)))
+                                                              (salt:astdecls-decls
+                                                               (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) 
+                                                                               0.0 * ,unit)
+                                        ;(define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
+                                                                             )))
+                                                              )
+                                                          ,plas-model-eqset
+                                                          ,model-eqset)
+                                                        ))
                                             model-eqset))
                              (let* (
                                     (dim (alist-ref (cadr destination-ports) model-formals))
@@ -810,10 +799,30 @@
                          ))
                       )
                      responses))
+                   (response-destination-port-decls
+                    (salt:parse
+                     (delete-duplicates
+                      (map
+                       (match-lambda 
+                        ((source-population response-node plasticity-node . ports)
+                         (let
+                             (
+                              (projection-port  (alist-ref 'projection-port ports))
+                              (destination-ports (alist-ref 'destination-response-ports ports))
+                              )
+                           (let* ((dim (alist-ref (cadr destination-ports) model-formals))
+                                  (unit (alist-ref dim default-units)))
+                             `(define ,(cadr destination-ports) = unknown (dim ,dim) 0.0 * ,unit))
+                           ))
+                        )
+                       responses))
+                     ))
                    (prototype-decls
                     (salt:make-astdecls
-                     (append (salt:astdecls-decls model-eqset)
-                             response-dynamics))))
+                     `(,@(salt:astdecls-decls response-destination-port-decls)
+                       ,model-eqset . ,response-dynamics)))
+                   )
+              (pp prototype-decls)
               (d "response-dynamics = ~A~%" response-dynamics)
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))

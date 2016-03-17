@@ -30,6 +30,7 @@
          eval-ul-component
          resolve-al-components
          resolve-ul-components
+         default-units
          )
 
 	(import scheme chicken )
@@ -508,10 +509,7 @@
                                     "cannot find default unit for dimension in reduce port definition"
                                     dim name))
                          `(define ,name = unknown (dim ,dim) ,val))))
-                     (append model-reduce-ports
-                             (filter (match-lambda 
-                                      ((name . dim) (not (assoc name model-variables))))
-                                      model-analog-send-ports))
+                     model-reduce-ports
                      ))
 
                )
@@ -522,7 +520,7 @@
                                        state-decls
                                        ext-decls
                                        extev-decls
-                                       reduce-decls
+                                       ;reduce-decls
                                        (list model-decls))))
                     ;;(pp `(model-decls = ,decls) (current-error-port))
                     (cons (string->symbol node-name)
