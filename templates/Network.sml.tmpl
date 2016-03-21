@@ -335,11 +335,6 @@ struct
 
 
 
-{% if group.plastypes %}{% for pl in dict (group.plastypes) %}
-  val {{pl.name}}_parameters: real array = {{pl.name}}.paramfun()
-  val {{pl.name}}_initial = {{pl.name}}.initfun({{pl.name}}_parameters)
-
-{% endfor %}{% endif %}
 
 
 {% if group.conntypes %}{% for conn in dict (group.conntypes) %}
@@ -438,47 +433,32 @@ struct
    {% endfor %}
 {% endmacro %}
 
-{% macro for_each(name, sp, tp, plasticity, component, cstate) %}
-             val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-
-                               in
-                                  SparseMatrix.fromGeneratorList [N,N]
+{% macro for_each(name, sp, tp, component, cstate) %}
+             val Pr_{{name}} = SparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
                                      fshape=[{{t.size}},{{s.size}}],
-                                     f=(fn (i) => Real.* (weight, #{{cstate}}({{component}}_f {{component}}_initial) ))}{% endcall %}
+                                     f=(fn (i) => #{{cstate}}({{component}}_f {{component}}_initial) )}{% endcall %}
                                   ]
-                               end
 {% endmacro %}
 
 
-{% macro all_to_all(name, sp, tp, plasticity)  %}
-             val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-
-                               in
-                                  SparseMatrix.fromTensorList [N,N]
+{% macro all_to_all(name, sp, tp)  %}
+             val Pr_{{name}} = SparseMatrix.fromTensorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
-                                     tensor=(RTensor.*> weight (RTensor.new ([{{t.size}},{{s.size}}],1.0))),
+                                     tensor=(RTensor.new ([{{t.size}},{{s.size}}],1.0)),
                                      sparse=false}{% endcall %}
                                   ]
-                                end
 {% endmacro %}
 
-{% macro one_to_one(name, sp, tp, plasticity) %}
-             val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-
-                               in
-                                  SparseMatrix.fromTensorList [N,N]
+{% macro one_to_one(name, sp, tp) %}
+             val Pr_{{name}} = SparseMatrix.fromTensorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
-                                     tensor=(fromDiag ({{t.size}},{{s.size}},Real64Array.fromList [weight],0.0)),
+                                     tensor=(fromDiag ({{t.size}},{{s.size}},Real64Array.fromList [1.0],0.0)),
                                      sparse=true}{% endcall %}
                                   ]
-                               end
 {% endmacro %}
 
 
@@ -525,10 +505,9 @@ struct
 {% endmacro %}
 
 
-{% macro random_fan_in(name, sp, tp, plasticity, prob) %}
+{% macro random_fan_in(name, sp, tp, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then weight else 0.0) 
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then 1.0 else 0.0) 
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
                                   [
@@ -540,10 +519,9 @@ struct
 {% endmacro %}
 
 
-{% macro random_fan_out(name, sp, tp, plasticity, prob) %}
+{% macro random_fan_out(name, sp, tp, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then weight else 0.0)
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then 1.0 else 0.0)
                                in
                                   SparseMatrix.fromGeneratorList [N,N]
                                   [
@@ -555,11 +533,8 @@ struct
 {% endmacro %}
 
 
-{% macro random_fan_in_num(name, sp, tp, plasticity, num) %}
-             val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-                               in
-                                  SparseMatrix.fromVectors [N,N]
+{% macro random_fan_in_num(name, sp, tp, num) %}
+             val Pr_{{name}} = SparseMatrix.fromVectors [N,N]
                                   [
 {% call postorder (sp,tp) %}          (let
                                           val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
@@ -567,7 +542,7 @@ struct
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num}},
-                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),weight)); 
+                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),1.0)); 
                                                                                           k+1),
                                                                              k),
                                                               0)
@@ -578,15 +553,11 @@ struct
                                            v=v, shape_v=[{{t.size}},{{s.size}}]}
                                       end){% endcall %}
                                   ]
-                               end
 {% endmacro %}
 
 
-{% macro random_fan_out_num(name, sp, tp, plasticity, num) %}
-             val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-                               in
-                                  SparseMatrix.fromVectors [N,N]
+{% macro random_fan_out_num(name, sp, tp, num) %}
+             val Pr_{{name}} = SparseMatrix.fromVectors [N,N]
                                   [
 {% call preorder (sp,tp) %}          (let
                                           val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
@@ -594,7 +565,7 @@ struct
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num}},
-                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),weight)); 
+                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),1.0)); 
                                                                                           k+1),
                                                                              k),
                                                               0)
@@ -605,7 +576,6 @@ struct
                                            v=v, shape_v=[{{t.size}},{{s.size}}]}
                                       end){% endcall %}
                                   ]
-                               end
 {% endmacro %}
 
 
@@ -648,21 +618,18 @@ struct
 {% call for_each(pr.name, 
                  pr.value.source.populations, 
                  pr.value.destination.populations, 
-                 pr.value.plasticity,
                  pr.value.connectivity.name,
                  pr.value.connectivity.port) %}
 {% endcall %}
 {% elseif ((pr.value.connectivity.type.stdlib == "OneToOne") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/OneToOne")) %}
 {% call one_to_one(pr.name, 
                    pr.value.source.populations,
-                   pr.value.destination.populations,
-                   pr.value.plasticity) %}
+                   pr.value.destination.populations) %}
 {% endcall %}
 {% elseif ((pr.value.connectivity.type.stdlib == "AllToAll") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/AllToAll")) %}
 {% call all_to_all(pr.name, 
                    pr.value.source.populations,
-                   pr.value.destination.populations,
-                   pr.value.plasticity) %}
+                   pr.value.destination.populations) %}
 {% endcall %}
 {% elseif ((pr.value.connectivity.type.stdlib == "FromFile") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/OneToOne")) %}
 {% call from_file(pr.name, 
@@ -674,28 +641,24 @@ struct
 {% call random_fan_in(pr.name, 
                       pr.value.source.populations,
                       pr.value.destination.populations,
-                      pr.value.plasticity,
                       pr.value.connectivity.type.probability) %}
 {% endcall %}
 {% elseif ((pr.value.connectivity.type.stdlib == "RandomFanIn") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanIn")) &&  pr.value.connectivity.type.number %}
 {% call random_fan_in_num(pr.name, 
                           pr.value.source.populations,
                           pr.value.destination.populations,
-                          pr.value.plasticity,
                           pr.value.connectivity.type.number) %}
 {% endcall %}
 {% elseif ((pr.value.connectivity.type.stdlib == "RandomFanOut") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanOut"))  &&  pr.value.connectivity.type.probability %}
 {% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
-                pr.value.plasticity,
                 pr.value.connectivity.type.probability) %}
 {% endcall %}
 {% elseif ((pr.value.connectivity.type.stdlib == "RandomFanOut") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanOut"))  &&  pr.value.connectivity.type.number %}
 {% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
-                pr.value.plasticity,
                 pr.value.connectivity.type.number) %}
 {% endcall %}
 {% endif %}

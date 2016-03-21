@@ -2,7 +2,7 @@
 ;; NineML network level descriptions.
 ;;
 ;;
-;; Copyright 2015 Ivan Raikov
+;; Copyright 2015-2016 Ivan Raikov
 ;;
 ;; This program is free software: you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -757,10 +757,10 @@
                       ((source-population response-node plasticity-node . ports)
                        (let
                            (
-                            (projection-port  (alist-ref 'projection-port ports))
+                            (projection-port   (alist-ref 'projection-port ports))
                             (destination-ports (alist-ref 'destination-response-ports ports))
                             (plas-ports (alist-ref 'plasticity-ports ports))
-                            (ext-event (gensym 'event))
+                            (ext-event  (gensym 'event))
                             )
                          (if response-node 
                              (match-let (
@@ -781,11 +781,17 @@
                                                               (salt:astdecls-decls
                                                                (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) 
                                                                                0.0 * ,unit)
-                                        ;(define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
+                                                                             ;;(define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
                                                                              )))
                                                               )
-                                                          ,plas-model-eqset
-                                                          ,model-eqset)
+                                                          ,(salt:make-astdecls
+                                                            (append (salt:astdecls-decls plas-model-eqset)
+                                                                    (salt:astdecls-decls model-eqset)
+                                                                    (salt:astdecls-decls
+                                                                     (salt:parse `(((reduce (* ,(cadr plas-ports))) = ,(car plas-ports ))))
+                                                                     ))
+                                                                   
+                                                            ))
                                                         ))
                                             model-eqset))
                              (let* (
@@ -842,22 +848,22 @@
           )
          (population-prototype-env))
 
-        (for-each
-         (match-lambda
-          ((node-name . plas-type)
-           (match-let
-            (
-             (($ dynamics-node model-name model-formals model-env model-eqset)
-              (alist-ref node-name ul-node-env))
-             )
-            (d "plasticity node name = ~A model-eqset = ~A~%" node-name model-eqset)
-              (let* ((sim (salt:simcreate (salt:elaborate model-eqset))))
-                (let ((port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))
-                  (salt:codegen-ODE/ML node-name sim out: port solver: (ivp-simulation-method) libs: '(random))
-                  (close-output-port port))
-                ))
-            ))
-         plas-types)
+        ;; (for-each
+        ;;  (match-lambda
+        ;;   ((node-name . plas-type)
+        ;;    (match-let
+        ;;     (
+        ;;      (($ dynamics-node model-name model-formals model-env model-eqset)
+        ;;       (alist-ref node-name ul-node-env))
+        ;;      )
+        ;;     (d "plasticity node name = ~A model-eqset = ~A~%" node-name model-eqset)
+        ;;       (let* ((sim (salt:simcreate (salt:elaborate model-eqset))))
+        ;;         (let ((port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))
+        ;;           (salt:codegen-ODE/ML node-name sim out: port solver: (ivp-simulation-method) libs: '(random))
+        ;;           (close-output-port port))
+        ;;         ))
+        ;;     ))
+        ;;  plas-types)
 
         (let ((node-files 
                (map 
