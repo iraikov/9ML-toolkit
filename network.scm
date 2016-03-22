@@ -781,16 +781,18 @@
                                                               (salt:astdecls-decls
                                                                (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) 
                                                                                0.0 * ,unit)
-                                                                             ;;(define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
+                                                                             ;(define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
                                                                              )))
                                                               )
                                                           ,(salt:make-astdecls
-                                                            (append (salt:astdecls-decls plas-model-eqset)
+                                                            (list (salt:astdecls-decls plas-model-eqset)
+                                                                  (salt:make-astdecls 
+                                                                   (append
                                                                     (salt:astdecls-decls model-eqset)
                                                                     (salt:astdecls-decls
                                                                      (salt:parse `(((reduce (* ,(cadr plas-ports))) = ,(car plas-ports ))))
                                                                      ))
-                                                                   
+                                                                   ))
                                                             ))
                                                         ))
                                             model-eqset))
