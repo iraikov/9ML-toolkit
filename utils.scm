@@ -537,7 +537,7 @@
                           (map (lambda (n v) 
                                  (let* ((vtext (sxml:text v))
                                         (name (string->symbol (if (string? n) n (sxml:text n)))))
-                                   `(,name . ,vtext)))
+                                   `(,name . ,(string->number vtext))))
                                propns propvs)))
                   (cons (string->symbol node-name) 
                         (make-connection-rule-node model-name model-formals 
