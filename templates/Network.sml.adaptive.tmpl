@@ -556,11 +556,11 @@ struct
              val Pr_{{name}} = SparseMatrix.fromVectors [N,N]
                                   [
 {% call postorder (sp,tp) %}          (let
-                                          val sample = Array.array (Int.min({{int(num)}},{{s.size}}) * {{t.size}}, (0,0,0.0))
+                                          val sample = Array.array (Int.min({{num | int}},{{s.size}}) * {{t.size}}, (0,0,0.0))
                                           val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
-                                                                 Loop.foldi (0,{{int(num)}},
+                                                                 Loop.foldi (0,{{num | int}},
                                                                              fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),1.0)); 
                                                                                           k+1),
                                                                              k),
@@ -579,11 +579,11 @@ struct
              val Pr_{{name}} = SparseMatrix.fromVectors [N,N]
                                   [
 {% call preorder (sp,tp) %}          (let
-                                          val sample = Array.array (Int.min({{int(num)}},{{s.size}}) * {{t.size}}, (0,0,0.0))
+                                          val sample = Array.array (Int.min({{num | int}},{{s.size}}) * {{t.size}}, (0,0,0.0))
                                           val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
-                                                                 Loop.foldi (0,{{int(num)}},
+                                                                 Loop.foldi (0,{{num | int}},
                                                                              fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),1.0)); 
                                                                                           k+1),
                                                                              k),
