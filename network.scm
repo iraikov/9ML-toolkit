@@ -205,8 +205,8 @@
   (alist->tenv
    `((name      . ,name)
      (prototype . ,prototype)
-     (size      . ,size)
-     (start     . ,order))
+     (size      . ,(inexact->exact size))
+     (start     . ,(inexact->exact order)))
    ))
 
 
