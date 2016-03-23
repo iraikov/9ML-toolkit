@@ -366,7 +366,7 @@
             (all-sxml (fold append model-sxml ul-import-sxmls))
             )
        
-       (let-values (((ul-component-list ul-sxml) (resolve-ul-components all-sxml)))
+       (let-values (((ul-component-env ul-sxml) (resolve-ul-components all-sxml)))
          
          (let ((dimensions-sxml (sxml:kidsn 'nml:Dimension `(nml:NineML . ,all-sxml)))
                (units-sxml (sxml:kidsn 'nml:Unit `(nml:NineML . ,all-sxml))))
@@ -382,7 +382,11 @@
                 (al-component-env (resolve-al-components all-sxml))
                 (dd (d "al-component-env = ~A~%" al-component-env))
 
-                (ul-component-eval-env (map (lambda (x) (eval-ul-component x al-component-env)) ul-component-list))
+                (ul-component-eval-env
+                 (map (lambda (x) (eval-ul-component x al-component-env ul-component-env)) 
+                      (map cdr ul-component-env)))
+
+
                 
                 )
            

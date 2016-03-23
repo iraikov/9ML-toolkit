@@ -23,7 +23,6 @@
     <Parameter name="a" dimension="conductance" />
     <Parameter name="b" dimension="current" />
     <Parameter name="Iext" dimension="current" />
-    <AnalogReducePort name="Isyn" dimension="current" />
     <AnalogSendPort name="V" dimension="voltage" />
     <AnalogSendPort name="W" dimension="current" />
     <AnalogSendPort name="t_rpend" dimension="time" />
@@ -50,7 +49,7 @@
           </StateAssignment>
         </OnCondition>
         <TimeDerivative variable="V">
-          <MathInline>(- g_L * (V - E_L) + (g_L * Delta * exp ((V - V_T) / Delta)) - W + Isyn + Iext) / C_m</MathInline>
+          <MathInline>(- g_L * (V - E_L) + (g_L * Delta * exp ((V - V_T) / Delta)) - W + Iext) / C_m</MathInline>
         </TimeDerivative>
         <TimeDerivative variable="W">
           <MathInline>(a * (V - E_L) - W) / tau_w</MathInline>
@@ -103,9 +102,6 @@
     </Property>
     <Property units="pA" name="b">
       <SingleValue>100.0</SingleValue>
-    </Property>
-    <Property units="pA" name="Isyn">
-      <SingleValue>0.0</SingleValue>
     </Property>
     <Property units="pA" name="Iext">
       <SingleValue>210.0</SingleValue>

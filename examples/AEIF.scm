@@ -42,7 +42,6 @@
     (Parameter (@ (name "b") (dimension "current"))) 
     (Parameter (@ (name "Iext") (dimension "current"))) 
 
-    (AnalogReducePort (@ (name "Isyn") (dimension "current"))) 
     (AnalogSendPort (@ (name "V") (dimension "voltage")))
     (AnalogSendPort (@ (name "W") (dimension "current"))) 
     (AnalogSendPort (@ (name "t_rpend") (dimension "time")))
@@ -66,7 +65,7 @@
                           )
              (TimeDerivative 
               (@ (variable "V")) 
-              (MathInline "(- g_L * (V - E_L) + (g_L * Delta * exp ((V - V_T) / Delta)) - W + Isyn + Iext) / C_m")
+              (MathInline "(- g_L * (V - E_L) + (g_L * Delta * exp ((V - V_T) / Delta)) - W + Iext) / C_m")
               )
              (TimeDerivative
               (@ (variable "W")) 
@@ -99,7 +98,6 @@
               (a       2.0)
               (b      100.0)
               (Iext   0.0)
-              (Isyn    0.0)
               )
 
   `(Component 
@@ -118,7 +116,6 @@
     (Property (@ (units "nS") (name "a")) (SingleValue ,a))
     (Property (@ (units "pA") (name "b")) (SingleValue ,b))
 
-    (Property (@ (units "pA") (name "Isyn")) (SingleValue ,Isyn)) 
     (Property (@ (units "pA") (name "Iext")) (SingleValue ,Iext)) 
     
     (Initial (@ (units "mV") (name "V")) (SingleValue -65.0))
