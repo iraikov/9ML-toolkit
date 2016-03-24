@@ -22,7 +22,7 @@
   )
 
 
-(define (plot-raster plot-format data-file output-file plot-title xrange yrange)
+(define (plot-raster plot-format data-file output-file plot-title xrange yrange nsample bin-size)
   (match-let 
 
    (
@@ -44,8 +44,6 @@
 
    (let* (
 
-          (nsample 50)
-          (bin-size 0.1)
 
           ;; event times per node
           (event-times
@@ -255,6 +253,19 @@
                                           (cons (car sl) (cadr sl)))))
                         ))
 
+    (nsample     "number of indices to sample (default: 50)"
+                 (value (required N)
+                        (predicate 
+                         ,(lambda (x) (number? (string->number x))))
+                        (transformer ,(lambda (x) (string->number x)))
+                        ))
+
+    (bin-size    "event time bin size (default: 0.1 ms)"
+                 (value (required N)
+                        (predicate 
+                         ,(lambda (x) (number? (string->number x))))
+                        (transformer ,(lambda (x) (string->number x)))
+                        ))
 
     (help  "Print help"
 	    (single-char #\h))
@@ -268,6 +279,8 @@
 (define opt-defaults
   `(
     (plot-format . eps)
+    (nsample . 50)
+    (bin-size . 0.1)
     ))
 
 (define (defopt x)
@@ -305,9 +318,13 @@
          (title (or (opt 'title) (sprintf "Event raster plot ~A" (pathname-file data-filename))))
          (x-range (or (opt 'x-range) "xautorange"))
          (y-range (or (opt 'y-range) "yautorange"))
+         (nsample (or (opt 'nsample) (defopt 'nsample)))
+         (bin-size (or (opt 'bin-size) (defopt 'bin-size)))
+         
          )
     
-    (plot-raster plot-format data-filename output-filename title x-range y-range)
+    (plot-raster plot-format data-filename output-filename title x-range y-range nsample bin-size)
+
     ))
 
 (main opt)
