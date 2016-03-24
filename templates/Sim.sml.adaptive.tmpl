@@ -54,23 +54,19 @@ fun printProjectionSummary S k =
     List.app
         (fn (W) =>
             let
-                val (m,n) = dimVals (SparseMatrix.shape W)
+                val (m,n) = dimVals (BitSparseMatrix.shape W)
             in
                 Loop.app (0, n,
                           fn (i) => 
                              let
-                                 val sl = SparseMatrix.slice (W,k,i)
-                                 val sln = SparseMatrix.sliceFoldi
+                                 val sl = BitSparseMatrix.slice (W,k,i)
+                                 val sln = BitSparseMatrix.sliceFoldi
                                                (fn (j,x,n) => n+1)
                                                0 sl
-                                 val slsum = SparseMatrix.sliceFoldi
-                                                 (fn (j,x,ax) => Real.+(ax,x))
-                                                 0.0 sl
                              in
                                  putStrLn TextIO.stdOut
                                           ("column " ^ (Int.toString i) ^ 
-                                           ": n = " ^ (Int.toString sln) ^
-                                           ": mean = " ^ (Real.toString (Real./(slsum, (Real.fromInt sln)))))
+                                           ": n = " ^ (Int.toString sln))
                              end)
             end)
         S
@@ -90,15 +86,15 @@ let
                 (#2(ListPair.foldl
                         (fn (del,W,(port,dq)) =>
                             let
-                                val sl = SparseMatrix.slice (W,1,i)
+                                val sl = BitSparseMatrix.slice (W,1,i)
                             in
                                 (port+1,
-                                 SparseMatrix.sliceFoldi 
+                                 BitSparseMatrix.sliceFoldi 
                                      (fn (j,x,dq) => 
                                          let 
                                              val tev = Real.+ (t,del)
                                          in
-                                             TEQ.addEvent ((tev, (j,port,x)), dq)
+                                             TEQ.addEvent ((tev, (j,port,1.0)), dq)
                                          end)
                                      dq sl)
                             end)

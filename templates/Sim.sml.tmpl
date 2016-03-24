@@ -59,23 +59,19 @@ fun printProjectionSummary S k =
     List.app
         (fn (W) =>
             let
-                val (m,n) = dimVals (SparseMatrix.shape W)
+                val (m,n) = dimVals (BitSparseMatrix.shape W)
             in
                 Loop.app (0, n,
                           fn (i) => 
                              let
-                                 val sl = SparseMatrix.slice (W,k,i)
-                                 val sln = SparseMatrix.sliceFoldi
+                                 val sl = BitSparseMatrix.slice (W,k,i)
+                                 val sln = BitSparseMatrix.sliceFoldi
                                                (fn (j,x,n) => n+1)
                                                0 sl
-                                 val slsum = SparseMatrix.sliceFoldi
-                                                 (fn (j,x,ax) => Real.+(ax,x))
-                                                 0.0 sl
                              in
                                  putStrLn TextIO.stdOut
                                           ("column " ^ (Int.toString i) ^ 
-                                           ": n = " ^ (Int.toString sln) ^
-                                           ": mean = " ^ (Real.toString (Real./(slsum, (Real.fromInt sln)))))
+                                           ": n = " ^ (Int.toString sln))
                              end)
             end)
         S
@@ -127,10 +123,10 @@ let
                                                List.app
                                                    (fn (i,nv) => 
                                                        let
-                                                           val sl = SparseMatrix.slice (W,1,i)
+                                                           val sl = BitSparseMatrix.slice (W,1,i)
                                                        in
-                                                           SparseMatrix.sliceAppi 
-                                                               (fn (j,x) => update (T,j,Real.+ (Real.* (nv,x), sub(T,j))))
+                                                           BitSparseMatrix.sliceAppi 
+                                                               (fn (j,x) => update (T,j,Real.+ (nv, sub(T,j))))
                                                                sl
                                                        end)
                                                    lst)

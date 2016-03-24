@@ -29,19 +29,19 @@ struct
                          List.foldl f v lst'
                      end
 
-  fun dimVals [m,n] = (m,n) | dimVals _ = raise SparseMatrix.Shape
+  fun dimVals [m,n] = (m,n) | dimVals _ = raise BitSparseMatrix.Shape
 
   fun fromDiag (m, n, a, dflt) =
       if Index.validShape [m,n]
       then 
           (let 
-               val na  = RTensor.Array.length a
+               val na  = BitTensor.Array.length a
                val na' = na-1
-               val te  = RTensor.new ([m,n], dflt)
+               val te  = BitTensor.new ([m,n], dflt)
                fun diag (i, j, ia) =
                    let
                        val ia' = 
-                           (RTensor.update (te, [i,j], RTensor.Array.sub (a, ia));
+                           (BitTensor.update (te, [i,j], BitTensor.Array.sub (a, ia));
                             if ia = na' then 0 else ia+1)
                    in
                        if (i=0) orelse (j=0) 
@@ -52,7 +52,7 @@ struct
                diag (m-1, n-1, 0)
            end)
       else 
-          raise RTensor.Shape
+          raise Index.Shape
 
 
   fun sampleN randomInt n dflt =
@@ -434,7 +434,7 @@ struct
 {% endmacro %}
 
 {% macro for_each(name, sp, tp, component, cstate) %}
-             val Pr_{{name}} = SparseMatrix.fromGeneratorList [N,N]
+             val Pr_{{name}} = BitSparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
                                      fshape=[{{t.size}},{{s.size}}],
@@ -444,19 +444,19 @@ struct
 
 
 {% macro all_to_all(name, sp, tp)  %}
-             val Pr_{{name}} = SparseMatrix.fromTensorList [N,N]
+             val Pr_{{name}} = BitSparseMatrix.fromTensorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
-                                     tensor=(RTensor.new ([{{t.size}},{{s.size}}],1.0)),
+                                     tensor=(BitTensor.new ([{{t.size}},{{s.size}}],true)),
                                      sparse=false}{% endcall %}
                                   ]
 {% endmacro %}
 
 {% macro one_to_one(name, sp, tp) %}
-             val Pr_{{name}} = SparseMatrix.fromTensorList [N,N]
+             val Pr_{{name}} = BitSparseMatrix.fromTensorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
-                                     tensor=(fromDiag ({{t.size}},{{s.size}},Real64Array.fromList [1.0],0.0)),
+                                     tensor=(fromDiag ({{t.size}},{{s.size}},BitArray.fromList [true],false)),
                                      sparse=true}{% endcall %}
                                   ]
 {% endmacro %}
@@ -475,7 +475,7 @@ struct
                                      {% set toffset = 0 %}
                                      {% for t in tp %}
                                      {offset=[{{t.start}},{{s.start}}],
-                                      slice=(RTensorSlice.slice ([([{{toffset}},{{soffset}}],[{{toffset}}+{{t.size}}-1,{{soffset}}+{{s.size}}-1])],S)),
+                                      slice=(BitTensorSlice.slice ([([{{toffset}},{{soffset}}],[{{toffset}}+{{t.size}}-1,{{soffset}}+{{s.size}}-1])],S)),
                                       sparse=false}{% if not loop.last %},{% endif %}
                                      {% set toffset = toffset + t.size %}
                                      {% endfor %}{% if not loop.last %},{% endif %}
@@ -507,9 +507,9 @@ struct
 
 {% macro random_fan_in(name, sp, tp, prob) %}
              val Pr_{{name}} = let
-                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then 1.0 else 0.0) 
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then true else false) 
                                in
-                                  SparseMatrix.fromGeneratorList [N,N]
+                                  BitSparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call postorder (sp,tp) %}          {offset=[{{t.start}},{{s.start}}],
                                        fshape=[{{t.size}},{{s.size}}],
@@ -521,9 +521,9 @@ struct
 
 {% macro random_fan_out(name, sp, tp, prob) %}
              val Pr_{{name}} = let
-                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then 1.0 else 0.0)
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then true else false)
                                in
-                                  SparseMatrix.fromGeneratorList [N,N]
+                                  BitSparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call preorder (sp,tp) %}         {offset=[{{t.start}},{{s.start}}],
                                      fshape=[{{t.size}},{{s.size}}],
@@ -534,15 +534,15 @@ struct
 
 
 {% macro random_fan_in_num(name, sp, tp, num) %}
-             val Pr_{{name}} = SparseMatrix.fromVectors [N,N]
+             val Pr_{{name}} = BitSparseMatrix.fromVectors [N,N]
                                   [
 {% call postorder (sp,tp) %}          (let
-                                          val sample = Array.array (Int.min({{num | int}},{{s.size}}) * {{t.size}}, (0,0,0.0))
+                                          val sample = Array.array (Int.min({{num | int}},{{s.size}}) * {{t.size}}, (0,0,false))
                                           val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num | int}},
-                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),1.0)); 
+                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),true)); 
                                                                                           k+1),
                                                                              k),
                                                               0)
@@ -557,15 +557,15 @@ struct
 
 
 {% macro random_fan_out_num(name, sp, tp, num) %}
-             val Pr_{{name}} = SparseMatrix.fromVectors [N,N]
+             val Pr_{{name}} = BitSparseMatrix.fromVectors [N,N]
                                   [
 {% call preorder (sp,tp) %}          (let
-                                          val sample = Array.array (Int.min({{num | int}},{{s.size}}) * {{t.size}}, (0,0,0.0))
+                                          val sample = Array.array (Int.min({{num | int}},{{s.size}}) * {{t.size}}, (0,0,false))
                                           val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
                                                                  Loop.foldi (0,{{num| int}},
-                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),1.0)); 
+                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),true)); 
                                                                                           k+1),
                                                                              k),
                                                               0)
