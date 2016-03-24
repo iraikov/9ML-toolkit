@@ -91,13 +91,13 @@
 			    (transformer ,string->symbol)
                             ))
 
-    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, rkoz, rkdp, crk3, crkdp, crkbs)"
+    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, rkoz3, rkdp, crk3, crkdp, crkbs)"
 		     (value (required PLATFORM)
 			    (predicate 
 			     ,(lambda (x) 
 				(let ((s (string->symbol (string-downcase x))))
 				  (case s
-				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crk3 crkdp crkbs ) s)
+				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crk3 crkdp crkbs ) s)
 				    (else (error '9ML-singlecell "unrecognized method" x))))))
 			    (transformer ,string->symbol)
                             )
@@ -218,10 +218,10 @@
          (shared-dir    (chicken-home))
          (template-dir  (make-pathname (make-pathname shared-dir "9ML") "templates"))
          (sim-tmpl      (case (ivp-simulation-method)
-                          ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.sml.single.adaptive.tmpl")
+                          ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.sml.single.adaptive.tmpl")
                           (else "Sim.sml.single.tmpl")))
          (mlb-tmpl      (case (ivp-simulation-method)
-                          ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crkbs crkdp) "Sim.mlb.single.adaptive.tmpl")
+                          ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkbs crkdp) "Sim.mlb.single.adaptive.tmpl")
                           (else "Sim.mlb.single.tmpl")))
          (makefile-tmpl "Makefile.single.tmpl")
          (source-dir    (pathname-directory operand))

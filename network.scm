@@ -83,13 +83,13 @@
 			    (transformer ,string->symbol)
                             ))
 
-    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, rkoz, rkdp, crk3, crkdp, crkbs)"
+    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, rkoz3, rkdp, crk3, crkdp, crkbs)"
 		     (value (required PLATFORM)
 			    (predicate 
 			     ,(lambda (x) 
 				(let ((s (string->symbol (string-downcase x))))
 				  (case s
-				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crk3 crkdp crkbs ) s)
+				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crk3 crkdp crkbs ) s)
 				    (else (error '9ML-network "unrecognized method" x))))))
 			    (transformer ,string->symbol)
                             )
@@ -701,13 +701,13 @@
              (shared-dir    (chicken-home))
              (template-dir  (make-pathname (make-pathname shared-dir "9ML") "templates"))
              (network-tmpl  (case (ivp-simulation-method)
-                              ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Network.sml.adaptive.tmpl")
+                              ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Network.sml.adaptive.tmpl")
                               (else "Network.sml.tmpl")))
              (sim-tmpl      (case (ivp-simulation-method)
-                              ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.sml.adaptive.tmpl")
+                              ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.sml.adaptive.tmpl")
                               (else "Sim.sml.tmpl")))
              (mlb-tmpl      (case (ivp-simulation-method)
-                              ((rkhe rkbs rkf45 rkck rkoz rkdp rkf45 rkf78 rkv65) "Sim.mlb.adaptive.tmpl")
+                              ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.mlb.adaptive.tmpl")
                               (else "Sim.mlb.tmpl")))
              (makefile-tmpl  "Makefile.tmpl")
              (group-path    (make-pathname source-dir (conc group-name ".sml")))
