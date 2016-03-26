@@ -101,20 +101,20 @@ struct
                   SOME v => v
                 | NONE => (fn v => v)
       in
-          Vector.tabulate (N, fn (i) => 
-                                 D.condApply condfun
-                                             (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
-                                                             rinitial (bool_alloc nregime), extinitial(), extevinitial(), alloc n, alloc n,
-                                                             alloc nev, false)))
+          List.tabulate (N, fn (i) => 
+                               (i, D.condApply condfun
+                                               (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
+                                                               rinitial (bool_alloc nregime), extinitial(), extevinitial(), alloc n, alloc n,
+                                                               alloc nev, false))))
       end
    |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,
                                    alloc,bool_alloc,n,nev,ndsc,nregime) =
-      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
-                                                                       extinitial (), extevinitial (), initial(alloc n), initial(alloc n), 
-                                                                       alloc nev, false)))
+      List.tabulate (N, fn (i) => (i, D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
+                                                                         extinitial (), extevinitial (), initial(alloc n), initial(alloc n), 
+                                                                         alloc nev, false))))
    |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial,
                                    alloc,bool_alloc,n,nev,ndsc,nregime) =
-      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n))
+      List.tabulate (N, fn (i) => (i, D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n)))
    |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial,_,_,_,_,_,_) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
@@ -247,7 +247,7 @@ struct
       end
 
 
-  fun {{pop.name}}_run f (statesample,extsample,evsample) (Wmap,n0) (i,input,(nstates,spikes)) =
+  fun {{pop.name}}_run f (statesample,extsample,evsample) (Wmap,n0) ((i,input),(nstates,spikes)) =
     let 
 
         fun log (nstate) =
@@ -321,7 +321,7 @@ struct
         val _ = log(input)
         val (nstate,spikes') = recur (f input,spikes)
     in 
-        (nstate::nstates, spikes')
+        ((i,nstate)::nstates, spikes')
          
     end
 
@@ -371,14 +371,14 @@ struct
         let
 {% for pop in dict (group.populations) %}
             val ({{pop.name}}_states,{{pop.name}}_spikes) = 
-                Vector.foldri ({{pop.name}}_run ({{pop.name}}_f h) (statesample,extsample,evsample) (I,{{pop.name}}_n0))
-                              ([],[]) {{pop.name}}_state_vector
+                List.foldl ({{pop.name}}_run ({{pop.name}}_f h) (statesample,extsample,evsample) (I,{{pop.name}}_n0))
+                           ([],[]) {{pop.name}}_state_vector
 
 {% endfor %}
         in
             ((
 {% for pop in dict (group.populations) %}
-             Vector.fromList {{pop.name}}_states{% if not loop.last %},{% endif %}
+             {{pop.name}}_states{% if not loop.last %},{% endif %}
 
 {% endfor %}
             ), 
@@ -393,12 +393,12 @@ struct
                          
     fun ftime (
 {% for pop in dict (group.populations) %}
-              {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
+              {{pop.name}}_state_vector: (int * D.model_state) list{% if not loop.last %},{% endif %}
 
 {% endfor %} ) =
         
 {% with pop = first (dict (group.populations)) %}
-            state_indep (Vector.sub ({{pop.name}}_state_vector,0))
+            state_indep (#2 (hd {{pop.name}}_state_vector))
 {% endwith %}
     
     fun fspikeidxs spikesetName = 

@@ -115,19 +115,19 @@ struct
                 | NONE => (fn v => v)
 
       in
-          Vector.tabulate (N, fn (i) => 
-                                 D.condApply condfun
-                                             (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
-                                                             rinitial (bool_alloc nregime), 
-                                                             extinitial(), extevinitial(), h0, alloc n, alloc n, alloc n, alloc nev, false)))
+          List.tabulate (N, fn (i) => 
+                               (i, D.condApply condfun
+                                               (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
+                                                               rinitial (bool_alloc nregime), 
+                                                               extinitial(), extevinitial(), h0, alloc n, alloc n, alloc n, alloc nev, false))))
       end
    |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,h0,
                                    alloc,bool_alloc,n,nev,ndsc,nregime) =
-      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
-                                                                       extinitial (), extevinitial (), h0, 
-                                                                       alloc n, alloc n, alloc n, alloc nev, false)))
+      List.tabulate (N, fn (i) => (i, D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
+                                                                         extinitial (), extevinitial (), h0, 
+                                                                         alloc n, alloc n, alloc n, alloc nev, false))))
    |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial,h0,alloc,bool_alloc,n,nev,ndsc,nregime) =
-      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), h0, alloc n, alloc n, alloc n))
+      List.tabulate (N, fn (i) => (i, D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), h0, alloc n, alloc n, alloc n)))
    |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial,_,_,_,_,_,_,_) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
@@ -278,7 +278,7 @@ struct
                      {{pop.value.prototype.name}}.regfun)
       end
 
-  fun {{pop.name}}_run (statesample,extsample,evsample) (tend,Wmap,n0) (i,input,(nstates,spikes)) =
+  fun {{pop.name}}_run (statesample,extsample,evsample) (tend,Wmap,n0) ((i,input),(nstates,spikes)) =
     let 
         fun log (nstate) =
             let
@@ -351,7 +351,7 @@ struct
 
         val (nstate', spikes') = recur (input, spikes)
  in
-     (nstate'::nstates, spikes')
+     ((i,nstate')::nstates, spikes')
  end
 
 {% endfor %}
@@ -397,14 +397,14 @@ struct
         let
 {% for pop in dict (group.populations) %}
             val ({{pop.name}}_states,{{pop.name}}_spikes) = 
-                Vector.foldri ({{pop.name}}_run (statesample,extsample,evsample) (tend,I,{{pop.name}}_n0))
-                              ([],[]) {{pop.name}}_state_vector
+                List.foldl ({{pop.name}}_run (statesample,extsample,evsample) (tend,I,{{pop.name}}_n0))
+                           ([],[]) {{pop.name}}_state_vector
 
 {% endfor %}
         in
             ((
 {% for pop in dict (group.populations) %}
-             Vector.fromList {{pop.name}}_states{% if not loop.last %},{% endif %}
+             {{pop.name}}_states{% if not loop.last %},{% endif %}
 
 {% endfor %}
             ), 
