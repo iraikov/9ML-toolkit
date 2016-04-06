@@ -54,23 +54,19 @@ fun printProjectionSummary S k =
     List.app
         (fn (W) =>
             let
-                val (m,n) = dimVals (SparseMatrix.shape W)
+                val (m,n) = dimVals (BitSparseMatrix.shape W)
             in
                 Loop.app (0, n,
                           fn (i) => 
                              let
-                                 val sl = SparseMatrix.slice (W,k,i)
-                                 val sln = SparseMatrix.sliceFoldi
+                                 val sl = BitSparseMatrix.slice (W,k,i)
+                                 val sln = BitSparseMatrix.sliceFoldi
                                                (fn (j,x,n) => n+1)
                                                0 sl
-                                 val slsum = SparseMatrix.sliceFoldi
-                                                 (fn (j,x,ax) => Real.+(ax,x))
-                                                 0.0 sl
                              in
                                  putStrLn TextIO.stdOut
                                           ("column " ^ (Int.toString i) ^ 
-                                           ": n = " ^ (Int.toString sln) ^
-                                           ": mean = " ^ (Real.toString (Real./(slsum, (Real.fromInt sln)))))
+                                           ": n = " ^ (Int.toString sln))
                              end)
             end)
         S
@@ -83,8 +79,30 @@ let
     val sub = Unsafe.Real64Array.sub
     val isub = Unsafe.IntArray.sub
     val update = Unsafe.Real64Array.update
+                     
+    fun enqueueSpikes (spike_i, S, D, DQ) =
+        {{group.name}}.SEQ.PQ.foldl
+            (fn ((t,i),dq) => 
+                (#2(ListPair.foldl
+                        (fn (del,W,(port,dq)) =>
+                            let
+                                val sl = BitSparseMatrix.slice (W,1,i)
+                            in
+                                (port+1,
+                                 BitSparseMatrix.sliceFoldi 
+                                     (fn (j,x,dq) => 
+                                         let 
+                                             val tev = Real.+ (t,del)
+                                         in
+                                             TEQ.addEvent ((tev, (j,port,1.0)), dq)
+                                         end)
+                                     dq sl)
+                            end)
+                        (0,dq)
+                        (D,S))
+            ))
+            DQ spike_i
 
-        
     fun netrun (DQ,t,state_vector) =
         let 
             val tn  = t+(!h)
@@ -107,44 +125,23 @@ let
                                DQ)
             
             val (state_vector_i, spikes_i) = frun (t_i,I) state_vector
-            val (spike_i, log_spike_i) = fspikes spikes_i
+            val (ext_spike_i, log_spike_i) = fspikes spikes_i
                 
             val _   = finfo (state_vector_i, out)
 
-            val DQ'' = 
-                List.foldl
-                    (fn ((i,t,nv),dq) => 
-                        (#2(ListPair.foldl
-                                (fn (del,W,(port,dq)) =>
-                                    let
-                                        val sl = SparseMatrix.slice (W,1,i)
-                                    in
-                                        (port+1,
-                                         SparseMatrix.sliceFoldi 
-                                             (fn (j,x,dq) => 
-                                                 let 
-                                                     val tev = Real.+ (t_i,del)
-                                                 in
-                                                     TEQ.addEvent ((tev, (j,port,x)), dq)
-                                                 end)
-                                             dq sl)
-                                    end)
-                                (0,dq)
-                                (D,S))
-                    ))
-                    DQ' spike_i
-
+            val DQ'' = enqueueSpikes (ext_spike_i, S, D, DQ')
+            val DQ''' = enqueueSpikes (log_spike_i, S, D, DQ'')
 
             val _ = 
-                if not (List.null log_spike_i)
-                then (List.app (fn (i,t,nv) => putStrLn out ((showReal t) ^ " " ^ (Int.toString (i + 1)))) log_spike_i)
+                if not ({{group.name}}.SEQ.isEmpty log_spike_i)
+                then ({{group.name}}.SEQ.nextEventsApp (fn (t,i) => putStrLn out ((showReal t) ^ " " ^ (Int.toString (i + 1))), log_spike_i))
                 else (putStrLn out ("# " ^ (showReal t_i)))
                          
                          
         in
             if t_i  > tstop
             then (putStrLn out "# All done!"; state_vector_i)
-            else netrun (DQ'',t_i,state_vector_i)
+            else netrun (DQ''',t_i,state_vector_i)
         end
 in
     netrun (DQ,0.0,initial_vector)
@@ -178,37 +175,39 @@ fun main (name,args) =
 	             SOME msg => exitError (CommandLine.name(), msg)
 	           | NONE => ())
 		    
-        val {is_help, is_time, is_timestep, is_tol} = Options.getstate (opts)
-						                       
+        val {is_help, is_time, is_timestep, is_tol,
+            is_statesample, is_extsample, is_evsample,
+            is_spikerecord} = Options.getstate (opts)
+						               
         val _ = if is_help then exitHelp (CommandLine.name()) else ()
+        val _ = case (is_statesample, is_extsample, is_evsample, is_spikerecord) of
+                    (NONE, NONE, NONE, NONE) => 
+                    (putStrLn TextIO.stdErr ("No options for state sampling or event recording have been specified;");
+                     putStrLn TextIO.stdErr ("State traces and spike event times will not be recorded."))
+                    | (_, _, _, _) => ()
                                                                        
         val _     = case is_timestep of SOME dt => (h := dt) | NONE => ()
         val tstop = case is_time of SOME t => t | NONE => 150.0
 
         val _ = case is_tol of SOME tol => ({{group.name}}.D.tol := tol) | NONE => ()
+
+        val statesample = case is_statesample of SOME n => n | NONE => 0
+        val extsample = case is_extsample of SOME n => n | NONE => 0
+        val evsample = case is_evsample of SOME n => n | NONE => 0
+        val spikelog = case is_spikerecord of SOME n => fspikeidxs n | NONE => []
+
     in
         (let
-            val     _ = putStrLn TextIO.stdOut ("starting fprojection...")
+            val     _ = putStrLn TextIO.stdOut ("constructing projections...")
             val (S,t) = timing fprojection
-            val     _ = putStrLn TextIO.stdOut ("fprojection took " ^ (Time.toString t) ^ " s")
+            val     _ = putStrLn TextIO.stdOut ("projections took " ^ (Time.toString t) ^ " s")
             val out   = TextIO.openOut (label ^ ".dat")
 
 {% for pop in dict (group.populations) %}
-{% if group.statesample > 0 %}
+            val _ = (if statesample > 0 then ({{pop.name}}_state_out := TextIO.openOut ("{{pop.name}}_state.dat")) else ();
+                     if extsample > 0 then ({{pop.name}}_ext_out := TextIO.openOut ("{{pop.name}}_ext.dat")) else ();
+                     if evsample > 0 then ({{pop.name}}_event_out := TextIO.openOut ("{{pop.name}}_event.dat")) else ())
 
-            val _ = ({{pop.name}}_state_out := TextIO.openOut ("{{pop.name}}_state.dat"))
-
-{% endif %}
-{% if group.extsample > 0 %}
-
-            val _ = ({{pop.name}}_ext_out := TextIO.openOut ("{{pop.name}}_ext.dat"))
-
-{% endif %}
-{% if group.evsample > 0 %}
-
-            val _ = ({{pop.name}}_event_out := TextIO.openOut ("{{pop.name}}_event.dat"))
-
-{% endif %}
 {% endfor %}
 
         in
@@ -219,7 +218,8 @@ fun main (name,args) =
                      ]);
             let
                 val _     = putStrLn TextIO.stdOut ("starting simulation...")
-                val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, initial, frun, fspikes, finfo, tstop, out))
+                val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, initial, frun (statesample,extsample,evsample), 
+                                                    fspikes spikelog, finfo, tstop, out))
             in
                 putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
             end;
@@ -228,26 +228,20 @@ fun main (name,args) =
             TextIO.closeOut (out);
 
 {% for pop in dict (group.populations) %}
-{% if group.statesample > 0 %}
+            if statesample > 0 then
+                (TextIO.flushOut (!{{pop.name}}_state_out); 
+                 TextIO.closeOut (!{{pop.name}}_state_out))
+            else ();
+            if extsample > 0 then
+                (TextIO.flushOut (!{{pop.name}}_ext_out); 
+                 TextIO.closeOut (!{{pop.name}}_ext_out))
+            else ();
+            if evsample > 0 then
+                (TextIO.flushOut (!{{pop.name}}_event_out); 
+                 TextIO.closeOut (!{{pop.name}}_event_out))
+            else ();
 
-            TextIO.flushOut (!{{pop.name}}_state_out); 
-            TextIO.closeOut (!{{pop.name}}_state_out);
-
-{% endif %}
-{% if group.extsample > 0 %}
-
-            TextIO.flushOut (!{{pop.name}}_ext_out); 
-            TextIO.closeOut (!{{pop.name}}_ext_out);
-
-{% endif %}
-{% if group.evsample > 0 %}
-
-            TextIO.flushOut (!{{pop.name}}_event_out); 
-            TextIO.closeOut (!{{pop.name}}_event_out);
-
-{% endif %}
 {% endfor %}
-
            ()
         end)
     end

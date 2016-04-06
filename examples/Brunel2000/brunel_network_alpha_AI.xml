@@ -3,7 +3,7 @@
   <nineml:Unit symbol="Hz" dimension="per_time" power="0"/>
   <nineml:Dimension name="per_time" t="-1"/>
   <nineml:Population name="Exc">
-    <nineml:Number>10000</nineml:Number>
+    <nineml:Size>10000</nineml:Size>
     <nineml:Cell>
       <nineml:Component name="nrn">
         <nineml:Definition url="BrunelIaF.xml">BrunelIaF</nineml:Definition>
@@ -89,7 +89,7 @@
   <nineml:Dimension i="-2" t="-3" m="1" l="2" name="resistance"/>
   <nineml:Dimension i="1" name="current"/>
   <nineml:Population name="Ext">
-    <nineml:Number>12500</nineml:Number>
+    <nineml:Size>12500</nineml:Size>
     <nineml:Cell>
       <nineml:Component name="stim">
         <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
@@ -146,7 +146,7 @@
     </nineml:Delay>
   </nineml:Projection>
   <nineml:Population name="Inh">
-    <nineml:Number>2500</nineml:Number>
+    <nineml:Size>2500</nineml:Size>
     <nineml:Cell>
       <nineml:Component name="nrn">
         <nineml:Definition url="BrunelIaF.xml">BrunelIaF</nineml:Definition>

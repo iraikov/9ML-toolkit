@@ -69,6 +69,8 @@
 	     [else (error loc-str (conc msg arg))]
 	     ))))
 
+(define nineml-xmlns-base "http://nineml.net/9ML/")
+
 
 (define (op->signal-function op)
   (let ((name (case op
@@ -92,7 +94,7 @@
 
 (define (random-operation? op)
   (case op
-    ((random.int random.normal random.uniform random.poisson random.exponential) #t)
+    ((random.int random.normal random.uniform random.unifrange random.poisson random.exponential) #t)
     (else #f)))
 
     
@@ -130,7 +132,12 @@
 		 `(,(op->signal-function "if") ,(recur a) ,(recur b) ,(recur c)))
 		
 		(((and op (? symbol?)) a b)
-		 `(,(op->signal-function op) ,(recur a) ,(recur b)))
+		 (cond ((signal-operation? op)
+                        `(,(op->signal-function op)  ,(recur a) ,(recur b)))
+                       ((random-operation? op)
+                        `(,op ,(recur a) ,(recur b)))
+                       (else
+                        `(,op ,(recur a) ,(recur b)))))
 		
 		(((and op (? symbol?)) a)
 		 (cond ((signal-operation? op)
@@ -152,12 +159,27 @@
 )
 
 
+(define (subst-expr expr subst)
+
+  (let recur ((expr expr))
+
+    (cond ((number? expr)  expr)
+
+          ((symbol? expr) 
+           (let ((v (alist-ref expr subst)))
+             (or v expr)))
+
+          ((pair? expr) (map recur expr))
+
+          (else expr)
+          ))
+)
 
 
 
-(define nineml-xmlns-base "http://nineml.net/9ML/")
 
-(define (parse-al-sxml-dynamics sxml)
+
+(define (parse-al-sxml-dynamics formals sxml)
 
   ;; TODO: ensure that parameters and state variables are consistent in the equations
 
@@ -179,6 +201,18 @@
 
     (let* (
           (state-names (map (lambda (x) (string->symbol (sxml:attr x 'name))) state-variables))
+          (ode-state-names 
+           (delete-duplicates
+            (fold
+             (lambda (regime lst)
+               (let (
+                     (time-derivatives  ((sxpath `(nml:TimeDerivative)) regime))
+                     )
+                 (append
+                  (map (lambda (x) (string->symbol (sxml:attr x 'variable ))) time-derivatives)
+                  lst)
+                 ))
+             '() regimes)))
 
           (relations-decls
            (map (lambda (x)
@@ -190,16 +224,30 @@
                     `(fun (,quantity ,var) = ,rhs)
                     ))
                 relations))
-           
-          (assign-decls
-           (map (lambda (x)
-                  (let ((quantity (string->symbol (sxml:attr x 'name)))
-                        (rhs      (parse-string-expr 
-                                   (sxml:kidn-cadr 'nml:MathInline x )
-                                   'parse-al-sxml-dynamics)))
-                    `((reduce (+ ,quantity)) = ,rhs)
-                    ))
-                aliases))
+
+          (subst-env
+           (filter-map
+            (lambda (x)
+              (let ((quantity (string->symbol (sxml:attr x 'name)))
+                    (rhs      (parse-string-expr 
+                               (sxml:kidn-cadr 'nml:MathInline x )
+                               'parse-al-sxml-dynamics)))
+                (and (not (assoc quantity formals))
+                     `(,quantity . ,rhs))
+                ))
+            aliases))
+                      
+          (assign-eqs
+           (filter-map
+            (lambda (x)
+              (let ((quantity (string->symbol (sxml:attr x 'name)))
+                    (rhs      (parse-string-expr 
+                               (sxml:kidn-cadr 'nml:MathInline x )
+                               'parse-al-sxml-dynamics)))
+                (and (assoc quantity formals) 
+                    `((reduce (+ ,quantity)) = ,rhs))
+                ))
+            aliases))
            
           (constant-decls
            (map (lambda (x)
@@ -213,7 +261,8 @@
                         `(define ,name = constant  ,rhs))
                     ))
                 constants))
-           
+
+
           (regimes-decls 
            (fold
             (lambda (regime lst)
@@ -229,9 +278,11 @@
                                     (fold (match-lambda*
                                            ((x (vars decls))
                                             (let ((var (string->symbol (sxml:attr x 'variable )))
-                                                  (rhs (parse-string-expr 
-                                                        (sxml:kidn-cadr 'nml:MathInline x )
-                                                        'parse-al-sxml-dynamics)))
+                                                  (rhs (subst-expr
+                                                        (parse-string-expr 
+                                                         (sxml:kidn-cadr 'nml:MathInline x )
+                                                         'parse-al-sxml-dynamics)
+                                                        subst-env)))
                                               (list (cons var vars)
                                                     (cons `((der (,var)) = ,rhs) decls)))))
                                           '(() ()) time-derivatives)))
@@ -240,8 +291,12 @@
                                                       ((var (vars decls))
                                                        (if (member var vars)
                                                            (list vars decls)
-                                                           (list (cons var vars)
-                                                                 (cons `((der (,var)) = 0.0) decls)))))
+                                                           (if (member var ode-state-names)
+                                                               (list (cons var vars)
+                                                                     (cons `((der (,var)) = UNITZERO) decls))
+                                                               (list vars decls)
+                                                               ))
+                                                       ))
                                                      `(,vars ,decls) state-names)))
                                              decls)))
                       (event-decls 
@@ -256,9 +311,11 @@
                                          e-state-assignments))
                                    (e-assign-rhss
                                     (map (lambda (x)
-                                           (parse-string-expr 
-                                            (sxml:kidn-cadr 'nml:MathInline x) 
-                                            'parse-al-sxml-dynamics))
+                                           (subst-expr
+                                            (parse-string-expr 
+                                             (sxml:kidn-cadr 'nml:MathInline x) 
+                                             'parse-al-sxml-dynamics)
+                                            subst-env))
                                          e-state-assignments))
                                    (e-port
                                     (string->symbol (or (sxml:attr e 'src_port)
@@ -274,10 +331,11 @@
                         (lambda (c)
                           (let (
                                 ( trigger (sxml:kidn-cadr 'nml:Trigger c))
-                                ( event-output (or ((lambda (x) (and x (string->symbol (sxml:attr x 'port))))
-                                                    (sxml:kidn 'nml:OutputEvent c))
-                                                   (gensym 'event)))
-                                ( target-regime (string->symbol (sxml:attr c 'target_regime)) )
+                                ( event-output ((lambda (x) (or (and x (string->symbol (sxml:attr x 'port)))
+                                                                (gensym 'event)))
+                                                (sxml:kidn 'nml:OutputEvent c)))
+                                ( target-regime ((lambda (x) (or (and x (string->symbol x)) regime-name))
+                                                 (sxml:attr c 'target_regime)) )
                                 )
                             
                             (if (not trigger) 
@@ -298,9 +356,11 @@
                                                             c-state-assignments))
                                    
                                    (c-assign-rhss      (map (lambda (x)
-                                                              (parse-string-expr 
-                                                               (sxml:kidn-cadr 'nml:MathInline x) 
-                                                               'parse-al-sxml-dynamics))
+                                                              (subst-expr
+                                                               (parse-string-expr 
+                                                                (sxml:kidn-cadr 'nml:MathInline x) 
+                                                                'parse-al-sxml-dynamics)
+                                                               subst-env))
                                                             c-state-assignments))
                                    )
                               `(,event-output 
@@ -314,11 +374,11 @@
                       
                       )
 
-                  (pp `(transition-decls . ,transition-decls) (current-error-port))
+                  ;;(pp `(transition-decls . ,transition-decls) (current-error-port))
 
                   (append 
-                   assign-decls
                    constant-decls
+                   assign-eqs
                    (if (null? on-conditions)
                        (append ode-decls event-decls)
                        (cons `(structural-event 
@@ -331,7 +391,11 @@
             '() regimes))
           )
                                  
-      (append relations-decls regimes-decls)
+      `(
+        (state-names . ,state-names)
+        (ode-state-names . ,ode-state-names)
+        (decls . ,(append relations-decls regimes-decls))
+        )
 
       ))
   )
@@ -403,32 +467,58 @@
                                        )))  sxml)))
          (states       ((sxpath `(// nml:StateVariable)) dynamics))
          (connection-rule (safe-car ((sxpath `(// nml:ConnectionRule)) sxml)))
+         (random-dist (safe-car ((sxpath `(// nml:RandomDistribution)) sxml)))
          )
 
     (cond
 
      (dynamics 
-      (let (
-            (dynamics-body (parse-al-sxml-dynamics dynamics))
-            (dynamics-formals
-             (map (lambda (x) (string->symbol (sxml:attr x 'name)))
-                  (append (reverse states)
-                          (reverse ports)
-                          (reverse parameters))))
-            )
-        (make-dynamics-node name dynamics-formals dynamics-body)
+      (let* (
+             (dynamics-formals
+              (delete-duplicates
+               (map (lambda (x) 
+                      (let ((name (sxml:attr x 'name))
+                            (dimension (sxml:attr x 'dimension)))
+                        (cons (string->symbol name)
+                              (or (and dimension (string->symbol dimension))
+                                  'unitless))))
+                    (append (reverse ports)
+                            (reverse parameters)))))
+             (dynamics-info (parse-al-sxml-dynamics dynamics-formals dynamics))
+             (dynamics-body (alist-ref 'decls dynamics-info))
+             (dynamics-env `((states . ,(alist-ref 'state-names dynamics-info))
+                             (ode-states . ,(alist-ref 'ode-state-names dynamics-info))))
+             (dynamics-body (alist-ref 'decls dynamics-info))
+             )
+        (make-dynamics-node name
+                            dynamics-formals 
+                            dynamics-env 
+                            dynamics-body)
         ))
      
      (connection-rule 
       (let (
             (connection-stdlib
-             (string->symbol (sxml:attr connection-rule 'standardLibrary)))
+             (string->symbol (or (sxml:attr connection-rule 'standard_library)
+                                 (sxml:attr connection-rule 'standardLibrary))))
             (connection-formals
              (map (lambda (x) (string->symbol (sxml:attr x 'name)))
                   (append (reverse ports)
                           (reverse parameters))))
             )
         (make-connection-rule-node name connection-formals connection-stdlib)
+        ))
+        
+     (random-dist 
+      (let (
+            (random-stdlib
+             (string->symbol (or (sxml:attr random-dist 'standard_library)
+                                 (sxml:attr random-dist 'standardLibrary))))
+            (dist-formals
+             (map (lambda (x) (string->symbol (sxml:attr x 'name)))
+                  (reverse parameters)))
+            )
+        (make-random-dist-node name dist-formals random-stdlib)
         ))
         
 

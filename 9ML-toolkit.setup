@@ -3,7 +3,7 @@
 (define (dynld-name fn)		
   (make-pathname #f fn ##sys#load-dynamic-extension))	
 
-(define version "3.1")
+(define version "3.9")
 
 (use make)
 
@@ -23,6 +23,12 @@
 
        ((dynld-name "9ML-parse.import") ("9ML-parse.import.scm")
 	(compile  -s 9ML-parse.import.scm))
+
+       ((dynld-name "9ML-utils") ("utils.scm")
+	(compile -O -d2 -S -s utils.scm -o ,(dynld-name "9ML-utils") -j 9ML-utils))
+
+       ((dynld-name "9ML-utils.import") ("9ML-utils.import.scm")
+	(compile  -s 9ML-utils.import.scm))
 
        ;((dynld-name "9ML-ivp-chicken") ("ivp-chicken.scm" )
 	;(compile -O -d2 -S -s ivp-chicken.scm -o ,(dynld-name "9ML-ivp-chicken") -j 9ML-ivp-chicken))
@@ -47,6 +53,7 @@
   (list
 	(dynld-name "9ML-types")       (dynld-name "9ML-types.import") 
 	(dynld-name "9ML-parse")       (dynld-name "9ML-parse.import") 
+	(dynld-name "9ML-utils")       (dynld-name "9ML-utils.import") 
 	;(dynld-name "9ML-ivp-chicken") (dynld-name "9ML-ivp-chicken.import") 
 	(dynld-name "9ML-ivp-mlton")   (dynld-name "9ML-ivp-mlton.import") 
 	(dynld-name "9ML-alsys-mlton") (dynld-name "9ML-alsys-mlton.import") 
@@ -118,12 +125,29 @@
     ))
 
 
+(install-extension
+
+  ; Name of your extension:
+  '9ML-utils
+
+  ; Files to install for your extension:
+  `(,(dynld-name "9ML-utils") ,(dynld-name "9ML-utils.import") )
+
+  ; Assoc list with properties for your extension:
+  `((version ,version)
+    ))
+
+
 
 
 (if (deployment-mode)
 
-    (compile -deploy -uses files -O -d2 network.scm 
-             -o ,(make-pathname (installation-prefix) "/bin/9ML-network"))
+    (begin
+      (compile -deploy -uses files -O -d2 network.scm 
+               -o ,(make-pathname (installation-prefix) "/bin/9ML-network"))
+      (compile -deploy -uses files -O -d2 singlecell.scm 
+               -o ,(make-pathname (installation-prefix) "/bin/9ML-singlecell"))
+      )
 
     (begin
       (make (
@@ -133,14 +157,48 @@
              )
         "9ML-network")
 
+      (make (
+             ("9ML-singlecell" 
+              ("singlecell.scm" )
+              (compile -O -d2 -S singlecell.scm -o 9ML-singlecell ))
+             )
+        "9ML-singlecell")
+
       (install-program 
        '9ML-network 
        
        `("9ML-network" )
        
        `((version ,version)))
+
+      (install-program 
+       '9ML-singlecell 
+       
+       `("9ML-singlecell" )
+       
+       `((version ,version)))
+
       )
     )
+
+(let ((plotvar-script (with-input-from-file "plotvar.scm" read-lines))
+      (plotraster-script (with-input-from-file "plotraster.scm" read-lines))
+      (simstats-script (with-input-from-file "simstats.scm" read-lines))
+      (header (string-append "#! "(installation-prefix) "/bin/csi -script")))
+  (with-output-to-file "simstats" 
+    (lambda ()
+      (for-each print (cons header simstats-script))))
+  (with-output-to-file "plotvar" 
+    (lambda ()
+      (for-each print (cons header plotvar-script))))
+  (with-output-to-file "plotraster" 
+    (lambda ()
+      (for-each print (cons header plotraster-script))))
+)
+
+(install-script '9ML-simstats "simstats")
+(install-script '9ML-plotvar "plotvar")
+(install-script '9ML-plotraster "plotraster")
 
 (define (installation-chicken-home)
   (if (not (installation-prefix)) (chicken-home)
@@ -163,27 +221,56 @@
     (create-directory/parents 9ML-DIR))
 
 
-(copy-file-to-9ML-dir "examples/IzhikevichFS_AL.xml")
-(copy-file-to-9ML-dir "examples/IzhikevichFS_UL.xml")
-(copy-file-to-9ML-dir "examples/AEIF_AL.xml")
-(copy-file-to-9ML-dir "examples/AEIF_UL.xml")
+(copy-file-to-9ML-dir "SXML-to-XML.scm")
+(copy-file-to-9ML-dir "stx-engine.scm")
+
+(copy-file-to-9ML-dir "examples/IzhikevichFS.xml")
+(copy-file-to-9ML-dir "examples/AEIF.xml")
 (copy-file-to-9ML-dir "examples/LIF_AL.xml")
 (copy-file-to-9ML-dir "examples/LIF_UL.xml")
 
+(for-each
+ (lambda (x) (copy-file-to-9ML-dir (make-pathname "examples/Brunel2000/" x)))
+ '("BrunelIaF.xml"
+   "AlphaPSR.xml"
+   "Poisson.xml"
+   "AllToAllConnection.xml"                    
+   "AllToAll.xml"                              
+   "OneToOneConnectionStd.xml"
+   "OneToOneConnection.xml"
+   "OneToOne.xml"
+   "RandomFanInConnectionStd.xml"
+   "RandomFanInConnection.xml"
+   "RandomFanIn.xml"
+   "StaticConnection.xml"
+   "RandomUniformConnection.xml"
+   "Brunel_network_delta_AI.xml"               
+   "Brunel_network_delta_SI.xml"
+   "Brunel_network_delta_AR.xml"               
+   "Brunel_network_delta_SR.xml"
+   "brunel_network_alpha_SR.xml"               
+   "brunel_network_alpha_SI.xml"               
+   "brunel_network_alpha_AR.xml"               
+   "brunel_network_alpha_AI.xml"))
+
 (copy-file-to-9ML-dir "templates/Network.sml.adaptive.tmpl")
+(copy-file-to-9ML-dir "templates/Network.sml.tmpl")
+
 (copy-file-to-9ML-dir "templates/Sim.sml.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.adaptive.tmpl")
-(copy-file-to-9ML-dir "templates/Network.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.tmpl")
-(copy-file-to-9ML-dir "templates/Sim.mlb.crk.tmpl")
-(copy-file-to-9ML-dir "templates/Sim.mlb.crk.adaptive.tmpl")
+
+(copy-file-to-9ML-dir "templates/Sim.sml.single.adaptive.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.mlb.single.adaptive.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.sml.single.tmpl")
+(copy-file-to-9ML-dir "templates/Sim.mlb.single.tmpl")
+
 (copy-file-to-9ML-dir "templates/Makefile.tmpl")
-(copy-file-to-9ML-dir "templates/Makefile.crk3.tmpl")
-(copy-file-to-9ML-dir "templates/Makefile.crkbs.tmpl")
-(copy-file-to-9ML-dir "templates/Makefile.crkdp.tmpl")
+(copy-file-to-9ML-dir "templates/Makefile.single.tmpl")
 
 (copy-file-to-9ML-dir "sml-lib/options.sml")
+(copy-file-to-9ML-dir "sml-lib/netoptions.sml")
 (copy-file-to-9ML-dir "sml-lib/IntMap.sml")
 (copy-file-to-9ML-dir "sml-lib/DynArray.sml")
 (copy-file-to-9ML-dir "sml-lib/SkewBinomialHeap.sml")
@@ -197,6 +284,10 @@
 (copy-file-to-9ML-dir "sml-lib/elecgraph.sml")
 (copy-file-to-9ML-dir "sml-lib/elecgraph.mlb")
 (copy-file-to-9ML-dir "sml-lib/tensor.sml")
-(copy-file-to-9ML-dir "sml-lib/sparse.sml")
 (copy-file-to-9ML-dir "sml-lib/tensor.mlb")
+(copy-file-to-9ML-dir "sml-lib/sparse.sml")
 (copy-file-to-9ML-dir "sml-lib/sparse.mlb")
+(copy-file-to-9ML-dir "sml-lib/bit-tensor.sml")
+(copy-file-to-9ML-dir "sml-lib/bit-tensor.mlb")
+(copy-file-to-9ML-dir "sml-lib/bit-sparse.sml")
+(copy-file-to-9ML-dir "sml-lib/bit-sparse.mlb")

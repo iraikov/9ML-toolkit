@@ -28,7 +28,19 @@ struct
              then (f (P.priority v, value v), valOf (PQ.deleteMin pq))
              else (dflt, pq))
 
-    fun nextEvents (p, f, pq) =
+    fun nextEventsApp (f, pq) =
+        let
+            fun recur (pq) =
+                case PQ.findMin pq of
+                    NONE => ()
+                  | SOME (v) => 
+                    (f (P.priority v, value v);
+                     recur (valOf (PQ.deleteMin pq)))
+        in
+            recur pq
+        end
+
+    fun nextEventsPmap (p, f, pq) =
         let
             fun recur (pq,ax) =
                 case PQ.findMin pq of
@@ -104,7 +116,19 @@ struct
              then (f (P.priority v, value v), valOf (PQ.deleteMin pq))
              else (dflt, pq))
 
-    fun nextEvents (p, f, pq) =
+    fun nextEventsApp (f, pq) =
+        let
+            fun recur (pq) =
+                case PQ.findMin pq of
+                    NONE => ()
+                  | SOME (v) => 
+                    (f (P.priority v, value v);
+                     recur (valOf (PQ.deleteMin pq)))
+        in
+            recur pq
+        end
+
+    fun nextEventsPmap (p, f, pq) =
         let
             fun recur (pq,ax) =
                 case PQ.findMin pq of

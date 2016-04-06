@@ -1,0 +1,119 @@
+<NineML xmlns="http://nineml.net/9ML/1.0">
+  <Dimension name="current" i="1" />
+  <Dimension name="time" t="1" />
+  <Dimension name="capacitance" i="2" l="-2" m="-1" t="4" />
+  <Dimension name="conductance" i="2" l="-2" m="-1" t="3" />
+  <Dimension name="voltage" i="-1" t="-3" m="1" l="2" />
+  <Unit symbol="mV" dimension="voltage" power="-3" />
+  <Unit symbol="uF" dimension="capacitance" power="-6" />
+  <Unit symbol="pA" dimension="current" power="-12" />
+  <Unit symbol="nS" dimension="conductance" power="-9" />
+  <Unit symbol="ms" dimension="time" power="-3" />
+  <ComponentClass name="AEIF">
+    <Parameter name="C_m" dimension="capacitance" />
+    <Parameter name="g_L" dimension="conductance" />
+    <Parameter name="E_L" dimension="voltage" />
+    <Parameter name="V_T" dimension="voltage" />
+    <Parameter name="V_R" dimension="voltage" />
+    <Parameter name="V_peak" dimension="voltage" />
+    <Parameter name="Delta" dimension="voltage" />
+    <Parameter name="theta" dimension="voltage" />
+    <Parameter name="tau_w" dimension="time" />
+    <Parameter name="tau_rp" dimension="time" />
+    <Parameter name="a" dimension="conductance" />
+    <Parameter name="b" dimension="current" />
+    <Parameter name="Iext" dimension="current" />
+    <AnalogSendPort name="V" dimension="voltage" />
+    <AnalogSendPort name="W" dimension="current" />
+    <AnalogSendPort name="t_rpend" dimension="time" />
+    <EventPort name="refractoryEnd" mode="send" />
+    <EventPort name="spikeOutput" mode="send" />
+    <Dynamics>
+      <StateVariable name="V" dimension="voltage" />
+      <StateVariable name="W" dimension="current" />
+      <StateVariable name="t_rpend" dimension="time" />
+      <Regime name="subthresholdRegime">
+        <OnCondition target_regime="refractoryRegime">
+          <Trigger>
+            <MathInline>V &gt; theta</MathInline>
+          </Trigger>
+          <OutputEvent port="spikeOutput" />
+          <StateAssignment variable="V">
+            <MathInline>V_R</MathInline>
+          </StateAssignment>
+          <StateAssignment variable="W">
+            <MathInline>W + b</MathInline>
+          </StateAssignment>
+          <StateAssignment variable="t_rpend">
+            <MathInline>t + tau_rp</MathInline>
+          </StateAssignment>
+        </OnCondition>
+        <TimeDerivative variable="V">
+          <MathInline>(- g_L * (V - E_L) + (g_L * Delta * exp ((V - V_T) / Delta)) - W + Iext) / C_m</MathInline>
+        </TimeDerivative>
+        <TimeDerivative variable="W">
+          <MathInline>(a * (V - E_L) - W) / tau_w</MathInline>
+        </TimeDerivative>
+      </Regime>
+      <Regime name="refractoryRegime">
+        <OnCondition target_regime="subthresholdRegime">
+          <Trigger>
+            <MathInline>t &gt; t_rpend</MathInline>
+          </Trigger>
+          <OutputEvent port="refractoryEnd" />
+        </OnCondition>
+      </Regime>
+    </Dynamics>
+  </ComponentClass>
+  <Component name="TestAdEx1">
+    <Definition>AEIF</Definition>
+    <Property units="uF" name="C_m">
+      <SingleValue>200.0</SingleValue>
+    </Property>
+    <Property units="nS" name="g_L">
+      <SingleValue>10.0</SingleValue>
+    </Property>
+    <Property units="mV" name="E_L">
+      <SingleValue>-58.0</SingleValue>
+    </Property>
+    <Property units="mV" name="V_T">
+      <SingleValue>-50.0</SingleValue>
+    </Property>
+    <Property units="mV" name="V_R">
+      <SingleValue>-46.0</SingleValue>
+    </Property>
+    <Property units="mV" name="V_peak">
+      <SingleValue>20.0</SingleValue>
+    </Property>
+    <Property units="mV" name="theta">
+      <SingleValue>-45.0</SingleValue>
+    </Property>
+    <Property units="ms" name="tau_w">
+      <SingleValue>120.0</SingleValue>
+    </Property>
+    <Property units="ms" name="tau_rp">
+      <SingleValue>0.25</SingleValue>
+    </Property>
+    <Property units="mV" name="Delta">
+      <SingleValue>2.0</SingleValue>
+    </Property>
+    <Property units="nS" name="a">
+      <SingleValue>2.0</SingleValue>
+    </Property>
+    <Property units="pA" name="b">
+      <SingleValue>100.0</SingleValue>
+    </Property>
+    <Property units="pA" name="Iext">
+      <SingleValue>210.0</SingleValue>
+    </Property>
+    <Initial units="mV" name="V">
+      <SingleValue>-65.0</SingleValue>
+    </Initial>
+    <Initial units="pA" name="W">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+    <Initial units="ms" name="t_rpend">
+      <SingleValue>0.0</SingleValue>
+    </Initial>
+  </Component>
+</NineML>

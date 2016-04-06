@@ -1,0 +1,186 @@
+<NineML xmlns="http://nineml.net/9ML/1.0">
+  <Dimension name="current" i="1" k="0" j="0" m="0" l="0" n="0" t="0" />
+  <Dimension name="capacitance" i="2" l="-2" m="-1" t="4" />
+  <Dimension name="voltage" i="-1" t="-3" m="1" l="2" />
+  <Unit symbol="mV" dimension="voltage" power="-3" />
+  <Unit symbol="uF" dimension="capacitance" power="-6" />
+  <ComponentClass name="IzhikevichFS">
+    <Parameter name="a" dimension="dimensionless" />
+    <Parameter name="b" dimension="current" />
+    <Parameter name="c" dimension="voltage" />
+    <Parameter name="k" dimension="dimensionless" />
+    <Parameter name="Vpeak" dimension="voltage" />
+    <Parameter name="Vt" dimension="voltage" />
+    <Parameter name="Vr" dimension="voltage" />
+    <Parameter name="Vb" dimension="voltage" />
+    <Parameter name="Cm" dimension="capacitance" />
+    <Parameter name="Iext" dimension="current" />
+    <AnalogReducePort name="Isyn" dimension="current" />
+    <AnalogSendPort name="V" dimension="voltage" />
+    <AnalogSendPort name="U" dimension="current" />
+    <EventPort name="spikeOutput" mode="send" />
+    <Dynamics>
+      <Constant units="ms" name="one_ms">1.0</Constant>
+      <Constant units="mV" name="one_mV">1.0</Constant>
+      <Constant units="megaohm" name="one_megaohm">1.0</Constant>
+      <StateVariable name="V" dimension="voltage" />
+      <StateVariable name="U" dimension="current" />
+      <Regime name="subVb">
+        <OnCondition target_regime="subthreshold">
+          <Trigger>
+            <MathInline>V &gt; Vb</MathInline>
+          </Trigger>
+        </OnCondition>
+        <TimeDerivative variable="U">
+          <MathInline>(a * -U) / one_ms</MathInline>
+        </TimeDerivative>
+        <TimeDerivative variable="V">
+          <MathInline>(((k * (V - Vr) * (V - Vt) / one_mV) + (((- U) + Iext) * one_megaohm)) / Cm) / one_megaohm</MathInline>
+        </TimeDerivative>
+      </Regime>
+      <Regime name="subthreshold">
+        <OnCondition target_regime="subVb">
+          <Trigger>
+            <MathInline>V &gt; Vpeak</MathInline>
+          </Trigger>
+          <OutputEvent port="spikeOutput" />
+          <StateAssignment variable="V">
+            <MathInline>c</MathInline>
+          </StateAssignment>
+        </OnCondition>
+        <TimeDerivative variable="U">
+          <MathInline>(a*((b*(((V - Vb) / one_mV)^3)) - U)) / one_ms</MathInline>
+        </TimeDerivative>
+        <TimeDerivative variable="V">
+          <MathInline>(((k * (V - Vr) * (V - Vt) / one_mV) + (((- U) + Iext) * one_megaohm)) / Cm) / one_megaohm</MathInline>
+        </TimeDerivative>
+      </Regime>
+    </Dynamics>
+  </ComponentClass>
+  <Component name="IzhikevichFS_Iext100">
+    <Definition>IzhikevichFS</Definition>
+    <Property name="a">
+      <SingleValue>0.2</SingleValue>
+    </Property>
+    <Property units="nA" name="b">
+      <SingleValue>0.025</SingleValue>
+    </Property>
+    <Property units="mV" name="c">
+      <SingleValue>-45.0</SingleValue>
+    </Property>
+    <Property name="k">
+      <SingleValue>1.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vpeak">
+      <SingleValue>25.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vt">
+      <SingleValue>-55.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vr">
+      <SingleValue>-40.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vb">
+      <SingleValue>-55.0</SingleValue>
+    </Property>
+    <Property units="uF" name="Cm">
+      <SingleValue>20.0</SingleValue>
+    </Property>
+    <Property units="nA" name="Iext">
+      <SingleValue>100.0</SingleValue>
+    </Property>
+    <Property units="nA" name="Isyn">
+      <SingleValue>0.0</SingleValue>
+    </Property>
+    <Initial units="mV" name="V">
+      <SingleValue>-65.0</SingleValue>
+    </Initial>
+    <Initial units="nA" name="U">
+      <SingleValue>-1.625</SingleValue>
+    </Initial>
+  </Component>
+  <Component name="IzhikevichFS_Iext200">
+    <Definition>IzhikevichFS</Definition>
+    <Property name="a">
+      <SingleValue>0.2</SingleValue>
+    </Property>
+    <Property units="nA" name="b">
+      <SingleValue>0.025</SingleValue>
+    </Property>
+    <Property units="mV" name="c">
+      <SingleValue>-45.0</SingleValue>
+    </Property>
+    <Property name="k">
+      <SingleValue>1.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vpeak">
+      <SingleValue>25.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vt">
+      <SingleValue>-55.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vr">
+      <SingleValue>-40.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vb">
+      <SingleValue>-55.0</SingleValue>
+    </Property>
+    <Property units="uF" name="Cm">
+      <SingleValue>20.0</SingleValue>
+    </Property>
+    <Property units="nA" name="Iext">
+      <SingleValue>200.0</SingleValue>
+    </Property>
+    <Property units="nA" name="Isyn">
+      <SingleValue>0.0</SingleValue>
+    </Property>
+    <Initial units="mV" name="V">
+      <SingleValue>-65.0</SingleValue>
+    </Initial>
+    <Initial units="nA" name="U">
+      <SingleValue>-1.625</SingleValue>
+    </Initial>
+  </Component>
+  <Component name="IzhikevichFS_Iext400">
+    <Definition>IzhikevichFS</Definition>
+    <Property name="a">
+      <SingleValue>0.2</SingleValue>
+    </Property>
+    <Property units="nA" name="b">
+      <SingleValue>0.025</SingleValue>
+    </Property>
+    <Property units="mV" name="c">
+      <SingleValue>-45.0</SingleValue>
+    </Property>
+    <Property name="k">
+      <SingleValue>1.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vpeak">
+      <SingleValue>25.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vt">
+      <SingleValue>-55.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vr">
+      <SingleValue>-40.0</SingleValue>
+    </Property>
+    <Property units="mV" name="Vb">
+      <SingleValue>-55.0</SingleValue>
+    </Property>
+    <Property units="uF" name="Cm">
+      <SingleValue>20.0</SingleValue>
+    </Property>
+    <Property units="nA" name="Iext">
+      <SingleValue>400.0</SingleValue>
+    </Property>
+    <Property units="nA" name="Isyn">
+      <SingleValue>0.0</SingleValue>
+    </Property>
+    <Initial units="mV" name="V">
+      <SingleValue>-65.0</SingleValue>
+    </Initial>
+    <Initial units="nA" name="U">
+      <SingleValue>-1.625</SingleValue>
+    </Initial>
+  </Component>
+</NineML>

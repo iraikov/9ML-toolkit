@@ -4,6 +4,19 @@ struct
 
   structure D = Dynamics
 
+  structure SEventPriority = 
+  struct
+       type priority     = real
+
+       fun compare (x,y) = Real.compare (x,y)
+       type item         = real * int
+       fun priority (x : item) = (#1(x))
+  end
+      
+  structure SEQ = TEventQueue (structure P = SEventPriority
+                               type value = int
+                               fun value (x : P.item) = (#2(x)))
+
   fun putStrLn out str = 
       (TextIO.output (out, str);
        TextIO.output (out, "\n"))
@@ -29,19 +42,19 @@ struct
                          List.foldl f v lst'
                      end
 
-  fun dimVals [m,n] = (m,n) | dimVals _ = raise SparseMatrix.Shape
+  fun dimVals [m,n] = (m,n) | dimVals _ = raise BitSparseMatrix.Shape
 
   fun fromDiag (m, n, a, dflt) =
       if Index.validShape [m,n]
       then 
           (let 
-               val na  = RTensor.Array.length a
+               val na  = BitTensor.Array.length a
                val na' = na-1
-               val te  = RTensor.new ([m,n], dflt)
+               val te  = BitTensor.new ([m,n], dflt)
                fun diag (i, j, ia) =
                    let
                        val ia' = 
-                           (RTensor.update (te, [i,j], RTensor.Array.sub (a, ia));
+                           (BitTensor.update (te, [i,j], BitTensor.Array.sub (a, ia));
                             if ia = na' then 0 else ia+1)
                    in
                        if (i=0) orelse (j=0) 
@@ -52,7 +65,7 @@ struct
                diag (m-1, n-1, 0)
            end)
       else 
-          raise RTensor.Shape
+          raise Index.Shape
 
 
   fun sampleN randomInt n dflt =
@@ -71,6 +84,11 @@ struct
                          if k < n then update(sample, randomInt (0, n), x) else ()
                      end)))
       end
+
+  fun assoc ((k,v)::rst) x = if k=x then SOME v else assoc rst x
+    | assoc [] x = NONE 
+
+  fun member (k,lst) = case List.find (fn(x)=>k=x) lst of SOME _ => true | NONE => false
 
   fun index_foldri (a, b, f, init) =
       if a <= b then
@@ -97,19 +115,19 @@ struct
                 | NONE => (fn v => v)
 
       in
-          Vector.tabulate (N, fn (i) => 
-                                 D.condApply condfun
-                                             (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
-                                                             rinitial (bool_alloc nregime), 
-                                                             extinitial(), extevinitial(), h0, alloc n, alloc n, alloc n, alloc nev, false)))
+          List.tabulate (N, fn (i) => 
+                               (i, D.condApply condfun
+                                               (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
+                                                               rinitial (bool_alloc nregime), 
+                                                               extinitial(), extevinitial(), h0, alloc n, alloc n, alloc n, alloc nev, false))))
       end
    |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,h0,
                                    alloc,bool_alloc,n,nev,ndsc,nregime) =
-      Vector.tabulate (N, fn (i) => D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
-                                                                       extinitial (), extevinitial (), h0, 
-                                                                       alloc n, alloc n, alloc n, alloc nev, false)))
+      List.tabulate (N, fn (i) => (i, D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
+                                                                         extinitial (), extevinitial (), h0, 
+                                                                         alloc n, alloc n, alloc n, alloc nev, false))))
    |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial,h0,alloc,bool_alloc,n,nev,ndsc,nregime) =
-      Vector.tabulate (N, fn (i) => D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), h0, alloc n, alloc n, alloc n))
+      List.tabulate (N, fn (i) => (i, D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), h0, alloc n, alloc n, alloc n)))
    |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial,_,_,_,_,_,_,_) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
@@ -172,6 +190,7 @@ struct
 
         
   exception Index        
+  exception InvalidPopulationSet of string
 
   val label = "{{group.name}}"
             
@@ -229,7 +248,7 @@ struct
           val h0          = 1e~3
           val initial     = {{pop.value.prototype.name}}.initfun({{pop.name}}_parameters)
           val evinitial   = {{pop.value.prototype.name}}.initcondfun 
-          val dinitial    = {{pop.value.prototype.name}}.dinitfun
+          val dinitial    = optApply {{pop.value.prototype.name}}.dinitfun {{pop.name}}_parameters
           val rinitial    = {{pop.value.prototype.name}}.initregfun 
           val extinitial  = {{pop.value.prototype.name}}.initextfun ({{pop.name}}_parameters)
           val extevinitial  = {{pop.value.prototype.name}}.initextevfun ({{pop.name}}_parameters)
@@ -259,23 +278,23 @@ struct
                      {{pop.value.prototype.name}}.regfun)
       end
 
-  fun {{pop.name}}_run (tend,Wmap,n0) (i,input,(nstates,spikes)) =
+  fun {{pop.name}}_run (statesample,extsample,evsample) (tend,Wmap,n0) ((i,input),(nstates,spikes)) =
     let 
         fun log (nstate) =
             let
-                val _ = if (i<{{group.statesample}})
+                val _ = if (i<statesample)
                         then putStrLn (!{{pop.name}}_state_out)
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_y nstate))) 
                         else ()
                                  
-                val _ = if (i<{{group.extsample}})
+                val _ = if (i<extsample)
                         then putStrLn (!{{pop.name}}_ext_out)
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_ext nstate)) ^ ", " ^
                                        (showRealArray (state_extev nstate)))
                         else ()
-                val _ = if (i<{{group.evsample}})
+                val _ = if (i<evsample)
                         then putStrLn (!{{pop.name}}_event_out)
                                       (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
                                        (showRealArray (state_event nstate)))
@@ -332,16 +351,15 @@ struct
 
         val (nstate', spikes') = recur (input, spikes)
  in
-     (nstate'::nstates, spikes')
+     ((i,nstate')::nstates, spikes')
  end
 
 {% endfor %}
 
-{% if group.plastypes %}{% for pl in dict (group.plastypes) %}
-  val {{pl.name}}_parameters: real array = {{pl.name}}.paramfun()
-  val {{pl.name}}_initial = {{pl.name}}.initfun({{pl.name}}_parameters)
-
-{% endfor %}{% endif %}
+  val popmap = [
+{% for s in dict (group.sets) %}
+   ("{{s.name}}"{% for p in s.value.populations %}::"{{p.name}}"{% endfor %}::[]){% if not loop.last %},{% endif %}
+{% endfor %} ]
 
 
 {% if group.conntypes %}{% for conn in dict (group.conntypes) %}
@@ -370,7 +388,7 @@ struct
     ]
          
 
-    fun frun (tend,I)
+    fun frun (statesample,extsample,evsample) (tend,I)
              (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
@@ -379,14 +397,14 @@ struct
         let
 {% for pop in dict (group.populations) %}
             val ({{pop.name}}_states,{{pop.name}}_spikes) = 
-                Vector.foldri ({{pop.name}}_run (tend,I,{{pop.name}}_n0))
-                              ([],[]) {{pop.name}}_state_vector
+                List.foldl ({{pop.name}}_run (statesample,extsample,evsample) (tend,I,{{pop.name}}_n0))
+                           ([],[]) {{pop.name}}_state_vector
 
 {% endfor %}
         in
             ((
 {% for pop in dict (group.populations) %}
-             Vector.fromList {{pop.name}}_states{% if not loop.last %},{% endif %}
+             {{pop.name}}_states{% if not loop.last %},{% endif %}
 
 {% endfor %}
             ), 
@@ -398,26 +416,34 @@ struct
             ))
         end
                          
+    fun fspikeidxs spikesetName = 
+        let 
+            val spikesetPops = case List.find (fn(x) => spikesetName = (hd x)) popmap of
+                                   SOME lst => tl lst
+                                 | NONE => raise InvalidPopulationSet spikesetName
+            val pops = [{% for pop in dict (group.populations) %}"{{pop.name}}"{% if not loop.last %},{% endif %}{% endfor %}]
+            val popIdxs = ListPair.zip (pops, List.tabulate (List.length pops, fn (i) => i))
+        in
+            List.map (valOf o assoc popIdxs) spikesetPops
+        end
                          
-    fun fspikes (
+
+    fun fspikes spikelogIdxs (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_spike_i{% if not loop.last %},{% endif %}
 {% endfor %} ) =
 
         let
+            fun enqueueSpikes xs =
+                List.foldl (fn(xs,ax) => List.foldl (fn((i,t,nv),ax) => SEQ.addEvent ((t,i),ax)) ax xs) SEQ.empty xs
 
-           val ext_spike_i = List.concat ( {% for pop in dict (group.populations) %}{% if not pop.name in group.spikepoplst %}{{pop.name}}_spike_i ::{% endif %}{% endfor %} [] )
+            val all_spike_i = [{% for pop in dict (group.populations) %}{{pop.name}}_spike_i{% if not loop.last %},{% endif %}{% endfor %}]
+            val labeled_spike_i = ListPair.zip (List.tabulate (List.length all_spike_i, fn (i) => i), all_spike_i)
 
-                
-           val neuron_spike_i = List.concat [ 
-{% for name in (group.spikepoplst) %}
-                                 {{name}}_spike_i{% if not loop.last %},{% endif %}
-{% endfor %}
-                                 ]
+            val (log_spike_i,ext_spike_i) = List.partition (fn(i,x) => member (i, spikelogIdxs)) labeled_spike_i
 
-            val all_spike_i    = List.concat [neuron_spike_i, ext_spike_i]
         in
-            (all_spike_i, neuron_spike_i)
+            (enqueueSpikes all_spike_i, enqueueSpikes (map #2 log_spike_i))
         end
 
 {% macro cartesian_product(sp, tp) %}
@@ -426,47 +452,32 @@ struct
    {% endfor %}
 {% endmacro %}
 
-{% macro for_each(name, sp, tp, plasticity, component, cstate) %}
-             val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-
-                               in
-                                  SparseMatrix.fromGeneratorList [N,N]
+{% macro for_each(name, sp, tp, component, cstate) %}
+             val Pr_{{name}} = BitSparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
                                      fshape=[{{t.size}},{{s.size}}],
-                                     f=(fn (i) => Real.* (weight, #{{cstate}}({{component}}_f {{component}}_initial) ))}{% endcall %}
+                                     f=(fn (i) => #{{cstate}}({{component}}_f {{component}}_initial) )}{% endcall %}
                                   ]
-                               end
 {% endmacro %}
 
 
-{% macro all_to_all(name, sp, tp, plasticity)  %}
-             val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-
-                               in
-                                  SparseMatrix.fromTensorList [N,N]
+{% macro all_to_all(name, sp, tp)  %}
+             val Pr_{{name}} = BitSparseMatrix.fromTensorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
-                                     tensor=(RTensor.*> weight (RTensor.new ([{{t.size}},{{s.size}}],1.0))),
+                                     tensor=(BitTensor.new ([{{t.size}},{{s.size}}],true)),
                                      sparse=false}{% endcall %}
                                   ]
-                                end
 {% endmacro %}
 
-{% macro one_to_one(name, sp, tp, plasticity) %}
-             val Pr_{{name}} = let
-                                  val weight = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-
-                               in
-                                  SparseMatrix.fromTensorList [N,N]
+{% macro one_to_one(name, sp, tp) %}
+             val Pr_{{name}} = BitSparseMatrix.fromTensorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
-                                     tensor=(fromDiag ({{t.size}},{{s.size}},Real64Array.fromList [weight],0.0)),
+                                     tensor=(fromDiag ({{t.size}},{{s.size}},BitArray.fromList [true],false)),
                                      sparse=true}{% endcall %}
                                   ]
-                               end
 {% endmacro %}
 
 
@@ -475,7 +486,7 @@ struct
                                    val S = TensorFile.realTensorRead (infile) 
                                    val _ = TextIO.closeIn infile
                                in 
-                                   SparseMatrix.fromTensorSliceList [N,N]
+                                   BitSparseMatrix.fromTensorSliceList [N,N]
                                    [
                                      {% with %}
                                      {% set soffset = 0 %}
@@ -483,7 +494,7 @@ struct
                                      {% set toffset = 0 %}
                                      {% for t in tp %}
                                      {offset=[{{t.start}},{{s.start}}],
-                                      slice=(RTensorSlice.slice ([([{{toffset}},{{soffset}}],[{{toffset}}+{{t.size}}-1,{{soffset}}+{{s.size}}-1])],S)),
+                                      slice=(BitTensorSlice.slice ([([{{toffset}},{{soffset}}],[{{toffset}}+{{t.size}}-1,{{soffset}}+{{s.size}}-1])],S)),
                                       sparse=false}{% if not loop.last %},{% endif %}
                                      {% set toffset = toffset + t.size %}
                                      {% endfor %}{% if not loop.last %},{% endif %}
@@ -513,12 +524,11 @@ struct
 {% endmacro %}
 
 
-{% macro random_fan_in(name, sp, tp, plasticity, prob) %}
+{% macro random_fan_in(name, sp, tp, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then weight else 0.0) 
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then true else false) 
                                in
-                                  SparseMatrix.fromGeneratorList [N,N]
+                                  BitSparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call postorder (sp,tp) %}          {offset=[{{t.start}},{{s.start}}],
                                        fshape=[{{t.size}},{{s.size}}],
@@ -528,12 +538,11 @@ struct
 {% endmacro %}
 
 
-{% macro random_fan_out(name, sp, tp, plasticity, prob) %}
+{% macro random_fan_out(name, sp, tp, prob) %}
              val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then weight else 0.0)
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then true else false)
                                in
-                                  SparseMatrix.fromGeneratorList [N,N]
+                                  BitSparseMatrix.fromGeneratorList [N,N]
                                   [
 {% call preorder (sp,tp) %}         {offset=[{{t.start}},{{s.start}}],
                                      fshape=[{{t.size}},{{s.size}}],
@@ -543,19 +552,16 @@ struct
 {% endmacro %}
 
 
-{% macro random_fan_in_num(name, sp, tp, plasticity, num) %}
-             val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-                               in
-                                  SparseMatrix.fromVectors [N,N]
+{% macro random_fan_in_num(name, sp, tp, num) %}
+             val Pr_{{name}} = BitSparseMatrix.fromVectors [N,N]
                                   [
 {% call postorder (sp,tp) %}          (let
-                                          val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
+                                          val sample = Array.array (Int.min({{num | int}},{{s.size}}) * {{t.size}}, (0,0,false))
                                           val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
-                                                                 Loop.foldi (0,{{num}},
-                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),weight)); 
+                                                                 Loop.foldi (0,{{num | int}},
+                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),true)); 
                                                                                           k+1),
                                                                              k),
                                                               0)
@@ -566,23 +572,19 @@ struct
                                            v=v, shape_v=[{{t.size}},{{s.size}}]}
                                       end){% endcall %}
                                   ]
-                               end
 {% endmacro %}
 
 
-{% macro random_fan_out_num(name, sp, tp, plasticity, num) %}
-             val Pr_{{name}} = let
-                                  val weight  = {% if plasticity %}getindex({{plasticity}}_initial({{plasticity}}.alloc {{plasticity}}.n),0){% else %}1.0{% endif %}
-                               in
-                                  SparseMatrix.fromVectors [N,N]
+{% macro random_fan_out_num(name, sp, tp, num) %}
+             val Pr_{{name}} = BitSparseMatrix.fromVectors [N,N]
                                   [
 {% call preorder (sp,tp) %}          (let
-                                          val sample = Array.array (Int.min({{num}},{{s.size}}) * {{t.size}}, (0,0,0.0))
+                                          val sample = Array.array (Int.min({{num | int}},{{s.size}}) * {{t.size}}, (0,0,false))
                                           val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
-                                                                 Loop.foldi (0,{{num}},
-                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),weight)); 
+                                                                 Loop.foldi (0,{{num | int}},
+                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),true)); 
                                                                                           k+1),
                                                                              k),
                                                               0)
@@ -593,7 +595,6 @@ struct
                                            v=v, shape_v=[{{t.size}},{{s.size}}]}
                                       end){% endcall %}
                                   ]
-                               end
 {% endmacro %}
 
 
@@ -636,54 +637,47 @@ struct
 {% call for_each(pr.name, 
                  pr.value.source.populations, 
                  pr.value.destination.populations, 
-                 pr.value.plasticity,
                  pr.value.connectivity.name,
                  pr.value.connectivity.port) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "OneToOne" %}
+{% elseif ((pr.value.connectivity.type.stdlib == "OneToOne") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/OneToOne")) %}
 {% call one_to_one(pr.name, 
                    pr.value.source.populations,
-                   pr.value.destination.populations,
-                   pr.value.plasticity) %}
+                   pr.value.destination.populations) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "AllToAll" %}
+{% elseif ((pr.value.connectivity.type.stdlib == "AllToAll") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/AllToAll")) %}
 {% call all_to_all(pr.name, 
                    pr.value.source.populations,
-                   pr.value.destination.populations,
-                   pr.value.plasticity) %}
+                   pr.value.destination.populations) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "FromFile" %}
+{% elseif ((pr.value.connectivity.type.stdlib == "FromFile") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/OneToOne")) %}
 {% call from_file(pr.name, 
                   pr.value.source.populations,
                   pr.value.destination.populations,
                   pr.value.rule.properties.filename.exprML) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanIn" &&  pr.value.connectivity.type.probability %}
+{% elseif ((pr.value.connectivity.type.stdlib == "RandomFanIn") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanIn")) &&  pr.value.connectivity.type.probability %}
 {% call random_fan_in(pr.name, 
                       pr.value.source.populations,
                       pr.value.destination.populations,
-                      pr.value.plasticity,
                       pr.value.connectivity.type.probability) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanIn" &&  pr.value.connectivity.type.number %}
+{% elseif ((pr.value.connectivity.type.stdlib == "RandomFanIn") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanIn")) &&  pr.value.connectivity.type.number %}
 {% call random_fan_in_num(pr.name, 
                           pr.value.source.populations,
                           pr.value.destination.populations,
-                          pr.value.plasticity,
                           pr.value.connectivity.type.number) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanOut"  &&  pr.value.connectivity.type.probability %}
+{% elseif ((pr.value.connectivity.type.stdlib == "RandomFanOut") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanOut"))  &&  pr.value.connectivity.type.probability %}
 {% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
-                pr.value.plasticity,
                 pr.value.connectivity.type.probability) %}
 {% endcall %}
-{% elseif pr.value.connectivity.type.stdlib == "RandomFanOut"  &&  pr.value.connectivity.type.number %}
+{% elseif ((pr.value.connectivity.type.stdlib == "RandomFanOut") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanOut"))  &&  pr.value.connectivity.type.number %}
 {% call random_fan_out(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
-                pr.value.plasticity,
                 pr.value.connectivity.type.number) %}
 {% endcall %}
 {% endif %}

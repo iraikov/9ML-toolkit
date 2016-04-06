@@ -21,18 +21,20 @@
 (module 9ML-types
 
 	(
-         make-dynamics-node dynamics-node?
+         make-dynamics-node dynamics-node? dynamics-node-env dynamics-node-formals dynamics-node-body
          make-alsys-node alsys-node?
          make-connection-rule-node connection-rule-node?
+         make-random-dist-node random-dist-node?
          )
 
 	(import scheme chicken)
 
 
-(define-record-type dynamics-node (make-dynamics-node name formals body)
+(define-record-type dynamics-node (make-dynamics-node name formals env body)
   dynamics-node? 
   (name dynamics-node-name)
   (formals dynamics-node-formals)
+  (env dynamics-node-env)
   (body dynamics-node-body)
   )
 
@@ -44,11 +46,20 @@
   (body alsys-node-body)
   )
 
+
 (define-record-type connection-rule-node (make-connection-rule-node name formals stdlib)
   connection-rule-node? 
   (name connection-rule-node-name)
   (formals connection-rule-node-formals)
   (stdlib connection-rule-node-stdlib)
+  )
+
+
+(define-record-type random-dist-node (make-random-dist-node name formals stdlib)
+  random-dist-node? 
+  (name random-dist-node-name)
+  (formals random-dist-node-formals)
+  (stdlib random-dist-node-stdlib)
   )
 
         
