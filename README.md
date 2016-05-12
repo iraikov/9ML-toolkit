@@ -73,11 +73,11 @@ released version of 9ML toolkit can be installed using the
 (On Windows, the tilde must be replaced with C:\ or whichever drive
 you have installed Chicken on).
 
-## Installation of 9ML toolkit from the git source tree:
+## Installation of 9ML toolkit from the git source tree (development version):
 
-The 9ML toolkit code can also be installed from this source repository
-by calling `chicken-install` program in the directory where the source
-tree has been cloned:
+The most recent development version of the 9ML toolkit code can be
+installed from this source repository by calling `chicken-install`
+program in the directory where the source tree has been cloned:
 
 ```
   git clone https://github.com/iraikov/9ML-toolkit
