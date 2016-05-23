@@ -14,9 +14,9 @@ $(NINEML_LIB)/options.sml
 structure Dynamics = FunctionalHybridDynamics2
 
 local
-	{{modelName}}.sml
+	{{modelName}}.{{solverMethod}}.sml
 in
 	structure Model
 end
-Sim_{{modelName}}.sml
+Sim_{{modelName}}.{{solverMethod}}.sml
 

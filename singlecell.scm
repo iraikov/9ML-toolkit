@@ -234,10 +234,16 @@
       )
      (d "node name = ~A model-eqset = ~A~%" node-name model-eqset)
      (let* (
-            (sim-path      (make-pathname source-dir (conc "Sim_" node-name ".sml")))
+            (sim-path      (make-pathname source-dir (conc "Sim_" node-name "." 
+                                                           (ivp-simulation-method) ".sml")))
             (mlb-path      (make-pathname source-dir (conc "Sim_" node-name ".mlb")))
             (exec-path     (make-pathname source-dir (conc "Sim_" node-name)))
-            (makefile-path (make-pathname source-dir (conc "Makefile." node-name)))
+            (makefile-path (make-pathname source-dir (conc "Makefile." node-name "." 
+                                                           (ivp-simulation-method))))
+            (node-path     (make-pathname source-dir (sprintf "~A.~A.sml" node-name
+                                                              (ivp-simulation-method))))
+            (node-c-path   (make-pathname source-dir (sprintf "~A.c" node-name)))
+
             (prototype-decls
              (salt:make-astdecls
               (salt:astdecls-decls model-eqset)))
@@ -245,12 +251,12 @@
        (d "prototype-decls = ~A~%" prototype-decls)
        (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
          (d "node name = ~A model-sim = ~A~%" node-name sim)
-         (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))
+         (let ((sml-port (open-output-file node-path)))
            (salt:codegen-ODE/ML node-name sim out: sml-port solver: (ivp-simulation-method) libs: '(random))
            (close-output-port sml-port)
            (case (ivp-simulation-method) 
              ((crk3 crkbs crkdp)
-              (let ((c-port (open-output-file (make-pathname source-dir (sprintf "~A.c" node-name)))))
+              (let ((c-port (open-output-file node-c-path)))
                 (salt:codegen-ODE/C node-name sim out: c-port solver: (ivp-simulation-method) libs: '(random))
                 (close-output-port c-port)
                 ))
@@ -279,6 +285,7 @@
                                   env: (template-std-env search-path: `(,template-dir))
                                   models: `(
                                             (modelName . ,(Tstr (->string node-name)))
+                                            (solverMethod . ,(Tstr (->string (ivp-simulation-method))))
                                             (UseCSolver . ,(Tbool (case (ivp-simulation-method)
                                                                     ((crk3 crkdp crkbs) #t)
                                                                     (else #f))))
@@ -293,6 +300,7 @@
                                        makefile-tmpl
                                        env: (template-std-env search-path: `(,template-dir))
                                        models: `((modelName . ,(Tstr (->string node-name)))
+                                                 (solverMethod . ,(Tstr (->string (ivp-simulation-method))))
                                                  (sml_lib_home . ,(Tstr (make-pathname 
                                                                          (make-pathname shared-dir "salt")
                                                                          "sml-lib")))

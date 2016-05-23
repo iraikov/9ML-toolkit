@@ -710,11 +710,16 @@
                               ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.mlb.adaptive.tmpl")
                               (else "Sim.mlb.tmpl")))
              (makefile-tmpl  "Makefile.tmpl")
-             (group-path    (make-pathname source-dir (conc group-name ".sml")))
-             (sim-path      (make-pathname source-dir (conc "Sim_" group-name ".sml")))
+
+             (group-path    (make-pathname source-dir (conc group-name "."
+                                                            (ivp-simulation-method) ".sml")))
+             (sim-path      (make-pathname source-dir (conc "Sim_" group-name "." 
+                                                            (ivp-simulation-method) ".sml")))
              (mlb-path      (make-pathname source-dir (conc "Sim_" group-name ".mlb")))
              (exec-path     (make-pathname source-dir (conc "Sim_" group-name)))
-             (makefile-path (make-pathname source-dir (conc "Makefile." group-name)))
+             (makefile-path (make-pathname source-dir (conc "Makefile." group-name "." 
+                                                            (ivp-simulation-method))))
+
              
              (projection-ports
               (ersatz:sexpr->tvalue 
@@ -834,12 +839,14 @@
               (d "response-dynamics = ~A~%" response-dynamics)
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
-                (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))
+                (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.~A.sml" node-name
+                                                                                     (ivp-simulation-method))))))
                   (salt:codegen-ODE/ML node-name sim out: sml-port solver: (ivp-simulation-method) libs: '(random))
                   (close-output-port sml-port)
                   (case (ivp-simulation-method) 
                     ((crk3 crkbs crkdp)
                      (let ((c-port (open-output-file (make-pathname source-dir (sprintf "~A.c" node-name)))))
+
                        (salt:codegen-ODE/C node-name sim out: c-port solver: (ivp-simulation-method) libs: '(random))
                        (close-output-port c-port)
                        ))
@@ -871,7 +878,8 @@
                (map 
                 (match-lambda
                  ((population node-name . responses)
-                  (make-pathname source-dir (sprintf "~A.sml" node-name))))
+                  (make-pathname source-dir (sprintf "~A.~A.sml" 
+                                                     node-name (ivp-simulation-method)))))
                 (population-prototype-env))))
           (make/proc
            `((,group-path 
@@ -906,7 +914,8 @@
                                      env: (template-std-env search-path: `(,template-dir))
                                          models: (append 
                                                   group-tenv
-                                                  `((UseCSolver . ,(Tbool (case (ivp-simulation-method)
+                                                  `((solverMethod . ,(Tstr (->string (ivp-simulation-method))))
+                                                    (UseCSolver . ,(Tbool (case (ivp-simulation-method)
                                                                             ((crk3 crkbs crkdp) #t)
                                                                             (else #f))))
                                                     ))
@@ -922,7 +931,8 @@
                                           env: (template-std-env search-path: `(,template-dir))
                                           models: (append 
                                                    group-tenv
-                                                   `((sml_lib_home . ,(Tstr (make-pathname 
+                                                   `((solverMethod . ,(Tstr (->string (ivp-simulation-method))))
+                                                     (sml_lib_home . ,(Tstr (make-pathname 
                                                                              (make-pathname shared-dir "salt")
                                                                              "sml-lib")))
                                                      (nineml_lib_home . ,(Tstr (make-pathname 

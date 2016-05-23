@@ -19,7 +19,7 @@ structure Dynamics = FunctionalHybridDynamics1
 
 {% for pop in dict (group.populations) %}
 local
-    {{pop.value.prototype.name}}.sml
+    {{pop.value.prototype.name}}.{{solverMethod}}.sml
 in
     structure {{pop.value.prototype.name}} = Model
 end
@@ -34,5 +34,5 @@ end
 {% endif %}
 {% endfor %}{% endif %}
 
-{{group.name}}.sml
-Sim_{{group.name}}.sml
+{{group.name}}.{{solverMethod}}.sml
+Sim_{{group.name}}.{{solverMethod}}.sml
