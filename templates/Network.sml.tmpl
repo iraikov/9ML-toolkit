@@ -93,29 +93,28 @@ struct
   fun optApply fopt args =
       case fopt of SOME f => SOME (f args) | NONE => NONE
 
-  fun make_initial_vector condfun (N,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial,
-                                  alloc,bool_alloc,n,nev,ndsc,nregime) =
+  fun make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
+                          (i,condfun,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
       let 
           val dinitial': real array -> real array = 
               case dinitial of
                   SOME v => v
                 | NONE => (fn v => v)
       in
-          List.tabulate (N, fn (i) => 
-                               (i, D.condApply condfun
-                                               (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
-                                                               rinitial (bool_alloc nregime), extinitial(), extevinitial(), alloc n, alloc n,
-                                                               alloc nev, false))))
+          D.condApply condfun (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
+                                              rinitial (bool_alloc nregime), extinitial(), extevinitial(), alloc n, alloc n,
+                                              alloc nev, false))
       end
-   |  make_initial_vector condfun (N,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,
-                                   alloc,bool_alloc,n,nev,ndsc,nregime) =
-      List.tabulate (N, fn (i) => (i, D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
-                                                                         extinitial (), extevinitial (), initial(alloc n), initial(alloc n), 
-                                                                         alloc nev, false))))
-   |  make_initial_vector condfun (N,initial,NONE,NONE,NONE,extinitial,extevinitial,
-                                   alloc,bool_alloc,n,nev,ndsc,nregime) =
-      List.tabulate (N, fn (i) => (i, D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n)))
-   |  make_initial_vector condfun (N,initial,_,_,_,extinitial,extevinitial,_,_,_,_,_,_) =
+   |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
+                          (i,condfun,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
+      D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
+                                         extinitial (), extevinitial (), initial(alloc n), initial(alloc n), 
+                                         alloc nev, false))
+   |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
+                          (i,condfun,initial,NONE,NONE,NONE,extinitial,extevinitial) =
+      D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n)
+   |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
+                          (i,condfun,initial,_,_,_,extinitial,extevinitial) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
   fun state_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root), i) =
@@ -204,51 +203,53 @@ struct
 
   val {{pop.name}}_parameters = {{pop.value.prototype.name}}.paramfun()
 
+
   val {{pop.name}}_state_out = ref (TextIO.stdOut)
 
   val {{pop.name}}_ext_out = ref (TextIO.stdOut)
 
   val {{pop.name}}_event_out = ref (TextIO.stdOut)
 
-(*
-  val {{pop.name}}_field_vector = 
-    Vector.tabulate (N_{{pop.name}}, fn (i) =>  {{pop.value.prototype.name}}.fieldfun({{pop.name}}_parameters))
-*)
-
   val {{pop.name}}_initial_vector = 
       let
-          val initial     = {{pop.value.prototype.name}}.initfun({{pop.name}}_parameters)
-          val evinitial   = {{pop.value.prototype.name}}.initcondfun
-          val dinitial    = optApply {{pop.value.prototype.name}}.dinitfun {{pop.name}}_parameters
-          val rinitial    = {{pop.value.prototype.name}}.initregfun
-          val extinitial  = {{pop.value.prototype.name}}.initextfun ({{pop.name}}_parameters)
-          val extevinitial = {{pop.value.prototype.name}}.initextevfun ({{pop.name}}_parameters)
+          val parameters     = {{pop.name}}_parameters
+          val field_vector   = Vector.tabulate (N_{{pop.name}}, fn (i) => {{pop.value.prototype.name}}.fieldfun())
+          val make_initial_vector' = make_initial_vector ({{pop.value.prototype.name}}.alloc,{{pop.value.prototype.name}}.bool_alloc,
+                                                          {{pop.value.prototype.name}}.n,{{pop.value.prototype.name}}.nev,{{pop.value.prototype.name}}.ndsc,
+                                                          {{pop.value.prototype.name}}.nregime)
       in
-          make_initial_vector (optApply {{pop.value.prototype.name}}.condfun ({{pop.name}}_parameters))
-                              (N_{{pop.name}},initial,evinitial,dinitial,rinitial,extinitial,extevinitial,
-                              {{pop.value.prototype.name}}.alloc,{{pop.value.prototype.name}}.bool_alloc,
-                              {{pop.value.prototype.name}}.n,{{pop.value.prototype.name}}.nev,{{pop.value.prototype.name}}.ndsc,
-                              {{pop.value.prototype.name}}.nregime)
+          List.tabulate
+              (N_{{pop.name}},    
+               fn(i) =>
+                  let
+                      val fields       = Vector.sub(field_vector,i)
+                      val cond         = optApply {{pop.value.prototype.name}}.condfun (parameters,fields)
+                      val initial      = {{pop.value.prototype.name}}.initfun(parameters,fields)
+                      val evinitial    = {{pop.value.prototype.name}}.initcondfun
+                      val dinitial     = optApply {{pop.value.prototype.name}}.dinitfun (parameters,fields)
+                      val rinitial     = {{pop.value.prototype.name}}.initregfun
+                      val extinitial   = {{pop.value.prototype.name}}.initextfun (parameters,fields)
+                      val extevinitial = {{pop.value.prototype.name}}.initextevfun (parameters,fields)
+                  in
+                      (i, fields, make_initial_vector' (i,cond,initial,evinitial,dinitial,rinitial,extinitial,extevinitial))
+                  end)
       end
 
   val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
                            
-  fun {{pop.name}}_f h = 
-      let
-          val p = {{pop.name}}_parameters 
-      in 
-          D.integral({{pop.value.prototype.name}}.odefun p,
-                     optApply {{pop.value.prototype.name}}.condfun p,
-                     optApply {{pop.value.prototype.name}}.posfun p,
-                     optApply {{pop.value.prototype.name}}.negfun p,
-                     optApply {{pop.value.prototype.name}}.dposfun p,
-                     {{pop.value.prototype.name}}.regfun,
-                     h)
-      end
+  fun {{pop.name}}_f h (i,p,fld) = 
+      D.integral({{pop.value.prototype.name}}.odefun (p,fld),
+                 optApply {{pop.value.prototype.name}}.condfun (p,fld),
+                 optApply {{pop.value.prototype.name}}.posfun (p,fld),
+                 optApply {{pop.value.prototype.name}}.negfun (p,fld),
+                 optApply {{pop.value.prototype.name}}.dposfun (p,fld),
+                 {{pop.value.prototype.name}}.regfun,
+                 h)
 
-
-  fun {{pop.name}}_run f (statesample,extsample,evsample) (Wmap,n0) ((i,input),(nstates,spikes)) =
+  fun {{pop.name}}_run f (statesample,extsample,evsample) (Wmap,n0) ((i,fld,input),(nstates,spikes)) =
     let 
+
+        val f' = f (i,{{pop.name}}_parameters,fld)
 
         fun log (nstate) =
             let
@@ -314,14 +315,14 @@ struct
                               else spikes
             in
                 if state_root nstate 
-                then (log nstate; recur (f nstate, spikes'))
+                then (log nstate; recur (f' nstate, spikes'))
                 else (nstate,spikes')
             end
 
         val _ = log(input)
-        val (nstate,spikes') = recur (f input,spikes)
+        val (nstate,spikes') = recur (f' input,spikes)
     in 
-        ((i,nstate)::nstates, spikes')
+        ((i,fld,nstate)::nstates, spikes')
          
     end
 
@@ -393,12 +394,12 @@ struct
                          
     fun ftime (
 {% for pop in dict (group.populations) %}
-              {{pop.name}}_state_vector: (int * D.model_state) list{% if not loop.last %},{% endif %}
+              {{pop.name}}_state_vector: (int * real array * D.model_state) list{% if not loop.last %},{% endif %}
 
 {% endfor %} ) =
         
 {% with pop = first (dict (group.populations)) %}
-            state_indep (#2 (hd {{pop.name}}_state_vector))
+            state_indep (#3 (hd {{pop.name}}_state_vector))
 {% endwith %}
     
     fun fspikeidxs spikesetName = 
