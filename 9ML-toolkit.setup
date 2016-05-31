@@ -3,7 +3,7 @@
 (define (dynld-name fn)		
   (make-pathname #f fn ##sys#load-dynamic-extension))	
 
-(define version "3.9")
+(define version "3.10")
 
 (use make)
 
@@ -24,12 +24,6 @@
        ((dynld-name "9ML-parse.import") ("9ML-parse.import.scm")
 	(compile  -s 9ML-parse.import.scm))
 
-       ((dynld-name "9ML-utils") ("utils.scm")
-	(compile -O -d2 -S -s utils.scm -o ,(dynld-name "9ML-utils") -j 9ML-utils))
-
-       ((dynld-name "9ML-utils.import") ("9ML-utils.import.scm")
-	(compile  -s 9ML-utils.import.scm))
-
        ;((dynld-name "9ML-ivp-chicken") ("ivp-chicken.scm" )
 	;(compile -O -d2 -S -s ivp-chicken.scm -o ,(dynld-name "9ML-ivp-chicken") -j 9ML-ivp-chicken))
 
@@ -41,6 +35,12 @@
 
        ((dynld-name "9ML-ivp-mlton.import") ( "9ML-ivp-mlton.import.scm" )
 	(compile  -s 9ML-ivp-mlton.import.scm))
+
+       ((dynld-name "9ML-utils") ("utils.scm")
+	(compile -O -d2 -S -s utils.scm -o ,(dynld-name "9ML-utils") -j 9ML-utils))
+
+       ((dynld-name "9ML-utils.import") ("9ML-utils.import.scm")
+	(compile  -s 9ML-utils.import.scm))
 
        ((dynld-name "9ML-alsys-mlton" )
 	("alsys-mlton.scm" )
