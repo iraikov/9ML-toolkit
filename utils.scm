@@ -49,7 +49,7 @@
         (only ports call-with-input-string)
         )
 (require-extension matchable datatype ssax sxpath sxpath-lolevel sxml-transforms 
-                   unitconv uri-generic irregex setup-api 9ML-types 9ML-parse 9ML-ivp-mlton)
+                   unitconv uri-generic irregex setup-api 9ML-types 9ML-parse)
 
 (require-library salt)
 (import (prefix salt salt: ))
