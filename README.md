@@ -15,7 +15,7 @@ You will need to obtain and install the Chicken Scheme
 compiler and programming environment. The latest official release is
 available from the following URL:
 
-http://code.call-cc.org/releases/4.10.0/chicken-4.10.0.tar.gz
+http://code.call-cc.org/releases/4.11.0/chicken-4.11.0.tar.gz
 
 On Unix and Mac OS X there are no additional prerequisites, but on
 Windows, you will need to first install either one of the MinGW or
@@ -29,8 +29,8 @@ above location, then unpack it and change to the directory extracted
 from the archive:
 
 ```
-   tar zxf chicken-4.10.0.tar.gz
-   cd chicken-4.10.0
+   tar zxf chicken-4.11.0.tar.gz
+   cd chicken-4.11.0
 ```
 
 Then, you need to compile and install:
