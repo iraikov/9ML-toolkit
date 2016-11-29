@@ -9,17 +9,28 @@ exception Error
 
 datatype flag =  Help | Time of real | Timestep of real | Tol of real
                  | Statesample of int | Extsample of int | Evsample of int
-                 | Spikerecord of string
+                 | Spikerecord of string | Prjrecord | Prjsummary | Logperiod of real
+                 | Spikeout of string | Stateprefix of string
+                 | Eventprefix of string | Extprefix of string
+                 | Prjprefix of string
 
 
 fun showflag (Help)       = "Help"
   | showflag (Time x)     = ("Time " ^ (Real.toString x))
   | showflag (Timestep x) = ("Timestep " ^ (Real.toString x))
+  | showflag (Logperiod x) = ("Logperiod " ^ (Real.toString x))
   | showflag (Tol x)      = ("Tol " ^ (Real.toString x))
   | showflag (Statesample x) = ("Statesample " ^ (Int.toString x))
   | showflag (Extsample x)   = ("Extsample " ^ (Int.toString x))
   | showflag (Evsample x)     = ("Evsample " ^ (Int.toString x))
   | showflag (Spikerecord x)  = ("Spikerecord " ^ x)
+  | showflag (Prjrecord)  = ("Prjrecord")
+  | showflag (Prjsummary)  = ("Prjsummary")
+  | showflag (Spikeout x)  = ("Spikeout " ^ x)
+  | showflag (Eventprefix x)  = ("Eventprefix " ^ x)
+  | showflag (Stateprefix x)  = ("Stateprefix " ^ x)
+  | showflag (Extprefix x)  = ("Extprefix " ^ x)
+  | showflag (Prjprefix x)  = ("Prjprefix " ^ x)
 		   
 
 val options = 
@@ -45,6 +56,11 @@ val options =
       help="simulation timestep"},
 
      {short="",
+      long=["logperiod"],
+      desc=G.ReqArg (fn(x) => Logperiod (valOf(Real.fromString x)),"N"),
+      help="write out spike times and state information every N ms of simulated time"},
+
+     {short="",
       long=["statesample"],
       desc=G.ReqArg (fn(x) => Statesample (valOf(Int.fromString x)),"N"),
       help="sample size of neurons for state recording"},
@@ -62,7 +78,42 @@ val options =
      {short="s",
       long=["spikerecord"],
       desc=G.ReqArg (fn(x) => Spikerecord (x),"NAME"),
-      help="name of population set to be used for spike recording"}
+      help="name of population set to be used for spike recording"},
+
+     {short="",
+      long=["prjrecord"],
+      desc=G.NoArg (fn() => Prjrecord),
+      help="record projections to file"},
+
+     {short="p",
+      long=["prjsummary"],
+      desc=G.NoArg (fn() => Prjsummary),
+      help="show projection summary"},
+
+     {short="",
+      long=["spikeout"],
+      desc=G.ReqArg (fn(x) => Spikeout (x),"PATH"),
+      help="path to file name used for spike recording"},
+
+     {short="",
+      long=["stateprefix"],
+      desc=G.ReqArg (fn(x) => Stateprefix (x),"PATH"),
+      help="prefix for file names used for state recording"},
+
+     {short="",
+      long=["eventprefix"],
+      desc=G.ReqArg (fn(x) => Eventprefix (x),"PATH"),
+      help="prefix for file names used for event recording"},
+
+     {short="",
+      long=["extprefix"],
+      desc=G.ReqArg (fn(x) => Extprefix (x),"PATH"),
+      help="prefix for file name used for external input recording"},
+
+     {short="",
+      long=["prjprefix"],
+      desc=G.ReqArg (fn(x) => Prjprefix (x),"PREFIX"),
+      help="prefix for file name used for printing projections"}
 
 
     ]
@@ -83,34 +134,58 @@ fun getstate (opts) =
 	val O_TOL        = ref NONE
 	val O_TIME       = ref NONE
 	val O_TIMESTEP   = ref NONE
-	val O_STATESAMPLE   = ref NONE
-	val O_EXTSAMPLE     = ref NONE
-	val O_EVSAMPLE      = ref NONE
-	val O_SPIKERECORD   = ref NONE
+	val O_LOGPERIOD       = ref NONE
+	val O_STATESAMPLE     = ref NONE
+	val O_EXTSAMPLE       = ref NONE
+	val O_EVSAMPLE        = ref NONE
+	val O_SPIKERECORD     = ref NONE
+	val O_PRJSUMMARY      = ref false
+	val O_PRJRECORD       = ref false
+	val O_SPIKEOUT        = ref NONE
+	val O_STATEPREFIX     = ref NONE
+	val O_EXTPREFIX       = ref NONE
+	val O_EVENTPREFIX     = ref NONE
+	val O_PRJPREFIX       = ref NONE
 
 	fun getstate' (opt) = 
 	    (case opt of 
-		 Help          => O_HELP := true	
-	       | Tol x         => O_TOL := SOME x
-	       | Time x        => O_TIME := SOME x
-	       | Timestep x    => O_TIMESTEP := SOME x
-	       | Statesample x => O_STATESAMPLE := SOME x
-	       | Extsample   x => O_EXTSAMPLE := SOME x
-	       | Evsample x    => O_EVSAMPLE := SOME x
-	       | Spikerecord x => O_SPIKERECORD := SOME x
+		 Help           => O_HELP := true	
+	       | Tol x          => O_TOL := SOME x
+	       | Time x         => O_TIME := SOME x
+	       | Timestep x     => O_TIMESTEP := SOME x
+	       | Logperiod x    => O_LOGPERIOD := SOME x
+	       | Statesample x  => O_STATESAMPLE := SOME x
+	       | Extsample   x  => O_EXTSAMPLE := SOME x
+	       | Evsample x     => O_EVSAMPLE := SOME x
+	       | Spikerecord x  => O_SPIKERECORD := SOME x
+	       | Prjsummary     => O_PRJSUMMARY := true
+	       | Prjrecord      => O_PRJRECORD := true
+	       | Spikeout x     => O_SPIKEOUT := SOME x
+	       | Stateprefix x  => O_STATEPREFIX := SOME x
+	       | Extprefix x    => O_EXTPREFIX := SOME x
+	       | Eventprefix x  => O_EVENTPREFIX := SOME x
+	       | Prjprefix x    => O_PRJPREFIX := SOME x
             )
 
 	val _ = app getstate' opts
 
     in {
         is_help=(!O_HELP), 
-        is_tol=(!O_TOL), 
         is_time=(!O_TIME),
 	is_timestep=(!O_TIMESTEP),
+        is_tol=(!O_TOL), 
+        is_logperiod=(!O_LOGPERIOD), 
 	is_statesample=(!O_STATESAMPLE),
 	is_extsample=(!O_EXTSAMPLE),
 	is_evsample=(!O_EVSAMPLE),
-	is_spikerecord=(!O_SPIKERECORD)
+	is_spikerecord=(!O_SPIKERECORD),
+	is_prjrecord=(!O_PRJRECORD),
+	is_prjsummary=(!O_PRJSUMMARY),
+	is_spikeout=(!O_SPIKEOUT),
+	is_stateprefix=(!O_STATEPREFIX),
+	is_eventprefix=(!O_EVENTPREFIX),
+	is_extprefix=(!O_EXTPREFIX),
+	is_prjprefix=(!O_PRJPREFIX)
        }
     end
 
