@@ -1,14 +1,12 @@
 (require-extension matchable getopt-long)
-(require-library srfi-1 irregex data-structures files posix extras)
+(require-library srfi-1 srfi-13 irregex data-structures files posix extras)
 (import
  (only srfi-1 filter list-tabulate)
+ (only srfi-13 string-prefix?)
  (only files make-pathname)
  (only data-structures ->string alist-ref compose)
  (only extras fprintf printf)
  )
-
-
-(define comment-pat (string->irregex "^#.*"))
 
 (define (diffs xs)
   (if (null? xs) '()
@@ -43,16 +41,18 @@
      (fold
       (lambda (data-file ax)
         (match-let (((data tmax nmax)  ax))
-          (let ((data1 (map (lambda (line) (map string->number (string-split  line " ")))
-                          (filter (lambda (line) (not (irregex-match comment-pat line)))
-                                  (read-lines data-file)))))
-            (let ((t1 (fold (lambda (row ax) (max (car row) ax)) tmax data1))
-                  (nmax1 (fold (lambda (row ax) (fold max ax (cdr row))) nmax data1)))
-              (list (append data1 data) (max tmax t1) nmax1)
-              ))
-          ))
-        '(() 0.0 0)
-        (list data-file)))
+                   (let ((data1 (filter-map
+                                 (lambda (line)
+                                   (and (not (string-prefix? "#" line))
+                                        (map string->number (string-split  line " "))))
+                                 (read-lines data-file))))
+                     (let ((t1 (fold (lambda (row ax) (max (car row) ax)) tmax data1))
+                           (nmax1 (fold (lambda (row ax) (fold max ax (cdr row))) nmax data1)))
+                       (list (append data1 data) (max tmax t1) nmax1)
+                       ))
+                   ))
+      '(() 0.0 0)
+      (list data-file)))
     )
 
    (let* (
@@ -63,6 +63,7 @@
            (let ((v (make-vector nmax '())))
              (for-each (match-lambda
                         ((t . ns)
+                         (print "t = " t)
                          (for-each (lambda (n) (vector-set! v (- n 1) (cons t (vector-ref v (- n 1)))))
                                    ns)))
                        (reverse data))

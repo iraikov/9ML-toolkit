@@ -161,13 +161,13 @@ fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (stat
               in
                   List.app
                       (fn (t_i,pop) =>
-                          List.app
-                              (fn (lst) =>
-                                  (putStr spike_out ((showReal t_i) ^ " ");
+                          (putStr spike_out ((showReal t_i) ^ " ");
+                           List.app
+                               (fn (lst) =>
                                    List.app (fn x => (TextIO.output(spike_out, " " ^ (Int.toString x))))
-                                            (List.map (fn (i,n) => (i+1)) lst);
-                                   putStrLn spike_out ""))
-                              pop)
+                                            (List.map (fn (i,n) => (i+1)) lst))
+                               pop;
+                           putStrLn spike_out ""))
                       (List.rev spikelog);
                   TextIO.flushOut spike_out; 
                   TextIO.closeOut spike_out
@@ -277,7 +277,7 @@ let
             else netrun (DQ'', state_vector_i, spikelog', statelog', tlog')
         end
 in
-    netrun (DQ,initial_vector,[],[],0.0)
+    netrun (DQ,initial_vector,[(0.0,[])],[],0.0)
 end
 
 exception Exit of OS.Process.status 
@@ -395,19 +395,14 @@ fun main (name,args) =
                       | NONE => ()
                     )
 
+            val _     = putStrLn TextIO.stdOut ("starting simulation...")
+            val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, initial, frun, 
+                                                ftime, fspikes spikelog, finfo, tstop, logperiod,
+                                                (spikeout_filepath,stateout_prefix,
+                                                 extout_prefix,eventout_prefix),
+                                                (statesample,extsample,evsample)))
         in
-            let
-                val _     = putStrLn TextIO.stdOut ("starting simulation...")
-                val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, initial, frun, 
-                                                    ftime, fspikes spikelog, finfo, tstop, logperiod,
-                                                    (spikeout_filepath,stateout_prefix,
-                                                     extout_prefix,eventout_prefix),
-                                                    (statesample,extsample,evsample)))
-            in
-                putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
-            end;
-
-           ()
+            putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
         end)
     end
     

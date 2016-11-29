@@ -188,6 +188,22 @@ struct
    |  state_root (D.EventState (x, y, xev, ev, ext, extev, h, ynext, yrsp, err, enext, root)) = root
    |  state_root (D.ContState (x, y, ext, extev, h, ynext, yrsp, err)) = false
 
+  fun copy_array a =
+    let val len = Array.length a
+        val b = if len>0 then Array.array (len, Array.sub(a,0)) else a
+    in
+        if len>0 then Array.copy {di=0, dst=b, src=a} else (); b
+    end
+                                                                     
+  fun copy_state (D.RegimeState (x, y, xev, ev, d, r, ext, extev, h, ynext, yrsp, err, enext, root)) =
+    D.RegimeState(x, copy_array y, xev, copy_array ev, copy_array d, copy_array r,
+                  copy_array ext, copy_array extev, h, ynext, yrsp, err, enext, root)
+   |  copy_state (D.EventState (x, y, xev, ev, ext, extev, h, ynext, yrsp, err, enext, root)) =
+      D.EventState (x, copy_array y, xev, copy_array ev, copy_array ext, copy_array extev, h,
+                    ynext, yrsp, err, enext, root) 
+   |  copy_state (D.ContState (x, y, ext, extev, h, ynext, yrsp, err)) =
+      D.ContState (x, copy_array y, copy_array ext, copy_array extev, h, ynext, yrsp, err)
+
         
   exception Index        
   exception InvalidPopulationSet of string
@@ -280,39 +296,19 @@ struct
                  optApply {{pop.value.prototype.name}}.dposfun (p,fld),
                  {{pop.value.prototype.name}}.regfun)
 
-  fun {{pop.name}}_run f (statesample,extsample,evsample) (tend,Wmap,n0) ((i,fld,input),(nstates,spikes)) =
+                
+  fun {{pop.name}}_run f (statesample,extsample,evsample) (tend,Wmap,n0) ((i,fld,input),(nstates,spikes,statelog)) =
     let 
         val f' = f (i,{{pop.name}}_parameters,fld)
-
-        fun log (nstate) =
-            let
-                val _ = if (i<statesample)
-                        then putStrLn (!{{pop.name}}_state_out)
-                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
-                                       (showRealArray (state_y nstate))) 
-                        else ()
-                                 
-                val _ = if (i<extsample)
-                        then putStrLn (!{{pop.name}}_ext_out)
-                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
-                                       (showRealArray (state_ext nstate)) ^ ", " ^
-                                       (showRealArray (state_extev nstate)))
-                        else ()
-                val _ = if (i<evsample)
-                        then putStrLn (!{{pop.name}}_event_out)
-                                      (Int.toString (i) ^ ", " ^ (showReal (state_indep nstate)) ^ ", " ^
-                                       (showRealArray (state_event nstate)))
-                        else ()
-            in
-                ()
-            end
 
 (*
 {% if pop.value.prototype.fieldExprML %}
         val fieldV = getindex ({{pop.name}}_field_vector,i)
 {% endif %}
 *)
-        val _ = log(input)
+        val statelog' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
+                        then ((i+{{pop.name}}_n0,copy_state input))::statelog
+                        else statelog
 
         val update = Unsafe.Array.update
         val ext_i = state_ext input
@@ -338,24 +334,27 @@ struct
                              index+1))
                 0 {{pop.name}}_ext_ports
                 
-        fun recur (nstate, spikes) = 
+        fun recur (nstate, spikes, statelog) = 
             if state_indep nstate >= tend
             then 
-                (nstate, spikes)
+                (nstate, spikes, statelog)
             else 
                 (let 
                     val h' = Real.max(Real.min(tend-(state_indep nstate), state_h nstate), 1e~6)
                     val nstate'  = f' (update_h (nstate, h'))
-                    val nstate'' = if state_root nstate' then (log nstate'; f' nstate') else nstate'
+                    val statelog'' = if state_root nstate' andalso ((i<statesample) orelse (i<extsample) orelse (i<evsample))
+                                     then ((i+{{pop.name}}_n0,copy_state input))::statelog'
+                                     else statelog'
+                    val nstate'' = if state_root nstate' then f' nstate' else nstate'
                     val hasevent = Real.>= (event_sub(nstate'',0), 0.0)
+                    val spikes'  = if hasevent then ((i+{{pop.name}}_n0,state_indep nstate',1.0))::spikes else spikes
                 in
-                    recur (nstate'',
-                           if hasevent then ((i+{{pop.name}}_n0,state_indep nstate',1.0))::spikes else spikes)
+                    recur (nstate'', spikes', statelog'')
                 end)
 
-        val (nstate', spikes') = recur (input, spikes)
+        val (nstate', spikes', statelog') = recur (input, spikes, statelog)
  in
-     ((i,fld,nstate')::nstates, spikes')
+     ((i,fld,nstate')::nstates, spikes', statelog')
  end
 
 {% endfor %}
@@ -390,6 +389,13 @@ struct
 
         {% endfor %}
     ]
+
+    val Plabels = [
+        {% for pop in dict (group.populations) %}
+        "{{pop.name}}"{% if not loop.last %},{% endif %}
+
+        {% endfor %}
+    ]
          
 
     fun frun (statesample,extsample,evsample) (tend,I)
@@ -400,9 +406,9 @@ struct
 {% endfor %} ) =
         let
 {% for pop in dict (group.populations) %}
-            val ({{pop.name}}_states,{{pop.name}}_spikes) = 
+            val ({{pop.name}}_states,{{pop.name}}_spikes,{{pop.name}}_statelog) = 
                 List.foldl ({{pop.name}}_run {{pop.name}}_f (statesample,extsample,evsample) (tend,I,{{pop.name}}_n0))
-                           ([],[]) {{pop.name}}_state_vector
+                           ([],[],[]) {{pop.name}}_state_vector
 
 {% endfor %}
         in
@@ -417,7 +423,13 @@ struct
              {{pop.name}}_spikes{% if not loop.last %},{% endif %}
 
 {% endfor %}
-            ))
+             ),
+             [
+{% for pop in dict (group.populations) %}
+             {{pop.name}}_statelog{% if not loop.last %},{% endif %}
+
+{% endfor %}
+            ])
         end
                          
     fun fspikeidxs spikesetName = 
