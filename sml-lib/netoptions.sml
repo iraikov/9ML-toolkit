@@ -9,7 +9,7 @@ exception Error
 
 datatype flag =  Help | Time of real | Timestep of real | Tol of real
                  | Statesample of int | Extsample of int | Evsample of int
-                 | Spikerecord of string | Prjrecord | Prjsummary | Logperiod of real
+                 | Spikerecord of string | Prjrecord | Logperiod of real
                  | Spikeout of string | Stateprefix of string
                  | Eventprefix of string | Extprefix of string
                  | Prjprefix of string
@@ -25,7 +25,6 @@ fun showflag (Help)       = "Help"
   | showflag (Evsample x)     = ("Evsample " ^ (Int.toString x))
   | showflag (Spikerecord x)  = ("Spikerecord " ^ x)
   | showflag (Prjrecord)  = ("Prjrecord")
-  | showflag (Prjsummary)  = ("Prjsummary")
   | showflag (Spikeout x)  = ("Spikeout " ^ x)
   | showflag (Eventprefix x)  = ("Eventprefix " ^ x)
   | showflag (Stateprefix x)  = ("Stateprefix " ^ x)
@@ -83,12 +82,7 @@ val options =
      {short="",
       long=["prjrecord"],
       desc=G.NoArg (fn() => Prjrecord),
-      help="record projections to file"},
-
-     {short="p",
-      long=["prjsummary"],
-      desc=G.NoArg (fn() => Prjsummary),
-      help="show projection summary"},
+      help="record projections to files"},
 
      {short="",
       long=["spikeout"],
@@ -139,7 +133,6 @@ fun getstate (opts) =
 	val O_EXTSAMPLE       = ref NONE
 	val O_EVSAMPLE        = ref NONE
 	val O_SPIKERECORD     = ref NONE
-	val O_PRJSUMMARY      = ref false
 	val O_PRJRECORD       = ref false
 	val O_SPIKEOUT        = ref NONE
 	val O_STATEPREFIX     = ref NONE
@@ -158,7 +151,6 @@ fun getstate (opts) =
 	       | Extsample   x  => O_EXTSAMPLE := SOME x
 	       | Evsample x     => O_EVSAMPLE := SOME x
 	       | Spikerecord x  => O_SPIKERECORD := SOME x
-	       | Prjsummary     => O_PRJSUMMARY := true
 	       | Prjrecord      => O_PRJRECORD := true
 	       | Spikeout x     => O_SPIKEOUT := SOME x
 	       | Stateprefix x  => O_STATEPREFIX := SOME x
@@ -180,7 +172,6 @@ fun getstate (opts) =
 	is_evsample=(!O_EVSAMPLE),
 	is_spikerecord=(!O_SPIKERECORD),
 	is_prjrecord=(!O_PRJRECORD),
-	is_prjsummary=(!O_PRJSUMMARY),
 	is_spikeout=(!O_SPIKEOUT),
 	is_stateprefix=(!O_STATEPREFIX),
 	is_eventprefix=(!O_EVENTPREFIX),

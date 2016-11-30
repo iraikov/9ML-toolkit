@@ -83,13 +83,13 @@
 			    (transformer ,string->symbol)
                             ))
 
-    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, rkoz3, rkdp, crk3, crkdp, crkbs)"
+    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, rkoz3, rkdp, crk3, crk4a, crk4b, crkdp, crkbs)"
 		     (value (required PLATFORM)
 			    (predicate 
 			     ,(lambda (x) 
 				(let ((s (string->symbol (string-downcase x))))
 				  (case s
-				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crk3 crkdp crkbs ) s)
+				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crk3 crk4a crk4b crkdp crkbs ) s)
 				    (else (error '9ML-network "unrecognized method" x))))))
 			    (transformer ,string->symbol)
                             )
@@ -844,7 +844,7 @@
                   (salt:codegen-ODE/ML node-name sim out: sml-port solver: (ivp-simulation-method) libs: '(random))
                   (close-output-port sml-port)
                   (case (ivp-simulation-method) 
-                    ((crk3 crkbs crkdp)
+                    ((crk3 crk4a crk4b crkbs crkdp)
                      (let ((c-port (open-output-file (make-pathname source-dir (sprintf "~A.c" node-name)))))
 
                        (salt:codegen-ODE/C node-name sim out: c-port solver: (ivp-simulation-method) libs: '(random))
@@ -916,7 +916,7 @@
                                                   group-tenv
                                                   `((solverMethod . ,(Tstr (->string (ivp-simulation-method))))
                                                     (UseCSolver . ,(Tbool (case (ivp-simulation-method)
-                                                                            ((crk3 crkbs crkdp) #t)
+                                                                            ((crk3 crk4a crk4b crkbs crkdp) #t)
                                                                             (else #f))))
                                                     ))
                                          ))
@@ -939,7 +939,7 @@
                                                                                 (make-pathname shared-dir "9ML")
                                                                                 "sml-lib")))
                                                      (UseCSolver . ,(Tbool (case (ivp-simulation-method)
-                                                                             ((crk3 crkbs crkdp) #t)
+                                                                             ((crk3 crk4a crk4b crkbs crkdp) #t)
                                                                              (else #f))))
                                                      (CSolverFiles . ,(let ((csolver-path 
                                                                              (make-pathname
@@ -949,6 +949,8 @@
                                                                               "rk")))
                                                                         (Tlist (case (ivp-simulation-method)
                                                                                  ((crk3) (list (Tstr (make-pathname csolver-path "crk3.c"))))
+                                                                                 ((crk4a) (list (Tstr (make-pathname csolver-path "crk4a.c"))))
+                                                                                 ((crk4b) (list (Tstr (make-pathname csolver-path "crk4b.c"))))
                                                                                  ((crkbs) (list (Tstr (make-pathname csolver-path "crkbs.c"))))
                                                                                  ((crkdp) (list (Tstr (make-pathname csolver-path "crkdp.c"))))
                                                                                  (else (list))))))

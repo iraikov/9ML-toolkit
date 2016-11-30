@@ -56,27 +56,6 @@ exception Index
 exception Shape
 fun dimVals [m,n] = (m,n) | dimVals _ = raise Shape
 
-fun writeProjectionSummary S =
-  ListPair.app
-      (fn (W,p) =>
-          let
-              val (m,n) = dimVals (BitSparseMatrix.shape W)
-          in
-              putStrLn TextIO.stdOut ("Projection " ^ (Int.toString p) ^ ": ");
-              Loop.app (0, n,
-                        fn (i) => 
-                           let
-                               val sl = BitSparseMatrix.slice (W,1,i)
-                               val sln = BitSparseMatrix.sliceFoldi
-                                             (fn (j,x,n) => n+1)
-                                             0 sl
-                           in
-                               putStrLn TextIO.stdOut
-                                        ("column " ^ (Int.toString i) ^ ": n = " ^ (Int.toString sln))
-                           end)
-          end)
-      (S, List.tabulate (List.length S, fn(i) => i))
-
 fun writeProjection S prefix =
   ListPair.app
       (fn (W,p) =>
@@ -314,7 +293,7 @@ fun main (name,args) =
 		    
         val {is_help, is_time, is_timestep, is_tol, is_logperiod, 
              is_statesample, is_extsample, is_evsample,
-             is_spikerecord, is_prjrecord, is_prjsummary,
+             is_spikerecord, is_prjrecord, 
              is_spikeout, is_stateprefix,
              is_extprefix, is_eventprefix,
              is_prjprefix} = Options.getstate (opts)
@@ -355,10 +334,6 @@ fun main (name,args) =
 
             val _ = if is_prjrecord
                     then writeProjection S prjout_prefix
-                    else ()
-                             
-            val _ = if is_prjsummary
-                    then writeProjectionSummary S
                     else ()
                                  
             val _ = (case is_spikerecord of
