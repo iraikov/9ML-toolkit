@@ -56,47 +56,50 @@ exception Index
 exception Shape
 fun dimVals [m,n] = (m,n) | dimVals _ = raise Shape
 
-fun writeProjectionSummary S k =
-    List.app
-        (fn (W) =>
-            let
-                val (m,n) = dimVals (BitSparseMatrix.shape W)
-            in
-                Loop.app (0, n,
-                          fn (i) => 
-                             let
-                                 val sl = BitSparseMatrix.slice (W,k,i)
-                                 val sln = BitSparseMatrix.sliceFoldi
-                                               (fn (j,x,n) => n+1)
-                                               0 sl
-                             in
-                                 putStrLn TextIO.stdOut
-                                          ("column " ^ (Int.toString i) ^ 
-                                           ": n = " ^ (Int.toString sln))
-                             end)
-            end)
-        S
+fun writeProjectionSummary S =
+  ListPair.app
+      (fn (W,p) =>
+          let
+              val (m,n) = dimVals (BitSparseMatrix.shape W)
+          in
+              putStrLn TextIO.stdOut ("Projection " ^ (Int.toString p) ^ ": ");
+              Loop.app (0, n,
+                        fn (i) => 
+                           let
+                               val sl = BitSparseMatrix.slice (W,1,i)
+                               val sln = BitSparseMatrix.sliceFoldi
+                                             (fn (j,x,n) => n+1)
+                                             0 sl
+                           in
+                               putStrLn TextIO.stdOut
+                                        ("column " ^ (Int.toString i) ^ ": n = " ^ (Int.toString sln))
+                           end)
+          end)
+      (S, List.tabulate (List.length S, fn(i) => i))
 
-fun writeProjection S k =
-    List.app
-        (fn (W) =>
-            let
-                val (m,n) = dimVals (BitSparseMatrix.shape W)
-            in
-                Loop.app (0, n,
-                          fn (i) => 
-                             let
-                                 val sl = BitSparseMatrix.slice (W,k,i)
-                                 val sln = BitSparseMatrix.sliceFoldi
-                                               (fn (j,x,n) => n+1)
-                                               0 sl
-                             in
-                                 putStrLn TextIO.stdOut
-                                          ("column " ^ (Int.toString i) ^ 
-                                           ": n = " ^ (Int.toString sln))
-                             end)
-            end)
-        S
+fun writeProjection S prefix =
+  ListPair.app
+      (fn (W,p) =>
+          let
+              val out = TextIO.openAppend (prefix ^ "." ^ (Int.toString p) ^ ".prj.dat")
+              val (m,n) = dimVals (BitSparseMatrix.shape W)
+          in
+              Loop.app (0, n,
+                        fn (i) => 
+                           let
+                               val sl = BitSparseMatrix.slice (W,1,i)
+                               val lst = BitSparseMatrix.sliceFoldi
+                                             (fn (j,x,lst) => j::lst)
+                                             [] sl
+                           in
+                               List.app
+                                   (fn (j) => putStrLn out ( (Int.toString i) ^ " " ^ (Int.toString j)))
+                                   lst
+                           end);
+              TextIO.flushOut out; 
+              TextIO.closeOut out
+          end)
+      (S, List.tabulate (List.length S, fn(i) => i))
 
                      
 fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (statelog,spikelog) =
@@ -342,9 +345,7 @@ fun main (name,args) =
         val eventout_prefix = if evsample>0
                               then (case is_eventprefix of SOME s => SOME s | NONE => SOME (label ^ "_event"))
                               else NONE
-        val prjout_prefix   = if is_prjrecord
-                              then (case is_prjprefix of SOME s => SOME s | NONE => SOME (label ^ "_prj"))
-                              else NONE
+        val prjout_prefix   = case is_prjprefix of SOME s => s | NONE => label
 
     in
         (let
@@ -352,6 +353,14 @@ fun main (name,args) =
             val (S,t) = timing fprojection
             val     _ = putStrLn TextIO.stdOut ("projections took " ^ (Time.toString t) ^ " s")
 
+            val _ = if is_prjrecord
+                    then writeProjection S prjout_prefix
+                    else ()
+                             
+            val _ = if is_prjsummary
+                    then writeProjectionSummary S
+                    else ()
+                                 
             val _ = (case is_spikerecord of
                          SOME s =>
                          let val spike_out = TextIO.openOut spikeout_filepath
