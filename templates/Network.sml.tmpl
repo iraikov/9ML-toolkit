@@ -101,68 +101,68 @@ struct
                   SOME v => v
                 | NONE => (fn v => v)
       in
-          D.condApply condfun (D.RegimeState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
+          D.condApply condfun (D.RegimeState (0.0, 0.0, initial(alloc n), 0.0, evinitial (alloc nev), dinitial' (alloc ndsc), 
                                               rinitial (bool_alloc nregime), extinitial(), extevinitial(), alloc n, alloc n,
                                               alloc nev, false))
       end
    |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
                           (i,condfun,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
-      D.condApply condfun (D.EventState (0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
+      D.condApply condfun (D.EventState (0.0, 0.0, initial(alloc n), 0.0, evinitial (alloc nev), 
                                          extinitial (), extevinitial (), initial(alloc n), initial(alloc n), 
                                          alloc nev, false))
    |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
                           (i,condfun,initial,NONE,NONE,NONE,extinitial,extevinitial) =
-      D.ContState (0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n)
+      D.ContState (0.0, 0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n)
    |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
                           (i,condfun,initial,_,_,_,extinitial,extevinitial) =
       (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
 
-  fun state_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root), i) =
+  fun state_sub (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root), i) =
       getindex(y, i)
-   |  state_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root), i) =
+   |  state_sub (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root), i) =
       getindex(y, i)
-   |  state_sub (D.ContState (x, y, ext, extev, ynext, yrsp), i) =
+   |  state_sub (D.ContState (x, cx, y, ext, extev, ynext, yrsp), i) =
       getindex(y, i)
 
-  fun state_y (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = y
-   |  state_y (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = y
-   |  state_y (D.ContState (x, y, ext, extev, ynext, yrsp)) = y
+  fun state_y (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = y
+   |  state_y (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = y
+   |  state_y (D.ContState (x, cx, y, ext, extev, ynext, yrsp)) = y
 
-  fun state_indep (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = x
-   |  state_indep (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = x
-   |  state_indep (D.ContState (x, y, ext, extev, ynext, yrsp)) = x
+  fun state_indep (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = x
+   |  state_indep (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = x
+   |  state_indep (D.ContState (x, cx, y, ext, extev, ynext, yrsp)) = x
 
-  fun state_ext (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = ext
-   |  state_ext (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = ext
-   |  state_ext (D.ContState (x, y, ext, extev, ynext, yrsp)) = ext
+  fun state_ext (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = ext
+   |  state_ext (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = ext
+   |  state_ext (D.ContState (x, cx, y, ext, extev, ynext, yrsp)) = ext
 
-  fun state_extev (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = extev
-   |  state_extev (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = extev
-   |  state_extev (D.ContState (x, y, ext, extev, ynext, yrsp)) = extev
+  fun state_extev (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = extev
+   |  state_extev (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = extev
+   |  state_extev (D.ContState (x, cx, y, ext, extev, ynext, yrsp)) = extev
 
-  fun state_regime (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = r
-   |  state_regime (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = Array.fromList []
-   |  state_regime (D.ContState (x, y, ext, extev, ynext, yrsp)) = Array.fromList[]
+  fun state_regime (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = r
+   |  state_regime (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = Array.fromList []
+   |  state_regime (D.ContState (x, cx, y, ext, extev, ynext, yrsp)) = Array.fromList[]
 
-  fun state_event (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = ev
-   |  state_event (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = ev
-   |  state_event (D.ContState (x, y, ext, extev, ynext, yrsp)) = Array.fromList []
+  fun state_event (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = ev
+   |  state_event (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = ev
+   |  state_event (D.ContState (x, cx, y, ext, extev, ynext, yrsp)) = Array.fromList []
 
-  fun ext_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root), i) = getindex(ext, i)
-   |  ext_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root), i) = getindex(ext, i)
-   |  ext_sub (D.ContState (x, y, ext, extev, ynext, yrsp), i) = getindex(ext, i)
+  fun ext_sub (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root), i) = getindex(ext, i)
+   |  ext_sub (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root), i) = getindex(ext, i)
+   |  ext_sub (D.ContState (x, cx, y, ext, extev, ynext, yrsp), i) = getindex(ext, i)
 
-  fun event_sub (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root), i) =
+  fun event_sub (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root), i) =
       getindex(ev, i)
-   |  event_sub (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root), i) =
+   |  event_sub (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root), i) =
       getindex(ev, i)
-   |  event_sub (D.ContState (x, y, ext, extev, ynext, yrsp), i) =
+   |  event_sub (D.ContState (x, cx, y, ext, extev, ynext, yrsp), i) =
       (putStrLn TextIO.stdOut "event_sub:"; raise Domain)
 
 
-  fun state_root (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = root
-   |  state_root (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = root
-   |  state_root (D.ContState (x, y, ext, extev, ynext, yrsp)) = false
+  fun state_root (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = root
+   |  state_root (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) = root
+   |  state_root (D.ContState (x, cx, y, ext, extev, ynext, yrsp)) = false
 
   fun copy_array a =
     let val len = Array.length a
@@ -171,14 +171,14 @@ struct
         if len>0 then Array.copy {di=0, dst=b, src=a} else (); b
     end
                                                                      
-  fun copy_state (D.RegimeState (x, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) =
-    D.RegimeState(x, copy_array y, xev, copy_array ev, copy_array d, copy_array r,
+  fun copy_state (D.RegimeState (x, cx, y, xev, ev, d, r, ext, extev, ynext, yrsp, enext, root)) =
+    D.RegimeState(x, cx, copy_array y, xev, copy_array ev, copy_array d, copy_array r,
                   copy_array ext, copy_array extev, ynext, yrsp, enext, root)
-   |  copy_state (D.EventState (x, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) =
-      D.EventState (x, copy_array y, xev, copy_array ev, copy_array ext, copy_array extev,
+   |  copy_state (D.EventState (x, cx, y, xev, ev, ext, extev, ynext, yrsp, enext, root)) =
+      D.EventState (x, cx, copy_array y, xev, copy_array ev, copy_array ext, copy_array extev,
                     ynext, yrsp, enext, root) 
-   |  copy_state (D.ContState (x, y, ext, extev, ynext, yrsp)) =
-      D.ContState (x, copy_array y, copy_array ext, copy_array extev, ynext, yrsp)
+   |  copy_state (D.ContState (x, cx, y, ext, extev, ynext, yrsp)) =
+      D.ContState (x, cx, copy_array y, copy_array ext, copy_array extev, ynext, yrsp)
                                                
 
         
