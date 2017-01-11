@@ -288,18 +288,21 @@ struct
   val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
                            
 
-  fun {{pop.name}}_f (i,p,fld) = 
-      D.integral({{pop.value.prototype.name}}.odefun (p,fld),
+  val {{pop.name}}_rs = {{pop.value.prototype.name}}.RandomState()
+  val {{pop.name}}_rszt = {{pop.value.prototype.name}}.RandomZT()
+
+  fun {{pop.name}}_f (i,p,fld,rs,rszt) = 
+      D.integral({{pop.value.prototype.name}}.odefun (p,fld,rs,rszt),
                  optApply {{pop.value.prototype.name}}.condfun (p,fld),
-                 optApply {{pop.value.prototype.name}}.posfun (p,fld),
-                 optApply {{pop.value.prototype.name}}.negfun (p,fld),
-                 optApply {{pop.value.prototype.name}}.dposfun (p,fld),
+                 optApply {{pop.value.prototype.name}}.posfun (p,fld,rs,rszt),
+                 optApply {{pop.value.prototype.name}}.negfun (p,fld,rs,rszt),
+                 optApply {{pop.value.prototype.name}}.dposfun (p,fld,rs,rszt),
                  {{pop.value.prototype.name}}.regfun)
 
                 
   fun {{pop.name}}_run f (statesample,extsample,evsample) (tend,Wmap,n0) ((i,fld,input),(nstates,spikes,statelog)) =
     let 
-        val f' = f (i,{{pop.name}}_parameters,fld)
+        val f' = f (i,{{pop.name}}_parameters,fld,{{pop.name}}_rs,{{pop.name}}_rszt)
 
 (*
 {% if pop.value.prototype.fieldExprML %}

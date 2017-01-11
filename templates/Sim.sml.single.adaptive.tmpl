@@ -113,10 +113,13 @@ val rsp         = Model.initfun(p, fld) (Model.alloc Model.n)
 val err         = Model.alloc Model.n
 val evnext      = optApply Model.initcondfun (Model.alloc Model.nev)
 
-val f = D.integral(Model.odefun(p, fld),optApply Model.condfun (p, fld),
-                   optApply Model.posfun (p, fld),
-                   optApply Model.negfun (p, fld),
-                   optApply Model.dposfun (p, fld),Model.regfun)
+val rs = Model.RandomState()
+val rszt = Model.RandomZT()
+
+val f = D.integral(Model.odefun(p, fld, rs, rszt),optApply Model.condfun (p, fld),
+                   optApply Model.posfun (p, fld, rs, rszt),
+                   optApply Model.negfun (p, fld, rs, rszt),
+                   optApply Model.dposfun (p, fld, rs, rszt),Model.regfun)
 
 val optStatus = ref NONE
 val (opts, _) = (Options.getopt optStatus) (CommandLine.arguments())

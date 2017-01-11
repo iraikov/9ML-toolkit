@@ -127,10 +127,13 @@ val _ = if is_help then exitHelp (CommandLine.name()) else ()
 val h     = case is_timestep of SOME dt => dt | NONE => 0.01
 val tstop = case is_time of SOME t => t | NONE => 150.0
 
-val f = D.integral(Model.odefun(p,fld),optApply Model.condfun (p, fld),
-                   optApply Model.posfun (p, fld),
-                   optApply Model.negfun (p, fld),
-                   optApply Model.dposfun (p, fld),Model.regfun,h)
+val rs = Model.RandomState()
+val rszt = Model.RandomZT()
+                                                      
+val f = D.integral(Model.odefun(p,fld,rs,rszt),optApply Model.condfun (p, fld),
+                   optApply Model.posfun (p, fld, rs, rszt),
+                   optApply Model.negfun (p, fld, rs, rszt),
+                   optApply Model.dposfun (p, fld, rs, rszt),Model.regfun,h)
 
 val _ = start (f,initial,evinitial,dinitial,rinitial,extinitial(),extevinitial(),next,rsp,evnext,tstop)
 
