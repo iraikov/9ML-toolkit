@@ -355,7 +355,11 @@ struct
                     recur (nstate'', spikes', statelog'')
                 end)
 
-        val (nstate', spikes', statelog') = recur (input, spikes, statelog)
+        val statelog' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
+                        then ((i+{{pop.name}}_n0,copy_state input))::statelog
+                        else statelog
+
+        val (nstate', spikes', statelog') = recur (input, spikes, statelog')
  in
      ((i,fld,nstate')::nstates, spikes', statelog')
  end

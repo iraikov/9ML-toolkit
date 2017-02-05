@@ -298,20 +298,27 @@ struct
 
 
         fun recur (nstate,spikes,statelog: (int * D.model_state) list) = 
-            let
-                val spikes' = if (Real.>= (event_sub(nstate,0), 0.0))
-                              then ((i+{{pop.name}}_n0,1.0))::spikes
-                              else spikes
-                val statelog' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
-                                then ((i+{{pop.name}}_n0,copy_state nstate))::statelog
-                                else statelog
+          let
+              val spikes' = if (Real.>= (event_sub(nstate,0), 0.0))
+                            then ((i+{{pop.name}}_n0,1.0))::spikes
+                            else spikes
+
+              val statelog' = if state_root nstate
+                              then (if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
+                                    then ((i+{{pop.name}}_n0,copy_state nstate))::statelog
+                                    else statelog)
+                              else statelog
             in
                 if state_root nstate 
                 then recur (f' nstate, spikes', statelog')
                 else (nstate, spikes', statelog')
             end
 
-        val (nstate,spikes',statelog') = recur (f' input,spikes,statelog)
+        val statelog' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
+                        then ((i+{{pop.name}}_n0,copy_state input))::statelog
+                        else statelog
+
+        val (nstate,spikes',statelog') = recur (f' input,spikes,statelog')
     in 
         ((i,fld,nstate)::nstates, spikes', statelog')
          
