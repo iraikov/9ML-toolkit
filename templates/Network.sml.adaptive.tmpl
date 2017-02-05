@@ -99,6 +99,7 @@ struct
   val getindex = Unsafe.Array.sub
 
 
+  val RandomInitFromInt = RandomMTZig.fromInt
   val RandomInit = RandomMTZig.fromEntropy
 
   val ZigInit = RandomMTZig.ztnew
@@ -287,10 +288,6 @@ struct
 
   val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
                            
-
-  val {{pop.name}}_rs = {{pop.value.prototype.name}}.RandomState()
-  val {{pop.name}}_rszt = {{pop.value.prototype.name}}.RandomZT()
-
   fun {{pop.name}}_f (i,p,fld,rs,rszt) = 
       D.integral({{pop.value.prototype.name}}.odefun (p,fld,rs,rszt),
                  optApply {{pop.value.prototype.name}}.condfun (p,fld),
@@ -300,9 +297,9 @@ struct
                  {{pop.value.prototype.name}}.regfun)
 
                 
-  fun {{pop.name}}_run f (statesample,extsample,evsample) (tend,Wmap,n0) ((i,fld,input),(nstates,spikes,statelog)) =
+  fun {{pop.name}}_run f (rs,rszt) (statesample,extsample,evsample) (tend,Wmap,n0) ((i,fld,input),(nstates,spikes,statelog)) =
     let 
-        val f' = f (i,{{pop.name}}_parameters,fld,{{pop.name}}_rs,{{pop.name}}_rszt)
+        val f' = f (i,{{pop.name}}_parameters,fld,rs,rszt)
 
 (*
 {% if pop.value.prototype.fieldExprML %}
@@ -388,7 +385,7 @@ struct
 {% endfor %}
     )
 
-
+    val P = {{length(dict(group.populations))}}
                 
     val Pn = [
         {% for pop in dict (group.populations) %}
@@ -405,16 +402,18 @@ struct
     ]
          
 
-    fun frun (statesample,extsample,evsample) (tend,I)
+    fun frun rss (statesample,extsample,evsample) (tend,I)
              (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
 
 {% endfor %} ) =
         let
-{% for pop in dict (group.populations) %}
+            {% for pop in dict (group.populations) %}
+            val rs   = List.nth(rss, {{loop.index0}})
+            val rszt = ZigInit()
             val ({{pop.name}}_states,{{pop.name}}_spikes,{{pop.name}}_statelog) = 
-                List.foldl ({{pop.name}}_run {{pop.name}}_f (statesample,extsample,evsample) (tend,I,{{pop.name}}_n0))
+                List.foldl ({{pop.name}}_run {{pop.name}}_f (rs,rszt) (statesample,extsample,evsample) (tend,I,{{pop.name}}_n0))
                            ([],[],[]) {{pop.name}}_state_vector
 
 {% endfor %}

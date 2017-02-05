@@ -13,7 +13,10 @@ datatype flag =  Help | Time of real | Timestep of real | Tol of real
                  | Spikeout of string | Stateprefix of string
                  | Eventprefix of string | Extprefix of string
                  | Prjprefix of string
+                 | Randomseeds of int list
 
+fun list2str elem2str lst =
+  String.concatWith "," (List.map elem2str lst) 
 
 fun showflag (Help)       = "Help"
   | showflag (Time x)     = ("Time " ^ (Real.toString x))
@@ -30,6 +33,7 @@ fun showflag (Help)       = "Help"
   | showflag (Stateprefix x)  = ("Stateprefix " ^ x)
   | showflag (Extprefix x)  = ("Extprefix " ^ x)
   | showflag (Prjprefix x)  = ("Prjprefix " ^ x)
+  | showflag (Randomseeds x)  = ("Randomseeds " ^ (list2str Int.toString x))
 		   
 
 val options = 
@@ -83,6 +87,17 @@ val options =
       long=["prjrecord"],
       desc=G.NoArg (fn() => Prjrecord),
       help="record projections to files"},
+
+     {short="",
+      long=["randomseeds"],
+      desc=G.ReqArg (fn(x) =>
+                        let
+                            val lst = List.mapPartial Int.fromString (String.tokens (fn(c) => c=(#",")) x)
+                        in
+                            Randomseeds lst
+                        end,
+                     "SEED1,...,SEEDN"),
+      help="random seeds for each population"},
 
      {short="",
       long=["spikeout"],
@@ -139,6 +154,7 @@ fun getstate (opts) =
 	val O_EXTPREFIX       = ref NONE
 	val O_EVENTPREFIX     = ref NONE
 	val O_PRJPREFIX       = ref NONE
+	val O_RANDOMSEEDS     = ref NONE
 
 	fun getstate' (opt) = 
 	    (case opt of 
@@ -157,6 +173,7 @@ fun getstate (opts) =
 	       | Extprefix x    => O_EXTPREFIX := SOME x
 	       | Eventprefix x  => O_EVENTPREFIX := SOME x
 	       | Prjprefix x    => O_PRJPREFIX := SOME x
+	       | Randomseeds x  => O_RANDOMSEEDS := SOME x
             )
 
 	val _ = app getstate' opts
@@ -176,7 +193,8 @@ fun getstate (opts) =
 	is_stateprefix=(!O_STATEPREFIX),
 	is_eventprefix=(!O_EVENTPREFIX),
 	is_extprefix=(!O_EXTPREFIX),
-	is_prjprefix=(!O_PRJPREFIX)
+	is_prjprefix=(!O_PRJPREFIX),
+	is_randomseeds=(!O_RANDOMSEEDS)
        }
     end
 

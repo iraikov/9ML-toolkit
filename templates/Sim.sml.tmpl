@@ -160,7 +160,7 @@ fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (stat
   end
 
 
-fun start (N, S, D, DQ, Pn, Plabels, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod,
+fun start (N, S, D, DQ, Pn, Plabels, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod, rss,
            (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix),
            (statesample,extsample,evsample)) =
 
@@ -169,7 +169,7 @@ let
     val isub = Unsafe.IntArray.sub
     val update = Unsafe.Real64Array.update
 
-    val frun' = frun (statesample,extsample,evsample)
+    val frun' = frun rss (statesample,extsample,evsample)
           
     val writeLog' = writeLog Plabels (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix)
                              
@@ -296,7 +296,8 @@ fun main (name,args) =
              is_spikerecord, is_prjrecord, 
              is_spikeout, is_stateprefix,
              is_extprefix, is_eventprefix,
-             is_prjprefix} = Options.getstate (opts)
+             is_prjprefix,
+             is_randomseeds} = Options.getstate (opts)
 						                       
         val _ = if is_help then exitHelp (CommandLine.name()) else ()
         val _ = case (is_statesample, is_extsample, is_evsample, is_spikerecord) of
@@ -379,9 +380,18 @@ fun main (name,args) =
                       | NONE => ()
                     )
 
+            val rss   = case is_randomseeds of
+                            NONE => List.tabulate (P, fn(i) => RandomInit())
+                         |  SOME lst => if (List.length lst)=P
+                                        then List.map RandomInitFromInt lst
+                                        else exitError (CommandLine.name(),
+                                                        "list of random seeds does not match number of populations")
+            
+                        
             val _     = putStrLn TextIO.stdOut ("starting simulation...")
             val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, initial, frun, 
                                                 ftime, fspikes spikelog, finfo, tstop, logperiod,
+                                                rss,
                                                 (spikeout_filepath,stateout_prefix,
                                                  extout_prefix,eventout_prefix),
                                                 (statesample,extsample,evsample)))
