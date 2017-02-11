@@ -160,7 +160,7 @@ fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (stat
   end
 
 
-fun start (N, S, D, DQ, Pn, Plabels, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod, rss,
+fun start (N, S, D, DQ, Pn, Plabels, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod, rss, rszts,
            (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix),
            (statesample,extsample,evsample)) =
 
@@ -169,7 +169,7 @@ let
     val isub = Unsafe.IntArray.sub
     val update = Unsafe.Real64Array.update
 
-    val frun' = frun rss (statesample,extsample,evsample)
+    val frun' = frun (rss, rszts) (statesample,extsample,evsample)
           
     val writeLog' = writeLog Plabels (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix)
                              
@@ -386,12 +386,13 @@ fun main (name,args) =
                                         then List.map RandomInitFromInt lst
                                         else exitError (CommandLine.name(),
                                                         "list of random seeds does not match number of populations")
+            val rszts   = List.tabulate (P, fn(i) => ZigInit())
             
                         
             val _     = putStrLn TextIO.stdOut ("starting simulation...")
             val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, initial, frun, 
                                                 ftime, fspikes spikelog, finfo, tstop, logperiod,
-                                                rss,
+                                                rss, rszts,
                                                 (spikeout_filepath,stateout_prefix,
                                                  extout_prefix,eventout_prefix),
                                                 (statesample,extsample,evsample)))

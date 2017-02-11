@@ -402,7 +402,7 @@ struct
     ]
          
 
-    fun frun rss (statesample,extsample,evsample) (tend,I)
+    fun frun (rss, rszts) (statesample,extsample,evsample) (tend,I)
              (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
@@ -411,7 +411,8 @@ struct
         let
             {% for pop in dict (group.populations) %}
             val rs   = List.nth(rss, {{loop.index0}})
-            val rszt = ZigInit()
+            val rszt = List.nth(rszts, {{loop.index0}})
+
             val ({{pop.name}}_states,{{pop.name}}_spikes,{{pop.name}}_statelog) = 
                 List.foldl ({{pop.name}}_run {{pop.name}}_f (rs,rszt) (statesample,extsample,evsample) (tend,I,{{pop.name}}_n0))
                            ([],[],[]) {{pop.name}}_state_vector
