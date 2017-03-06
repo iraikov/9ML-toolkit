@@ -207,6 +207,7 @@ EOF
 			    ,(case solver ((crkdp) `("$(RK_LIB)/crk.mlb" ,nl )) (else '()))
 			    ("$(LASTN_LIB)/lastn-buffer.mlb" ,nl )
 			    ("$(RANDMTZIG_LIB)/randmtzig.mlb" ,nl )
+			    ("$(INTERP_LIB)/lininterp.mlb" ,nl )
 			    ("local " ,nl)
 			    (,(sprintf "    ~A_solver.sml" ivp-id) ,nl)
 			    ("in" ,nl)
@@ -222,6 +223,7 @@ EOF
                             -mlb-path-var ,(string-append "'LASTN_LIB " salt-dir "/sml-lib/lastn-buffer'") 
                             -mlb-path-var ,(string-append "'RK_LIB " salt-dir "/sml-lib/rk'") 
                             -mlb-path-var ,(string-append "'RANDMTZIG_LIB " salt-dir "/sml-lib/randmtzig'") 
+                            -mlb-path-var ,(string-append "'INTERP_LIB " salt-dir "/sml-lib/lininterp'") 
                             ,mlb-path
                             ,(string-append salt-dir "/sml-lib/randmtzig/randmtziglib.c")
                             )))
@@ -266,6 +268,7 @@ EOF
 			    ,(case solver ((crkdp) `("$(RK_LIB)/crk.mlb" ,nl )) (else '()))
 			    ("$(LASTN_LIB)/lastn-buffer.mlb" ,nl )
 			    ("$(RANDMTZIG_LIB)/randmtzig.mlb" ,nl )
+			    ("$(INTERP_LIB)/lininterp.mlb" ,nl )
 			    ("local " ,nl)
 			    (,(sprintf "    ~A_solver.sml" ivp-id) ,nl)
 			    ("in" ,nl)
