@@ -310,6 +310,7 @@ struct
                 case state_root nstate of
                     D.RootFound _ => recur (f' nstate, spikes', statelog')
                   | D.RootStep _ =>  recur (f' nstate, spikes', statelog')
+                  | D.RootCheck _ =>  recur (f' nstate, spikes', statelog')
                   | _ =>  (nstate, spikes', statelog')
             end
 
