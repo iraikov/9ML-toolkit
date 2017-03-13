@@ -4,6 +4,19 @@ struct
 
   structure D = Dynamics
 
+  structure SEventPriority = 
+  struct
+       type priority     = real
+
+       fun compare (x,y) = Real.compare (x,y)
+       type item         = real * int
+       fun priority (x : item) = (#1(x))
+  end
+      
+  structure SEQ = TEventQueue (structure P = SEventPriority
+                               type value = int
+                               fun value (x : P.item) = (#2(x)))
+
   fun putStrLn out str = 
       (TextIO.output (out, str);
        TextIO.output (out, "\n"))
@@ -273,32 +286,37 @@ struct
         val ext_i = state_ext input
         val extev_i = state_extev input
 
-        val _ = 
+        fun extevent t = 
             List.foldl
                 (fn (port, index) => 
-                    case IntMap.find (Wmap, port) of
+                    case IntMap.find (Wmap, i+n0) of
                         NONE => 
                         (update (ext_i, index, 0.0); 
                          update (extev_i, index, Real.posInf); 
                          index+1)
-                      | SOME (t,W) => 
-                        case IntMap.find(W,i+n0) of
-                            SOME v => 
-                            (update (ext_i, index, v); 
-                             update (extev_i, index, t); 
-                             index+1)
+                      | SOME (spm) => 
+                        case IntMap.find (spm, port) of
+                            SOME lst =>
+                            let fun recur ((t',v)::rst) =
+                                  (if t < t'
+                                   then (update (ext_i, index, v); 
+                                         update (extev_i, index, t'))
+                                   else recur rst)
+                                  | recur  [] =  ()
+                            in
+                                (recur lst; index+1)
+                            end
                           | NONE => 
                             (update (ext_i, index, 0.0); 
                              update (extev_i, index, Real.posInf); 
                              index+1))
-                0
-                {{pop.name}}_ext_ports
+                0 {{pop.name}}_ext_ports
 
 
         fun recur (nstate,spikes,statelog: (int * D.model_state) list) = 
           let
               val spikes' = if (Real.>= (event_sub(nstate,0), 0.0))
-                            then ((i+{{pop.name}}_n0,1.0))::spikes
+                            then (i+{{pop.name}}_n0,state_indep nstate,1.0)::spikes
                             else spikes
 
               val statelog' = case state_root nstate of
@@ -306,10 +324,13 @@ struct
                                                  then ((i+{{pop.name}}_n0,copy_state nstate))::statelog
                                                  else statelog)
                                |  _ =>  statelog
-            in
+          in
+              
                 case state_root nstate of
-                    D.RootFound _ => recur (f' nstate, spikes', statelog')
-                  | D.RootStep _ =>  recur (f' nstate, spikes', statelog')
+                    D.RootFound _ => (extevent (state_indep nstate);
+                                      recur (f' nstate, spikes', statelog'))
+                  | D.RootStep _ =>  (extevent (state_indep nstate);
+                                      recur (f' nstate, spikes', statelog'))
                   | D.RootCheck _ =>  recur (f' nstate, spikes', statelog')
                   | _ =>  (nstate, spikes', statelog')
             end
@@ -318,6 +339,7 @@ struct
                         then ((i+{{pop.name}}_n0,copy_state input))::statelog
                         else statelog
 
+        val _ = extevent (state_indep input)
         val (nstate,spikes',statelog') = recur (f' input,spikes,statelog')
     in 
         ((i,fld,nstate)::nstates, spikes', statelog')
@@ -415,7 +437,7 @@ struct
 {% with pop = first (dict (group.populations)) %}
             state_indep (#3 (hd {{pop.name}}_state_vector))
 {% endwith %}
-    
+                         
     fun fspikeidxs spikesetName = 
         let 
             val spikesetPops = case List.find (fn(x) => spikesetName = (hd x)) popmap of
@@ -433,13 +455,16 @@ struct
 {% endfor %} ) =
 
         let
+            fun enqueueSpikes xs =
+                List.foldl (fn(xs,ax) => List.foldl (fn((i,t,nv),ax) => SEQ.addEvent ((t,i),ax)) ax xs) SEQ.empty xs
+
             val all_spike_i = [{% for pop in dict (group.populations) %}{{pop.name}}_spike_i{% if not loop.last %},{% endif %}{% endfor %}]
             val labeled_spike_i = ListPair.zip (List.tabulate (List.length all_spike_i, fn (i) => i), all_spike_i)
 
             val (log_spike_i,ext_spike_i) = List.partition (fn(i,x) => member (i, spikelogIdxs)) labeled_spike_i
-                                                           
+
         in
-            (all_spike_i, List.map #2 log_spike_i)
+            (enqueueSpikes all_spike_i, enqueueSpikes (map #2 log_spike_i))
         end
 
 {% macro cartesian_product(sp, tp) %}
