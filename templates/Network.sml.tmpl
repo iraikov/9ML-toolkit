@@ -271,6 +271,8 @@ struct
                  optApply {{pop.value.prototype.name}}.dposfun (p,fld,rs,rszt),
                  {{pop.value.prototype.name}}.regfun,
                  h)
+
+  exception InvalidExtEvent
                 
   fun {{pop.name}}_run f (rs,rszt) (statesample,extsample,evsample) (Wmap,n0) ((i,fld,input),(nstates,spikes,statelog)) =
     let 
@@ -282,38 +284,47 @@ struct
 {% endif %}
 *)
 
-        val update = Unsafe.Array.update
-        val ext_i = state_ext input
-        val extev_i = state_extev input
+        val update    = Unsafe.Array.update
+        val ext_i     = state_ext input
+        val extev_i   = state_extev input
+        val extev_map = case IntMap.find (Wmap, i+n0) of
+                            SOME spm =>
+                            #2(List.foldr
+                                   (fn(port,(index,ax)) =>
+                                       case IntMap.find (spm, port) of
+                                           SOME lst => (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
+                                                                                " total external events: ");
+                                                        List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
+                                                        putStrLn TextIO.stdOut "";
+                                                        (index+1, (index,lst)::ax))
+                                        |  NONE => (index+1, (index,[])::ax))
+                                   (0,[]) {{pop.name}}_ext_ports)
+                          | NONE => List.tabulate (List.length {{pop.name}}_ext_ports,
+                                                   fn(i) => (i,[]))
 
-        fun extevent t = 
-            List.foldl
-                (fn (port, index) => 
-                    case IntMap.find (Wmap, i+n0) of
-                        NONE => 
-                        (update (ext_i, index, 0.0); 
-                         update (extev_i, index, Real.posInf); 
-                         index+1)
-                      | SOME (spm) => 
-                        case IntMap.find (spm, port) of
-                            SOME lst =>
-                            let fun recur ((t',v)::rst) =
-                                  (if t < t'
-                                   then (update (ext_i, index, v); 
-                                         update (extev_i, index, t'))
-                                   else recur rst)
-                                  | recur  [] =  ()
-                            in
-                                (recur lst; index+1)
-                            end
-                          | NONE => 
-                            (update (ext_i, index, 0.0); 
-                             update (extev_i, index, Real.posInf); 
-                             index+1))
-                0 {{pop.name}}_ext_ports
+                                  
+        fun extevent extev_map t = 
+          List.foldl
+              (fn ((index,lst), ax) => 
+                  (putStrLn TextIO.stdOut ("cell " ^ (Int.toString i) ^ ": " ^ (Int.toString (List.length lst)) ^
+                                           " external events at t = " ^ (showReal t) ^ ": ");
+                   List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
+                   putStrLn TextIO.stdOut "";
+                   case lst of
+                       (t',v)::rst =>
+                       if t <= t'
+                       then (update (ext_i, index, v); 
+                             update (extev_i, index, t');
+                             (index,rst)::ax)
+                       else (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": invalid event: t = " ^ (showReal t) ^ " t' = " ^ (showReal t'));
+                             raise InvalidExtEvent)
+                     | [] => (update (ext_i, index, 0.0); 
+                              update (extev_i, index, Real.posInf);
+                              (index,[])::ax)))
+              [] extev_map
 
 
-        fun recur (nstate,spikes,statelog: (int * D.model_state) list) = 
+        fun recur (nstate,extev_map,spikes,statelog: (int * D.model_state) list) = 
           let
               val spikes' = if (Real.>= (event_sub(nstate,0), 0.0))
                             then (i+{{pop.name}}_n0,state_indep nstate,1.0)::spikes
@@ -324,23 +335,36 @@ struct
                                                  then ((i+{{pop.name}}_n0,copy_state nstate))::statelog
                                                  else statelog)
                                |  _ =>  statelog
+                                            
+              val extev_map' = extevent extev_map (state_indep nstate)
+              fun root2str (D.RootFound _) = "RootFound"
+                | root2str (D.RootStep _) =  "RootStep"
+                | root2str (D.RootCheck _)  = "RootCheck"
+                | root2str D.RootBegin  = "RootBegin"
           in
               
                 case state_root nstate of
-                    D.RootFound _ => (extevent (state_indep nstate);
-                                      recur (f' nstate, spikes', statelog'))
-                  | D.RootStep _ =>  (extevent (state_indep nstate);
-                                      recur (f' nstate, spikes', statelog'))
-                  | D.RootCheck _ =>  recur (f' nstate, spikes', statelog')
-                  | _ =>  (nstate, spikes', statelog')
+                    D.RootFound _ => (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                              (root2str (state_root nstate)));
+                                      recur (f' nstate, extev_map', spikes', statelog'))
+                  | D.RootStep _ =>  (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                              (root2str (state_root nstate)));
+                                      recur (f' nstate, extev_map', spikes', statelog'))
+                  | D.RootCheck _ => (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                              (root2str (state_root nstate)));
+                                      recur (f' nstate, extev_map', spikes', statelog'))
+                  | _ =>  (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                   (root2str (state_root nstate)));
+                           (nstate, spikes', statelog'))
             end
 
         val statelog' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
                         then ((i+{{pop.name}}_n0,copy_state input))::statelog
                         else statelog
 
-        val _ = extevent (state_indep input)
-        val (nstate,spikes',statelog') = recur (f' input,spikes,statelog')
+
+        val extev_map' = extevent extev_map  (state_indep input)
+        val (nstate,spikes',statelog') = recur (f' input,extev_map',spikes,statelog')
     in 
         ((i,fld,nstate)::nstates, spikes', statelog')
          
