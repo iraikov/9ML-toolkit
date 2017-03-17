@@ -272,7 +272,6 @@ struct
                  {{pop.value.prototype.name}}.regfun,
                  h)
 
-  exception InvalidExtEvent
                 
   fun {{pop.name}}_run f (rs,rszt) (statesample,extsample,evsample) (Wmap,n0) ((i,fld,input),(nstates,spikes,statelog)) =
     let 
@@ -315,17 +314,15 @@ struct
                          
                          case lst of
                              (t',v)::rst =>
-                             if t <= t' 
-                             then (update (ext_i, index, v); 
-                                   update (extev_i, index, t');
-                                   (index,rst)::ax)
-                             else recur lst
-                           | [] => (update (ext_i, index, 0.0); 
-                                    update (extev_i, index, Real.negInf);
-                                    (index,[])::ax)
+                             (update (ext_i, index, v); 
+                              update (extev_i, index, t');
+                              (index,rst)::ax)
+                           | [] =>
+                             (update (ext_i, index, 0.0); 
+                              update (extev_i, index, Real.negInf);
+                              (index,[])::ax)
                    in
-                       if getindex(extev_i, index) <= t
-                       then recur lst else (index,lst)::ax
+                       recur lst
                    end))
               [] extev_map
 
@@ -342,23 +339,34 @@ struct
                                                  else statelog)
                                |  _ =>  statelog
                                             
-              val extev_map' = extevent extev_map (state_indep nstate)
+              
               fun root2str (D.RootFound lst) = ("RootFound " ^ (String.concatWith ", " (map showReal lst)))
                 | root2str (D.RootStep lst)  = ("RootStep " ^ (String.concatWith ", " (map showReal lst)))
+                | root2str (D.RootAfter lst)  = ("RootAfter " ^ (String.concatWith ", " (map showReal lst)))
                 | root2str D.RootBefore    = "RootBefore"
               val _ = putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur ")
           in
                 case state_root nstate of
-                    D.RootFound _ => (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                              (root2str (state_root nstate)));
-                                      recur (f' nstate, extev_map', spikes', statelog'))
-                  | D.RootStep [] =>  (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                                 (root2str (state_root nstate)));
-                                         (nstate, spikes', statelog'))
-                  | D.RootStep _ =>  (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                              (root2str (state_root nstate)));
-                                      recur (f' nstate, extev_map', spikes', statelog'))
+                    D.RootFound (hs) =>
+                    (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                 (root2str (state_root nstate)));
+                     recur (f' nstate, extev_map, spikes', statelog'))
+                  | D.RootStep [] =>
+                    (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                             (root2str (state_root nstate)));
+                     (nstate, spikes', statelog'))
+                  | D.RootStep (h::hs) =>
+                    (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                             (root2str (state_root nstate)));
+                     recur (f' nstate, extev_map, spikes', statelog'))
                   | D.RootBefore =>  (nstate, spikes', statelog')
+                  | D.RootAfter hs =>
+                    (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                             (root2str (state_root nstate)));
+                     let val extev_map' = extevent extev_map  (state_indep input)
+                     in
+                         recur (f' nstate, extev_map', spikes, statelog)
+                     end)
             end
 
         val statelog' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
