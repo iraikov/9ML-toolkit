@@ -137,7 +137,7 @@ fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (stat
                   
       val _ = let val spike_out = TextIO.openAppend spike_filepath
               in
-                  ({{group.name}}.SEQ.nextEventsApp (fn (t,i) => putStrLn spike_out ((showReal t) ^ " " ^ (Int.toString (i + 1))), spikelog));
+                  ({{group.name}}.SEQ.nextEventsApp (fn (t,i) => putStrLn spike_out ((showReal t) ^ " " ^ (Int.toString i)), spikelog));
                   TextIO.flushOut spike_out; 
                   TextIO.closeOut spike_out
               end
@@ -162,26 +162,27 @@ let
 
     fun enqueueSpikes (spike_i, S, D, DQ) =
         {{group.name}}.SEQ.PQ.foldl
-            (fn ((t,i),dq) => 
-                (#2(ListPair.foldl
-                        (fn (del,W,(port,dq)) =>
-                            let
-                                val sl = BitSparseMatrix.slice (W,1,i)
-                            in
-                                (port+1,
-                                 BitSparseMatrix.sliceFoldi 
-                                     (fn (j,x,dq) => 
-                                         let 
-                                             val tev = Real.+ (t,del)
-                                         in
-                                             TEQ.addEvent ((tev, (j,port,1.0)), dq)
-                                         end)
-                                     dq sl)
-                            end)
-                        (0,dq)
-                        (D,S))
-            ))
-            DQ spike_i
+                      (fn ((t,i),dq) =>
+                          (putStrLn TextIO.stdOut ("enqueuing spike for gid " ^ (Int.toString i) ^ " at time " ^ (showReal t));
+                           #2(ListPair.foldl
+                                  (fn (del,W,(port,dq)) =>
+                                      let
+                                          val sl = BitSparseMatrix.slice (W,1,i)
+                                      in
+                                          (port+1,
+                                           BitSparseMatrix.sliceFoldi 
+                                               (fn (j,x,dq) => 
+                                                   let 
+                                                       val tev = Real.+ (t,del)
+                                                   in
+                                                       TEQ.addEvent ((tev, (j,port,1.0)), dq)
+                                                   end)
+                                               dq sl)
+                                      end)
+                                  (0,dq)
+                                  (D,S))
+                      ))
+                      DQ spike_i
                              
     fun netrun (DQ,state_vector,spikelog,statelog,tlog) =
         let 

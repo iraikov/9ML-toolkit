@@ -335,13 +335,16 @@ struct
 
         fun recur (nstate,extev_map,spikes,statelog: (int * D.model_state) list) = 
           let
-              val spikes' = if (Real.>= (event_sub(nstate,0), 0.0))
-                            then (i+{{pop.name}}_n0,state_indep nstate,1.0)::spikes
-                            else spikes
+              val spikes' = case state_root nstate of
+                                D.RootFound (hs) =>
+                                if (Real.>= (event_sub(nstate,0), 0.0))
+                                then (i+n0,state_indep nstate,1.0)::spikes
+                                else spikes
+                             |  _ => spikes
 
               val statelog' = case state_root nstate of
                               D.RootFound _ =>  (if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
-                                                 then ((i+{{pop.name}}_n0,copy_state nstate))::statelog
+                                                 then ((i+n0,copy_state nstate))::statelog
                                                  else statelog)
                                |  _ =>  statelog
                                             
@@ -363,7 +366,7 @@ struct
                                              (root2str (state_root nstate)));
                      recur (f' nstate, extev_map, spikes', statelog'))
                   | D.RootBefore =>  (nstate, spikes', statelog')
-                  | D.RootAfter (h::hs) =>
+                  | D.RootAfter (_::hs) =>
                     (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                              (root2str (state_root nstate)));
                      let val extev_map' = extevent extev_map  ((state_indep input)+h)
@@ -377,7 +380,7 @@ struct
             end
 
         val statelog' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
-                        then ((i+{{pop.name}}_n0,copy_state input))::statelog
+                        then ((i+n0,copy_state input))::statelog
                         else statelog
 
 

@@ -804,7 +804,7 @@
                              (let* (
                                     (dim (alist-ref (cadr destination-ports) model-formals))
                                     (decls `((define ,(cadr plas-ports) = external (dim ,dim) ,(cadr destination-port))
-                                             (define ,ext-event = external-event -inf.0)
+                                             (define ,ext-event = external-event +inf.0)
                                              ((reduce (+ ,(cadr destination-port))) = ,(cadr plas-ports))))
                                     )
                                (salt:parse decls)
