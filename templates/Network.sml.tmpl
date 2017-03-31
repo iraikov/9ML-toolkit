@@ -129,7 +129,7 @@ struct
       D.ContState (0.0, 0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n)
    |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
                           (i,condfun,initial,_,_,_,extinitial,extevinitial) =
-      (putStrLn TextIO.stdOut "make_initial_vector:"; raise Domain)
+      (putStrLn TextIO.stdErr "make_initial_vector:"; raise Domain)
 
   fun state_sub (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, root), i) =
       getindex(y, i)
@@ -171,7 +171,7 @@ struct
    |  event_sub (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, root), i) =
       getindex(ev, i)
    |  event_sub (D.ContState (x, cx, y, ext, extev, ynext, yrsp), i) =
-      (putStrLn TextIO.stdOut "event_sub:"; raise Domain)
+      (putStrLn TextIO.stdErr "event_sub:"; raise Domain)
 
 
   fun state_root (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = root
@@ -291,16 +291,16 @@ struct
                             #2(List.foldr
                                    (fn(port,(index,ax)) =>
                                        case IntMap.find (spm, port) of
-                                           SOME lst => (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
+                                           SOME lst => ((*putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
                                                                                 " total external events: ");
                                                         List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
-                                                        putStrLn TextIO.stdOut "";
+                                                        putStrLn TextIO.stdOut "";*)
                                                         (index+1, (index,lst)::ax))
                                         |  NONE => (index+1, (index,[])::ax))
                                    (0,[]) {{pop.name}}_ext_ports)
                           | NONE => List.tabulate (List.length {{pop.name}}_ext_ports,
                                                    fn(i) => (i,[]))
-
+                                                  
         fun root2str (D.RootFound lst) = ("RootFound " ^ (String.concatWith ", " (map showReal lst)))
           | root2str (D.RootStep lst)  = ("RootStep " ^ (String.concatWith ", " (map showReal lst)))
           | root2str (D.RootAfter lst)  = ("RootAfter " ^ (String.concatWith ", " (map showReal lst)))
@@ -309,10 +309,10 @@ struct
         fun extevent extev_map t = 
           List.foldl
               (fn ((index,lst), ax) => 
-                  (putStrLn TextIO.stdOut ("extevent: cell " ^ (Int.toString i) ^ ": " ^ (Int.toString (List.length lst)) ^
+                  ((*putStrLn TextIO.stdOut ("extevent: cell " ^ (Int.toString i) ^ ": " ^ (Int.toString (List.length lst)) ^
                                            " external events at t = " ^ (showReal t) ^ ": ");
                    List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
-                   putStrLn TextIO.stdOut "";
+                   putStrLn TextIO.stdOut "";*)
                    let
                        fun recur lst =
                          case lst of
@@ -349,33 +349,33 @@ struct
                                |  _ =>  statelog
                                             
               
-              val _ = putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: root state is " ^
-                                              (root2str (state_root nstate)))
+              (*val _ = putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: root state is " ^
+                                              (root2str (state_root nstate)))*)
           in
                 case state_root nstate of
                     D.RootFound (hs) =>
-                    (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                 (root2str (state_root nstate)));
+                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                 (root2str (state_root nstate)));*)
                      recur (f' nstate, extev_map, spikes', statelog'))
                   | D.RootStep [] =>
-                    (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                             (root2str (state_root nstate)));
+                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                             (root2str (state_root nstate)));*)
                      (nstate, spikes', statelog'))
                   | D.RootStep (h::hs) =>
-                    (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                             (root2str (state_root nstate)));
+                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                             (root2str (state_root nstate)));*)
                      recur (f' nstate, extev_map, spikes', statelog'))
                   | D.RootBefore =>  (nstate, spikes', statelog')
                   | D.RootAfter (_::hs) =>
-                    (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                             (root2str (state_root nstate)));
+                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                             (root2str (state_root nstate)));*)
                      let val extev_map' = extevent extev_map  ((state_indep input)+h)
                      in
                          recur (f' nstate, extev_map', spikes, statelog)
                      end)
                   | D.RootAfter [] =>
-                    (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                             (root2str (state_root nstate)));
+                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                             (root2str (state_root nstate)));*)
                      (f' nstate, spikes', statelog'))
             end
 
@@ -384,8 +384,8 @@ struct
                         else statelog
 
 
-        val _ = putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": run: root state is " ^
-                                        (root2str (state_root input)))
+        (*val _ = putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": run: root state is " ^
+                                        (root2str (state_root input)))*)
 
         val extev_map' = extevent extev_map  ((state_indep input) + h)
         val (nstate,spikes',statelog') = recur (f' input,extev_map',spikes,statelog')

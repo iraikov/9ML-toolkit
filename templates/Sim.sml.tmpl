@@ -163,7 +163,7 @@ let
     fun enqueueSpikes (spike_i, S, D, DQ) =
         {{group.name}}.SEQ.PQ.foldl
                       (fn ((t,i),dq) =>
-                          (putStrLn TextIO.stdOut ("enqueuing spike for gid " ^ (Int.toString i) ^ " at time " ^ (showReal t));
+                          ((*putStrLn TextIO.stdOut ("enqueuing spike for gid " ^ (Int.toString i) ^ " at time " ^ (showReal t));*)
                            #2(ListPair.foldl
                                   (fn (del,W,(port,dq)) =>
                                       let
