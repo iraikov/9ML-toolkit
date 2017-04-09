@@ -249,7 +249,7 @@ struct
                   let
                       val fields       = Vector.sub(field_vector,i)
                       val cond         = optApply {{pop.value.prototype.name}}.condfun (parameters,fields)
-                      val initial      = {{pop.value.prototype.name}}.initfun(parameters,fields)
+                      val initial      = {{pop.value.prototype.name}}.initfun(parameters,fields,seed_init,zt_init)
                       val evinitial    = {{pop.value.prototype.name}}.initcondfun
                       val dinitial     = optApply {{pop.value.prototype.name}}.dinitfun (parameters,fields)
                       val rinitial     = {{pop.value.prototype.name}}.initregfun
