@@ -2,7 +2,7 @@
 ;; NineML single cell descriptions.
 ;;
 ;;
-;; Copyright 2015-2016 Ivan Raikov
+;; Copyright 2015-2017 Ivan Raikov
 ;;
 ;; This program is free software: you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -80,29 +80,16 @@
 (define opt-grammar
   `(
 
-    (platform        "simulation platform (one of mlton, chicken, chicken/cvode)"
+    (platform        "simulation platform (one of mlton, octave/mlton)"
 		     (value (required PLATFORM)
 			    (predicate 
 			     ,(lambda (x) 
 				(let ((s (string->symbol (string-downcase x))))
 				  (case s
-				    ((chicken chicken/cvode mlton octave/mlton) s)
+				    ((mlton octave/mlton) s)
 				    (else (error '9ML-singlecell "unrecognized platform" x))))))
 			    (transformer ,string->symbol)
                             ))
-
-    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, rkoz3, rkdp, crk3, crk4a, crk4b, crkdp, crkbs)"
-		     (value (required PLATFORM)
-			    (predicate 
-			     ,(lambda (x) 
-				(let ((s (string->symbol (string-downcase x))))
-				  (case s
-				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crk3 crk4a crk4b crkdp crkbs ) s)
-				    (else (error '9ML-singlecell "unrecognized method" x))))))
-			    (transformer ,string->symbol)
-                            )
-                     (single-char #\m)
-                     )
 
     (verbose          "print commands as they are executed"
 		      (single-char #\v))
@@ -143,7 +130,7 @@
 (define singlecell-verbose (make-parameter 0))
 (define data-dir (make-parameter #f))
 (define simulation-platform (make-parameter #f))
-(define simulation-method (make-parameter 'rk3))
+(define simulation-method (make-parameter 'cerkdp))
 
 
 (define (d fstr . args)
@@ -217,12 +204,8 @@
   (let* (
          (shared-dir    (chicken-home))
          (template-dir  (make-pathname (make-pathname shared-dir "9ML") "templates"))
-         (sim-tmpl      (case (ivp-simulation-method)
-                          ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.sml.single.adaptive.tmpl")
-                          (else "Sim.sml.single.tmpl")))
-         (mlb-tmpl      (case (ivp-simulation-method)
-                          ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkbs crkdp) "Sim.mlb.single.adaptive.tmpl")
-                          (else "Sim.mlb.single.tmpl")))
+         (sim-tmpl      "Sim.sml.single.tmpl")
+         (mlb-tmpl      "Sim.mlb.single.tmpl")
          (makefile-tmpl "Makefile.single.tmpl")
          (source-dir    (pathname-directory operand))
 
@@ -252,12 +235,12 @@
        (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
          (d "node name = ~A model-sim = ~A~%" node-name sim)
          (let ((sml-port (open-output-file node-path)))
-           (salt:codegen-ODE/ML node-name sim out: sml-port solver: (ivp-simulation-method) libs: '(random))
+           (salt:codegen-ODE/ML node-name sim out: sml-port libs: '(random))
            (close-output-port sml-port)
            (case (ivp-simulation-method) 
              ((crk3 crk4a crk4b crkbs crkdp)
               (let ((c-port (open-output-file node-c-path)))
-                (salt:codegen-ODE/C node-name sim out: c-port solver: (ivp-simulation-method) libs: '(random))
+                (salt:codegen-ODE/C node-name sim out: c-port libs: '(random))
                 (close-output-port c-port)
                 ))
              (else (begin)))
@@ -285,7 +268,6 @@
                                   env: (template-std-env search-path: `(,template-dir))
                                   models: `(
                                             (modelName . ,(Tstr (->string node-name)))
-                                            (solverMethod . ,(Tstr (->string (ivp-simulation-method))))
                                             (UseCSolver . ,(Tbool (case (ivp-simulation-method)
                                                                     ((crk3 crk4a crk4b crkdp crkbs) #t)
                                                                     (else #f))))
@@ -300,7 +282,8 @@
                                        makefile-tmpl
                                        env: (template-std-env search-path: `(,template-dir))
                                        models: `((modelName . ,(Tstr (->string node-name)))
-                                                 (solverMethod . ,(Tstr (->string (ivp-simulation-method))))
+
+                                                 (salt_home . ,(Tstr (make-pathname shared-dir "salt")))
                                                  (sml_lib_home . ,(Tstr (make-pathname 
                                                                          (make-pathname shared-dir "salt")
                                                                          "sml-lib")))

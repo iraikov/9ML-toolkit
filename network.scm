@@ -2,7 +2,7 @@
 ;; NineML network level descriptions.
 ;;
 ;;
-;; Copyright 2015-2016 Ivan Raikov
+;; Copyright 2015-2017 Ivan Raikov
 ;;
 ;; This program is free software: you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -63,7 +63,7 @@
 (define opt-defaults
   `(
     (platform . mlton)
-    (method . rk3)
+    (method . cerkdp)
     ))
 
 (define (defopt x)
@@ -72,29 +72,16 @@
 (define opt-grammar
   `(
 
-    (platform        "simulation platform (one of mlton, chicken, chicken/cvode)"
+    (platform        "simulation platform (one of mlton, octave/mlton)"
 		     (value (required PLATFORM)
 			    (predicate 
 			     ,(lambda (x) 
 				(let ((s (string->symbol (string-downcase x))))
 				  (case s
-				    ((chicken chicken/cvode mlton octave/mlton) s)
+				    ((mlton octave/mlton) s)
 				    (else (error '9ML-network "unrecognized platform" x))))))
 			    (transformer ,string->symbol)
                             ))
-
-    (method        "integration method (one of rkfe, rk3, rk4a, rk4b, rkhe, rkbs, rkf45, rkv65, rkf78, rkoz3, rkdp, crk3, crk4a, crk4b, crkdp, crkbs)"
-		     (value (required PLATFORM)
-			    (predicate 
-			     ,(lambda (x) 
-				(let ((s (string->symbol (string-downcase x))))
-				  (case s
-				    ((rkfe rk3 rk4a rk4b rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crk3 crk4a crk4b crkdp crkbs ) s)
-				    (else (error '9ML-network "unrecognized method" x))))))
-			    (transformer ,string->symbol)
-                            )
-                     (single-char #\m)
-                     )
 
     (verbose          "print commands as they are executed"
 		      (single-char #\v))
@@ -698,17 +685,11 @@
       (d "group-ul-eval: plas-types = ~A~%" plas-types)
 
       (let* (
-             (shared-dir    (chicken-home))
-             (template-dir  (make-pathname (make-pathname shared-dir "9ML") "templates"))
-             (network-tmpl  (case (ivp-simulation-method)
-                              ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Network.sml.adaptive.tmpl")
-                              (else "Network.sml.tmpl")))
-             (sim-tmpl      (case (ivp-simulation-method)
-                              ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.sml.adaptive.tmpl")
-                              (else "Sim.sml.tmpl")))
-             (mlb-tmpl      (case (ivp-simulation-method)
-                              ((rkhe rkbs rkf45 rkck rkoz3 rkdp rkf45 rkf78 rkv65 crkdp crkbs) "Sim.mlb.adaptive.tmpl")
-                              (else "Sim.mlb.tmpl")))
+             (shared-dir     (chicken-home))
+             (template-dir   (make-pathname (make-pathname shared-dir "9ML") "templates"))
+             (network-tmpl   "Network.sml.tmpl")
+             (sim-tmpl       "Sim.sml.tmpl")
+             (mlb-tmpl       "Sim.mlb.tmpl")
              (makefile-tmpl  "Makefile.tmpl")
 
              (group-path    (make-pathname source-dir (conc group-name "."
@@ -841,13 +822,13 @@
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
                 (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.~A.sml" node-name
                                                                                      (ivp-simulation-method))))))
-                  (salt:codegen-ODE/ML node-name sim out: sml-port solver: (ivp-simulation-method) libs: '(random))
+                  (salt:codegen-ODE/ML node-name sim out: sml-port libs: '(random))
                   (close-output-port sml-port)
                   (case (ivp-simulation-method) 
-                    ((crk3 crk4a crk4b crkbs crkdp)
+                    ((crkdp)
                      (let ((c-port (open-output-file (make-pathname source-dir (sprintf "~A.c" node-name)))))
 
-                       (salt:codegen-ODE/C node-name sim out: c-port solver: (ivp-simulation-method) libs: '(random))
+                       (salt:codegen-ODE/C node-name sim out: c-port libs: '(random))
                        (close-output-port c-port)
                        ))
                     (else (begin)))
@@ -868,7 +849,7 @@
         ;;     (d "plasticity node name = ~A model-eqset = ~A~%" node-name model-eqset)
         ;;       (let* ((sim (salt:simcreate (salt:elaborate model-eqset))))
         ;;         (let ((port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))
-        ;;           (salt:codegen-ODE/ML node-name sim out: port solver: (ivp-simulation-method) libs: '(random))
+        ;;           (salt:codegen-ODE/ML node-name sim out: port libs: '(random))
         ;;           (close-output-port port))
         ;;         ))
         ;;     ))
@@ -914,7 +895,7 @@
                                      env: (template-std-env search-path: `(,template-dir))
                                          models: (append 
                                                   group-tenv
-                                                  `((solverMethod . ,(Tstr (->string (ivp-simulation-method))))
+                                                  `(
                                                     (UseCSolver . ,(Tbool (case (ivp-simulation-method)
                                                                             ((crk3 crk4a crk4b crkbs crkdp) #t)
                                                                             (else #f))))
@@ -931,7 +912,8 @@
                                           env: (template-std-env search-path: `(,template-dir))
                                           models: (append 
                                                    group-tenv
-                                                   `((solverMethod . ,(Tstr (->string (ivp-simulation-method))))
+                                                   `(
+                                                     (salt_home . ,(Tstr (make-pathname shared-dir "salt")))
                                                      (sml_lib_home . ,(Tstr (make-pathname 
                                                                              (make-pathname shared-dir "salt")
                                                                              "sml-lib")))

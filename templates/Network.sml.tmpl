@@ -129,7 +129,7 @@ struct
       D.ContState (0.0, 0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n)
    |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
                           (i,condfun,initial,_,_,_,extinitial,extevinitial) =
-      (putStrLn TextIO.stdErr "make_initial_vector:"; raise Domain)
+      (raise Fail "make_initial_vector: invalid domain")
 
   fun state_sub (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, root), i) =
       getindex(y, i)
@@ -171,7 +171,7 @@ struct
    |  event_sub (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, root), i) =
       getindex(ev, i)
    |  event_sub (D.ContState (x, cx, y, ext, extev, ynext, yrsp), i) =
-      (putStrLn TextIO.stdErr "event_sub:"; raise Domain)
+      (raise Fail "event_sub: ContState does not have event information"
 
 
   fun state_root (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, root)) = root
@@ -490,7 +490,7 @@ struct
         let 
             val spikesetPops = case List.find (fn(x) => spikesetName = (hd x)) popmap of
                                    SOME lst => tl lst
-                                 | NONE => raise InvalidPopulationSet spikesetName
+                                 | NONE => raise Fail ("invalid population set: " ^ spikesetName)
             val pops = [{% for pop in dict (group.populations) %}"{{pop.name}}"{% if not loop.last %},{% endif %}{% endfor %}]
             val popIdxs = ListPair.zip (pops, List.tabulate (List.length pops, fn (i) => i))
         in
