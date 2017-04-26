@@ -22,7 +22,7 @@
 (require-extension extras posix utils files data-structures srfi-1 srfi-13 irregex)
 (require-extension datatype matchable make ssax sxml-transforms sxpath sxpath-lolevel 
                    object-graph ersatz-lib unitconv getopt-long )
-(require-extension 9ML-types 9ML-parse 9ML-ivp-mlton 9ML-utils)
+(require-extension 9ML-types 9ML-parse 9ML-codegen-mlton 9ML-utils)
 
 (require-library ersatz-lib salt)
 (import (prefix ersatz-lib ersatz: )
