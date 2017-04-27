@@ -15,11 +15,25 @@ $(NINEML_LIB)/priority.mlb
 $(NINEML_LIB)/IntMap.sml
 $(NINEML_LIB)/netoptions.sml
 
-structure Dynamics = FunctionalHybridDynamics1
+structure Dynamics = FunctionalHybridDynamics
+local
+        $(STATE_LIB)/state.sml
+in
+        structure BoolArrayState
+        structure RealArrayState
+end
+
+local
+        $(MODEL_LIB)/prelude.sml
+        $(MODEL_LIB)/random.sml
+in
+        functor ModelPreludeFn
+        structure ModelRandom
+end
 
 {% for pop in dict (group.populations) %}
 local
-    {{pop.value.prototype.name}}.{{solverMethod}}.sml
+    {{pop.value.prototype.name}}.sml
 in
     structure {{pop.value.prototype.name}} = Model
 end
@@ -34,5 +48,5 @@ end
 {% endif %}
 {% endfor %}{% endif %}
 
-{{group.name}}.{{solverMethod}}.sml
-Sim_{{group.name}}.{{solverMethod}}.sml
+{{group.name}}.sml
+Sim_{{group.name}}.sml

@@ -47,52 +47,52 @@ fun printState (t,input) =
     in
         ( putStr ((showReal (t)) ^ " "); fshow 0 )
     end
-      
 
-fun start (f,initial,SOME evinitial,SOME dinitial,SOME rinitial,extinitial,extevinitial,next,rsp,SOME enext,tmax) =
+fun start (f,initial,SOME evinitial,SOME dinitial,SOME rinitial,extinitial,extevinitial,tmax,h0,ynext,rsp,err,SOME evnext) =
     let
-	fun run (rs as D.RegimeState (t, _, input, xev, ev, d, regime, _, _, _, _, _, _)) =
+	fun run (rs as D.RegimeState (x, cx, input, ev, d, regime, ext, extev, _, _, _, _, _)) =
             (case f rs of
-	         rs' as D.RegimeState (t',_,nstate,tev',ev',d',regime',_,_,_,_,_,_) =>
-                 (printState (t',nstate); 
-	          if (t'  > tmax)
+	         rs' as D.RegimeState (x',cx',nstate,ev',d',regime',_,_,_,_,_,_,_) =>
+                 (printState (x',nstate); 
+	          if (x'  > tmax)
 	          then (putStrLn "# All done!"; nstate)
 	          else (run rs'))
-               | _ => raise Domain)
-            | run _ = raise Domain
+
+               | _ => raise Fail "invalid state type")
+            | run _ = raise Fail "invalid state type"
     in
 	printState (0.0, initial);
-	run (D.RegimeState (0.0, 0.0, initial, 0.0, evinitial, dinitial, rinitial, extinitial, extevinitial, next, rsp, enext, false))
+	run (D.RegimeState (0.0, 0.0, initial, evinitial, dinitial, rinitial, extinitial, extevinitial, ynext, rsp, evnext, (h0,err), D.RootBefore))
     end
-|  start (f,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,next,rsp,SOME enext,tmax) =
+|  start (f,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial,tmax,h0,ynext,rsp,err,SOME evnext) =
     let
-	fun run (es as D.EventState (t, _, input, tev, ev, _, _, _, _, _, _)) =
+	fun run (es as D.EventState (x, cx, input, ev, ext, extev, _, _, _, _, _)) =
             (case f es of
-	         es' as D.EventState (t',_,nstate,tev',ev',_,_,_,_,_,_) =>
-                 (printState (t',nstate); 
-	          if (t'  > tmax)
+	         es' as D.EventState (x',cx',nstate,ev',_,_,_,_,_,_,_) =>
+                 (printState (x',nstate); 
+	          if (x'  > tmax)
 	          then (putStrLn "# All done!"; nstate)
 	          else (run es'))
-               | _ => raise Domain)
-            | run _ = raise Domain
+               | _ => raise Fail "invalid state type")
+            | run _ = raise Fail "invalid state type"
     in
 	printState (0.0, initial);
-	run (D.EventState (0.0, 0.0, initial, 0.0, evinitial, extinitial, extevinitial, next, rsp, enext, false))
+	run (D.EventState (0.0, 0.0, initial, evinitial, extinitial, extevinitial, ynext, rsp, evnext, (h0,err), D.RootBefore))
     end
-|  start (f,initial,NONE,NONE,NONE,extinitial,extevinitial,next,rsp,NONE,tmax) =
+|  start (f,initial,NONE,NONE,NONE,ext,extev,tmax,h0,ynext,rsp,err,NONE) =
     let
-	fun run (cs as D.ContState (t, _, input, ext, extevinitial, next, rsp)) =
+	fun run (cs as D.ContState (x, cx, input, ext, extev, _, _)) =
             (case f cs of
-	         cs' as D.ContState (t',_,nstate,_,_,_,_) =>
-                 (printState (t',nstate); 
-	          if (t'  > tmax)
+	         cs' as D.ContState (x',cx',nstate,_,_,_,_) =>
+                 (printState (x',nstate); 
+	          if (x'  > tmax)
 	          then (putStrLn "# All done!"; nstate)
 	          else (run cs'))
-               | _ => raise Domain)
-            | run _ = raise Domain
+               | _ => raise Fail "invalid state type")
+            | run _ = raise Fail "invalid state type"
     in
 	printState (0.0, initial);
-	run (D.ContState (0.0, 0.0, initial, extinitial, extevinitial, next, rsp))
+	run (D.ContState (0.0, 0.0, initial, ext, extev, ynext, (h0,err)))
     end
 |  start _ = raise Domain
 
@@ -135,5 +135,5 @@ val f = D.integral(Model.odefun(p,fld,rs,rszt),optApply Model.condfun (p, fld),
                    optApply Model.negfun (p, fld, rs, rszt),
                    optApply Model.dposfun (p, fld, rs, rszt),Model.regfun,h)
 
-val _ = start (f,initial,evinitial,dinitial,rinitial,extinitial(),extevinitial(),next,rsp,evnext,tstop)
+val _ = start (f,initial,evinitial,dinitial,rinitial,extinitial(),extevinitial(),tstop,h0,ynext,rsp,err,evnext)
 

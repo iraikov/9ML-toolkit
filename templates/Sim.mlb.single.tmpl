@@ -9,14 +9,30 @@ $(RK_LIB)/crk.mlb
 {% endif %}
 $(RANDMTZIG_LIB)/randmtzig.mlb
 $(DYNAMICS_LIB)/dynamics.mlb
+
 $(NINEML_LIB)/options.sml
 
-structure Dynamics = FunctionalHybridDynamics1
+structure Dynamics = FunctionalHybridDynamics
+local
+        $(STATE_LIB)/state.sml
+in
+        structure BoolArrayState
+        structure RealArrayState
+end
 
 local
-	{{modelName}}.{{solverMethod}}.sml
+        $(MODEL_LIB)/prelude.sml
+        $(MODEL_LIB)/random.sml
+in
+        functor ModelPreludeFn
+        structure ModelRandom
+end
+
+
+local
+	{{modelName}}.sml
 in
 	structure Model
 end
-Sim_{{modelName}}.{{solverMethod}}.sml
+Sim_{{modelName}}.sml
 

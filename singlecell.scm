@@ -217,14 +217,11 @@
       )
      (d "node name = ~A model-eqset = ~A~%" node-name model-eqset)
      (let* (
-            (sim-path      (make-pathname source-dir (conc "Sim_" node-name "." 
-                                                           (ivp-simulation-method) ".sml")))
+            (sim-path      (make-pathname source-dir (conc "Sim_" node-name ".sml")))
             (mlb-path      (make-pathname source-dir (conc "Sim_" node-name ".mlb")))
             (exec-path     (make-pathname source-dir (conc "Sim_" node-name)))
-            (makefile-path (make-pathname source-dir (conc "Makefile." node-name "." 
-                                                           (ivp-simulation-method))))
-            (node-path     (make-pathname source-dir (sprintf "~A.~A.sml" node-name
-                                                              (ivp-simulation-method))))
+            (makefile-path (make-pathname source-dir (conc "Makefile." node-name)))
+            (node-path     (make-pathname source-dir (sprintf "~A.sml" node-name)))
             (node-c-path   (make-pathname source-dir (sprintf "~A.c" node-name)))
 
             (prototype-decls
