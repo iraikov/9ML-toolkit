@@ -22,7 +22,7 @@
 (require-extension extras posix utils files data-structures tcp srfi-1 srfi-13 irregex)
 (require-extension datatype matchable make ssax sxml-transforms sxpath sxpath-lolevel 
                    object-graph ersatz-lib unitconv uri-generic getopt-long )
-(require-extension 9ML-types 9ML-parse 9ML-utils 9ML-ivp-mlton)
+(require-extension 9ML-types 9ML-parse 9ML-utils 9ML-codegen-mlton)
 
 (require-library ersatz-lib salt)
 (import (prefix ersatz-lib ersatz: )
@@ -71,7 +71,7 @@
 (define opt-defaults
   `(
     (platform . mlton)
-    (method . rkdp)
+    (method   . cerkdp)
     ))
 
 (define (defopt x)
@@ -338,7 +338,7 @@
       (for-each (lambda (name) (salt:add-trace name)) (options 'trace)))
   
   (simulation-platform (or (options 'platform) (defopt 'platform) ))
-  (simulation-method (or (options 'method) (defopt 'method) ))
+  (simulation-method (defopt 'method) )
   
   (ivp-simulation-platform (simulation-platform))
   (alsys-simulation-platform (simulation-platform))

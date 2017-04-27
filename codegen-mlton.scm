@@ -1,5 +1,5 @@
 ;;
-;;  NineML IVP code generator for MLton.
+;;  NineML code generator for MLton.
 ;;
 ;;
 ;; Copyright 2010-2017 Ivan Raikov
@@ -19,7 +19,7 @@
 ;;
 
 
-(module 9ML-ivp-mlton
+(module 9ML-codegen-mlton
 
 	(
          mlton-initial 

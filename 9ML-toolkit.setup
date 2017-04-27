@@ -24,17 +24,17 @@
        ((dynld-name "9ML-parse.import") ("9ML-parse.import.scm")
 	(compile  -s 9ML-parse.import.scm))
 
-       ;((dynld-name "9ML-ivp-chicken") ("ivp-chicken.scm" )
-	;(compile -O -d2 -S -s ivp-chicken.scm -o ,(dynld-name "9ML-ivp-chicken") -j 9ML-ivp-chicken))
+       ;((dynld-name "9ML-codegen-chicken") ("codegen-chicken.scm" )
+	;(compile -O -d2 -S -s codegen-chicken.scm -o ,(dynld-name "9ML-codegen-chicken") -j 9ML-codegen-chicken))
 
-       ;((dynld-name "9ML-ivp-chicken.import") ( "9ML-ivp-chicken.import.scm" )
-	;(compile  -s 9ML-ivp-chicken.import.scm))
+       ;((dynld-name "9ML-codegen-chicken.import") ( "9ML-codegen-chicken.import.scm" )
+	;(compile  -s 9ML-codegen-chicken.import.scm))
 
-       ((dynld-name "9ML-ivp-mlton") ( "ivp-mlton.scm" )
-	(compile -O -d2 -S -s ivp-mlton.scm -o ,(dynld-name "9ML-ivp-mlton") -j 9ML-ivp-mlton))
+       ((dynld-name "9ML-codegen-mlton") ( "codegen-mlton.scm" )
+	(compile -O -d2 -S -s codegen-mlton.scm -o ,(dynld-name "9ML-codegen-mlton") -j 9ML-codegen-mlton))
 
-       ((dynld-name "9ML-ivp-mlton.import") ( "9ML-ivp-mlton.import.scm" )
-	(compile  -s 9ML-ivp-mlton.import.scm))
+       ((dynld-name "9ML-codegen-mlton.import") ( "9ML-codegen-mlton.import.scm" )
+	(compile  -s 9ML-codegen-mlton.import.scm))
 
        ((dynld-name "9ML-utils") ("utils.scm")
 	(compile -O -d2 -S -s utils.scm -o ,(dynld-name "9ML-utils") -j 9ML-utils))
@@ -54,8 +54,8 @@
 	(dynld-name "9ML-types")       (dynld-name "9ML-types.import") 
 	(dynld-name "9ML-parse")       (dynld-name "9ML-parse.import") 
 	(dynld-name "9ML-utils")       (dynld-name "9ML-utils.import") 
-	;(dynld-name "9ML-ivp-chicken") (dynld-name "9ML-ivp-chicken.import") 
-	(dynld-name "9ML-ivp-mlton")   (dynld-name "9ML-ivp-mlton.import") 
+	;(dynld-name "9ML-codegen-chicken") (dynld-name "9ML-codegen-chicken.import") 
+	(dynld-name "9ML-codegen-mlton")   (dynld-name "9ML-codegen-mlton.import") 
 	(dynld-name "9ML-alsys-mlton") (dynld-name "9ML-alsys-mlton.import") 
         )
 
@@ -90,10 +90,10 @@
 #;(install-extension
 
   ; Name of your extension:
-  '9ML-ivp-chicken
+  '9ML-codegen-chicken
 
   ; Files to install for your extension:
-  `(,(dynld-name "9ML-ivp-chicken") ,(dynld-name "9ML-ivp-chicken.import") )
+  `(,(dynld-name "9ML-codegen-chicken") ,(dynld-name "9ML-codegen-chicken.import") )
 
   ; Assoc list with properties for your extension:
   `((version ,version)
@@ -102,10 +102,10 @@
 (install-extension
 
   ; Name of your extension:
-  '9ML-ivp-mlton
+  '9ML-codegen-mlton
 
   ; Files to install for your extension:
-  `(,(dynld-name "9ML-ivp-mlton") ,(dynld-name "9ML-ivp-mlton.import") )
+  `(,(dynld-name "9ML-codegen-mlton") ,(dynld-name "9ML-codegen-mlton.import") )
 
   ; Assoc list with properties for your extension:
   `((version ,version)
@@ -253,16 +253,9 @@
    "brunel_network_alpha_AR.xml"               
    "brunel_network_alpha_AI.xml"))
 
-(copy-file-to-9ML-dir "templates/Network.sml.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Network.sml.tmpl")
-
-(copy-file-to-9ML-dir "templates/Sim.sml.adaptive.tmpl")
-(copy-file-to-9ML-dir "templates/Sim.mlb.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.sml.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.tmpl")
-
-(copy-file-to-9ML-dir "templates/Sim.sml.single.adaptive.tmpl")
-(copy-file-to-9ML-dir "templates/Sim.mlb.single.adaptive.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.sml.single.tmpl")
 (copy-file-to-9ML-dir "templates/Sim.mlb.single.tmpl")
 
