@@ -2,6 +2,7 @@
 structure Sim_{{group.name}} =
 struct
 
+val debug = true
 
 fun putStrLn out str = 
     (TextIO.output (out, str);
@@ -31,7 +32,6 @@ fun timing (action) =
         (result, Time.+ (#usr times, #sys times))
     end
 
-val h = ref 0.1
 
 structure TEventPriority = 
 struct
@@ -147,7 +147,7 @@ fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (stat
   end
 
 
-fun start (N, S, D, DQ, Pn, Plabels, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod, rss, rszts,
+fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod, rss, rszts,
            (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix),
            (statesample,extsample,evsample)) =
 
@@ -183,13 +183,29 @@ let
                                   (D,S))
                       ))
                       DQ spike_i
-                             
-    fun netrun (DQ,state_vector,spikelog,statelog,tlog) =
-        let 
-            val t_n = ftime state_vector
 
+    (* Compensated summation *)
+    fun csum (x, cx, h) =
+      let
+          val dx  = h + cx
+          val x'  = x + dx
+          val cx' = (x - x') + dx
+      in
+          (x', cx')
+      end
+                             
+    fun netrun (t_n,t_cx,DQ,state_vector,spikelog,statelog,tlog) =
+        let 
+            val (t_i, t_cx) = csum (t_n, t_cx, (!global_h))
+
+            val _ = if debug
+                    then (putStrLn TextIO.stdOut ("netrun: global_h = " ^ (showReal (!global_h)) ^
+                                                  " t_n = " ^ (showReal t_n) ^ " t_i = " ^ (showReal t_i)))
+                    else ()
+                                   
+                                   
             val (I,DQ') = TEQ.nextEventsFold 
-                              (fn (t,_) => Real.<=(t,t_n+(!h)),
+                              (fn (t,_) => Real.<=(t,t_i),
                                fn (t,(i,port,w),I) => 
                                   let
                                       val im = IntMap.find (I, i)
@@ -205,9 +221,7 @@ let
                                DQ)
 
 
-            val (state_vector_i, spikes_i, statelog_i) = frun' (!h) I state_vector
-
-            val t_i = ftime state_vector_i
+            val (state_vector_i, spikes_i, statelog_i) = frun' (I,t_i) state_vector
 
             val (all_spike_i, log_spike_i) = fspikes spikes_i
                 
@@ -230,12 +244,18 @@ let
                       spikelog')
         in
             
-            if t_i > tstop
+            if t_i >= tstop
             then state_vector_i
-            else netrun (DQ'', state_vector_i, spikelog', statelog', tlog')
+            else netrun (t_i, t_cx, DQ'', state_vector_i, spikelog', statelog', tlog')
         end
+
 in
-    netrun (DQ,initial_vector,{{group.name}}.SEQ.empty,[],0.0)
+    if minDelay > 0.0
+    then 
+        (if (!global_h) > minDelay
+         then global_h := minDelay else ();
+         netrun (0.0,0.0,DQ,initial_vector,{{group.name}}.SEQ.empty,[],0.0))
+    else raise Fail "minimum delay is zero"
 end
 
 exception Exit of OS.Process.status 
@@ -258,126 +278,126 @@ fun main (name,args) =
   let
       open {{group.name}}
 
-        fun finfo (_) = ()
+      fun finfo (_) = ()
 
-        val optStatus = ref NONE
-        val (opts, _) = (Options.getopt optStatus) args
-                                                   
-        val _ = (case !optStatus of 
-	             SOME msg => exitError (CommandLine.name(), msg)
-	           | NONE => ())
-		    
-        val {is_help, is_time, is_timestep, is_tol, is_logperiod, 
-             is_statesample, is_extsample, is_evsample,
-             is_spikerecord, is_prjrecord, 
-             is_spikeout, is_stateprefix,
-             is_extprefix, is_eventprefix,
-             is_prjprefix,
-             is_randomseeds} = Options.getstate (opts)
-						                       
-        val _ = if is_help then exitHelp (CommandLine.name()) else ()
-        val _ = case (is_statesample, is_extsample, is_evsample, is_spikerecord) of
-                    (NONE, NONE, NONE, NONE) => 
-                    (putStrLn TextIO.stdErr ("No options for state sampling or event recording have been specified;");
-                     putStrLn TextIO.stdErr ("State traces and spike event times will not be recorded."))
-                    | (_, _, _, _) => ()
-                                                                       
-        val _     = case is_timestep of SOME dt => (h := dt) | NONE => ()
-        val tstop = case is_time of SOME t => t | NONE => 150.0
-        val logperiod = case is_logperiod of SOME t => t | NONE => 100.0
-                                                              
-        val statesample = case is_statesample of SOME n => n | NONE => 0
-        val extsample = case is_extsample of SOME n => n | NONE => 0
-        val evsample = case is_evsample of SOME n => n | NONE => 0
-        val spikelog = case is_spikerecord of SOME n => fspikeidxs n | NONE => []
-
-        val spikeout_filepath = case is_spikeout of SOME s => s | NONE => label ^ ".dat"
-        val stateout_prefix = if statesample>0
-                              then (case is_stateprefix of SOME s => SOME s | NONE => SOME (label ^ "_state"))
-                              else NONE
-        val extout_prefix   = if extsample>0
-                              then (case is_extprefix of SOME s => SOME s | NONE => SOME (label ^ "_ext"))
-                              else NONE
-        val eventout_prefix = if evsample>0
-                              then (case is_eventprefix of SOME s => SOME s | NONE => SOME (label ^ "_event"))
-                              else NONE
-        val prjout_prefix   = case is_prjprefix of SOME s => s | NONE => label
-
-    in
-        (let
-            val     _ = putStrLn TextIO.stdOut ("constructing projections...")
-            val (S,t) = timing fprojection
-            val     _ = putStrLn TextIO.stdOut ("projections took " ^ (Time.toString t) ^ " s")
-
-            val _ = if is_prjrecord
-                    then writeProjection S prjout_prefix
-                    else ()
-                                 
-            val _ = (case is_spikerecord of
-                         SOME s =>
-                         let val spike_out = TextIO.openOut spikeout_filepath
-                         in
-                             List.app (fn (s) => putStrLn spike_out ("# " ^ s))
-                                      ([
-                                          label
-                                      ]);
-                             TextIO.closeOut spike_out
-                         end
-                       | NONE => ();
-                     case stateout_prefix of
-                         SOME prefix =>
-                         List.app
-                             (fn(label) =>
-                                 let val state_out = TextIO.openOut (prefix ^ "." ^ label ^ ".dat")
-                                 in
-                                     TextIO.closeOut state_out
-                                 end)
-                             Plabels
-                       | NONE => ();
-                     case extout_prefix of
-                         SOME prefix =>
-                         List.app
-                             (fn(label) =>
-                                 let val ext_out = TextIO.openOut (prefix ^ "." ^ label ^ ".dat")
-                                 in
-                                     TextIO.closeOut ext_out
-                                 end)
-                             Plabels
-                       | NONE => ();
-                     case eventout_prefix of
-                         SOME prefix =>
-                         List.app
-                             (fn(label) =>
-                                 let val event_out = TextIO.openOut (prefix ^ "." ^ label ^ ".dat")
-                                 in
-                                     TextIO.closeOut event_out
-                                 end)
-                             Plabels
-                      | NONE => ()
-                    )
-
-            val rss   = case is_randomseeds of
-                            NONE => List.tabulate (P, fn(i) => RandomInit())
-                         |  SOME lst => if (List.length lst)=P
-                                        then List.map RandomInitFromInt lst
-                                        else exitError (CommandLine.name(),
-                                                        "list of random seeds does not match number of populations")
-            val rszts   = List.tabulate (P, fn(i) => ZigInit())
-            
-                        
-            val _     = putStrLn TextIO.stdOut ("starting simulation...")
-            val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, initial, frun, 
-                                                ftime, fspikes spikelog, finfo, tstop, logperiod,
-                                                rss, rszts,
-                                                (spikeout_filepath,stateout_prefix,
-                                                 extout_prefix,eventout_prefix),
-                                                (statesample,extsample,evsample)))
-        in
-            putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
-        end)
-    end
-    
-
+      val optStatus = ref NONE
+      val (opts, _) = (Options.getopt optStatus) args
+                                                 
+      val _ = (case !optStatus of 
+	           SOME msg => exitError (CommandLine.name(), msg)
+	         | NONE => ())
+		  
+      val {is_help, is_time, is_timestep, is_tol, is_logperiod, 
+           is_statesample, is_extsample, is_evsample,
+           is_spikerecord, is_prjrecord, 
+           is_spikeout, is_stateprefix,
+           is_extprefix, is_eventprefix,
+           is_prjprefix,
+           is_randomseeds} = Options.getstate (opts)
+					      
+      val _ = if is_help then exitHelp (CommandLine.name()) else ()
+      val _ = case (is_statesample, is_extsample, is_evsample, is_spikerecord) of
+                  (NONE, NONE, NONE, NONE) => 
+                  (putStrLn TextIO.stdErr ("No options for state sampling or event recording have been specified;");
+                   putStrLn TextIO.stdErr ("State traces and spike event times will not be recorded."))
+                | (_, _, _, _) => ()
+                                      
+      val _     = case is_timestep of SOME dt => (global_h := (Real.min(dt, minDelay)) | NONE => ()
+      val tstop = case is_time of SOME t => t | NONE => 150.0
+      val logperiod = case is_logperiod of SOME t => t | NONE => 100.0
+                                                                     
+      val statesample = case is_statesample of SOME n => n | NONE => 0
+      val extsample = case is_extsample of SOME n => n | NONE => 0
+      val evsample = case is_evsample of SOME n => n | NONE => 0
+      val spikelog = case is_spikerecord of SOME n => fspikeidxs n | NONE => []
+                                                                                 
+      val spikeout_filepath = case is_spikeout of SOME s => s | NONE => label ^ ".dat"
+      val stateout_prefix = if statesample>0
+                            then (case is_stateprefix of SOME s => SOME s | NONE => SOME (label ^ "_state"))
+                            else NONE
+      val extout_prefix   = if extsample>0
+                            then (case is_extprefix of SOME s => SOME s | NONE => SOME (label ^ "_ext"))
+                            else NONE
+      val eventout_prefix = if evsample>0
+                            then (case is_eventprefix of SOME s => SOME s | NONE => SOME (label ^ "_event"))
+                            else NONE
+      val prjout_prefix   = case is_prjprefix of SOME s => s | NONE => label
+                                                                           
+  in
+      (let
+          val     _ = putStrLn TextIO.stdOut ("constructing projections...")
+          val (S,t) = timing fprojection
+          val     _ = putStrLn TextIO.stdOut ("projections took " ^ (Time.toString t) ^ " s")
+                               
+          val _ = if is_prjrecord
+                  then writeProjection S prjout_prefix
+                  else ()
+                           
+          val _ = (case is_spikerecord of
+                       SOME s =>
+                       let val spike_out = TextIO.openOut spikeout_filepath
+                       in
+                           List.app (fn (s) => putStrLn spike_out ("# " ^ s))
+                                    ([
+                                        label
+                                    ]);
+                           TextIO.closeOut spike_out
+                       end
+                     | NONE => ();
+                   case stateout_prefix of
+                       SOME prefix =>
+                       List.app
+                           (fn(label) =>
+                               let val state_out = TextIO.openOut (prefix ^ "." ^ label ^ ".dat")
+                               in
+                                   TextIO.closeOut state_out
+                               end)
+                           Plabels
+                     | NONE => ();
+                   case extout_prefix of
+                       SOME prefix =>
+                       List.app
+                           (fn(label) =>
+                               let val ext_out = TextIO.openOut (prefix ^ "." ^ label ^ ".dat")
+                               in
+                                   TextIO.closeOut ext_out
+                               end)
+                           Plabels
+                     | NONE => ();
+                   case eventout_prefix of
+                       SOME prefix =>
+                       List.app
+                           (fn(label) =>
+                               let val event_out = TextIO.openOut (prefix ^ "." ^ label ^ ".dat")
+                               in
+                                   TextIO.closeOut event_out
+                               end)
+                           Plabels
+                     | NONE => ()
+                  )
+                      
+          val rss   = case is_randomseeds of
+                          NONE => List.tabulate (P, fn(i) => RandomInit())
+                       |  SOME lst => if (List.length lst)=P
+                                      then List.map RandomInitFromInt lst
+                                      else exitError (CommandLine.name(),
+                                                      "list of random seeds does not match number of populations")
+          val rszts   = List.tabulate (P, fn(i) => ZigInit())
+                                      
+                                      
+          val _     = putStrLn TextIO.stdOut ("starting simulation...")
+          val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, global_h, initial, frun, 
+                                              ftime, fspikes spikelog, finfo, tstop, logperiod,
+                                              rss, rszts,
+                                              (spikeout_filepath,stateout_prefix,
+                                               extout_prefix,eventout_prefix),
+                                              (statesample,extsample,evsample)))
+      in
+          putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
+      end)
+  end
+      
+      
 end
 
 val _ = let val name = CommandLine.name()

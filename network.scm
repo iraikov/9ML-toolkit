@@ -692,14 +692,11 @@
              (mlb-tmpl       "Sim.mlb.tmpl")
              (makefile-tmpl  "Makefile.tmpl")
 
-             (group-path    (make-pathname source-dir (conc group-name "."
-                                                            (ivp-simulation-method) ".sml")))
-             (sim-path      (make-pathname source-dir (conc "Sim_" group-name "." 
-                                                            (ivp-simulation-method) ".sml")))
+             (group-path    (make-pathname source-dir (conc group-name ".sml")))
+             (sim-path      (make-pathname source-dir (conc "Sim_" group-name ".sml")))
              (mlb-path      (make-pathname source-dir (conc "Sim_" group-name ".mlb")))
              (exec-path     (make-pathname source-dir (conc "Sim_" group-name)))
-             (makefile-path (make-pathname source-dir (conc "Makefile." group-name "." 
-                                                            (ivp-simulation-method))))
+             (makefile-path (make-pathname source-dir (conc "Makefile." group-name)))
 
              
              (projection-ports
@@ -820,8 +817,7 @@
               (d "response-dynamics = ~A~%" response-dynamics)
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
-                (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.~A.sml" node-name
-                                                                                     (ivp-simulation-method))))))
+                (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))
                   (salt:codegen-ODE/ML node-name sim out: sml-port libs: '(random))
                   (close-output-port sml-port)
                   (case (ivp-simulation-method) 
@@ -859,8 +855,7 @@
                (map 
                 (match-lambda
                  ((population node-name . responses)
-                  (make-pathname source-dir (sprintf "~A.~A.sml" 
-                                                     node-name (ivp-simulation-method)))))
+                  (make-pathname source-dir (sprintf "~A.sml" node-name))))
                 (population-prototype-env))))
           (make/proc
            `((,group-path 
@@ -952,6 +947,8 @@
     ))
 
            
+
+
 (define (find-duplicates lis)
   (let recur ((xs lis) (res '()))
     (if (null? xs) res
@@ -980,7 +977,7 @@
       (for-each (lambda (name) (salt:add-trace name)) (options 'trace)))
   
   (simulation-platform (or (options 'platform) (defopt 'platform) ))
-  (simulation-method (or (options 'method) (defopt 'method) ))
+  (simulation-method (defopt 'method) )
   
   (ivp-simulation-platform (simulation-platform))
   (alsys-simulation-platform (simulation-platform))

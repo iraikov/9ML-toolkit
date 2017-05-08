@@ -17,6 +17,8 @@ struct
                                type value = int
                                fun value (x : P.item) = (#2(x)))
 
+  val debug = true
+                  
   fun putStrLn out str = 
       (TextIO.output (out, str);
        TextIO.output (out, "\n"))
@@ -35,6 +37,11 @@ struct
 
   fun showRealArray v = 
       (String.concatWith ", " (Array.foldr (fn (x, ax) => (showReal x)::ax) [] v))
+
+  fun showRoot (D.RootFound lst) = ("RootFound " ^ (String.concatWith ", " (map showReal lst)))
+    | showRoot (D.RootStep lst)  = ("RootStep " ^ (String.concatWith ", " (map showReal lst)))
+    | showRoot (D.RootAfter lst)  = ("RootAfter " ^ (String.concatWith ", " (map showReal lst)))
+    | showRoot D.RootBefore    = "RootBefore"
       
   fun foldl1 f lst = let val v = List.hd lst
                          val lst' = List.tl lst
@@ -108,7 +115,7 @@ struct
       case fopt of SOME f => SOME (f args) | NONE => NONE
 
                
-  fun make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime,h0) 
+  fun make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0) 
                           (i,condfun,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
       let 
           val dinitial': real array -> real array = 
@@ -116,19 +123,19 @@ struct
                   SOME v => v
                 | NONE => (fn v => v)
       in
-          D.condApply condfun (D.RegimeState (0.0, 0.0, initial(alloc n), evinitial (alloc nev), dinitial' (alloc ndsc), 
-                                              rinitial (bool_alloc nregime), extinitial(), extevinitial(), alloc n, alloc n,
-                                              alloc nev, (h0, alloc n), D.RootBefore))
+          D.condApply condfun (D.RegimeState (0.0, 0.0, initial(make_real_state n), evinitial (make_real_state nev), dinitial' (make_real_state ndsc), 
+                                              rinitial (make_bool_state nregime), extinitial(), extevinitial(), make_real_state n, make_real_state n,
+                                              make_real_state nev, (h0, make_real_state n), D.RootBefore))
       end
-   |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
+   |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0) 
                           (i,condfun,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
-      D.condApply condfun (D.EventState (0.0, 0.0, initial(alloc n), evinitial (alloc nev), 
-                                         extinitial (), extevinitial (), initial(alloc n), initial(alloc n), 
-                                         alloc nev, (h0, alloc n), D.RootBefore))
-   |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
+      D.condApply condfun (D.EventState (0.0, 0.0, initial(make_real_state n), evinitial (make_real_state nev), 
+                                         extinitial (), extevinitial (), initial(make_real_state n), initial(make_real_state n), 
+                                         make_real_state nev, (h0, make_real_state n), D.RootBefore))
+   |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0) 
                           (i,condfun,initial,NONE,NONE,NONE,extinitial,extevinitial) =
-      D.ContState (0.0, 0.0, initial(alloc n), extinitial(), extevinitial(), alloc n, alloc n, (h0, alloc n))
-   |  make_initial_vector (alloc,bool_alloc,n,nev,ndsc,nregime) 
+      D.ContState (0.0, 0.0, initial(make_real_state n), extinitial(), extevinitial(), make_real_state n, (h0, make_real_state n))
+   |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0) 
                           (i,condfun,initial,_,_,_,extinitial,extevinitial) =
       (raise Fail "make_initial_vector: invalid domain")
 
@@ -136,48 +143,59 @@ struct
       getindex(y, i)
    |  state_sub (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root), i) =
       getindex(y, i)
-   |  state_sub (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _), i) =
+   |  state_sub (D.ContState (x, cx, y, ext, extev, ynext, _), i) =
       getindex(y, i)
 
   fun state_y (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root)) = y
    |  state_y (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = y
-   |  state_y (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _)) = y
+   |  state_y (D.ContState (x, cx, y, ext, extev, ynext, _)) = y
 
   fun state_indep (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root)) = x
    |  state_indep (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = x
-   |  state_indep (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _)) = x
+   |  state_indep (D.ContState (x, cx, y, ext, extev, ynext, _)) = x
 
   fun state_ext (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root)) = ext
    |  state_ext (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = ext
-   |  state_ext (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _)) = ext
+   |  state_ext (D.ContState (x, cx, y, ext, extev, ynext, _)) = ext
 
   fun state_extev (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root)) = extev
    |  state_extev (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = extev
-   |  state_extev (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _)) = extev
+   |  state_extev (D.ContState (x, cx, y, ext, extev, ynext, _)) = extev
 
   fun state_regime (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root)) = r
    |  state_regime (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = Array.fromList []
-   |  state_regime (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _)) = Array.fromList[]
+   |  state_regime (D.ContState (x, cx, y, ext, extev, ynext, _)) = Array.fromList[]
 
   fun state_event (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root)) = ev
    |  state_event (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = ev
-   |  state_event (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _)) = Array.fromList []
+   |  state_event (D.ContState (x, cx, y, ext, extev, ynext, _)) = Array.fromList []
 
   fun ext_sub (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root), i) = getindex(ext, i)
    |  ext_sub (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root), i) = getindex(ext, i)
-   |  ext_sub (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _), i) = getindex(ext, i)
+   |  ext_sub (D.ContState (x, cx, y, ext, extev, ynext, _), i) = getindex(ext, i)
 
   fun event_sub (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root), i) =
       getindex(ev, i)
    |  event_sub (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root), i) =
       getindex(ev, i)
-   |  event_sub (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _), i) =
-      (raise Fail "event_sub: ContState does not have event information"
+   |  event_sub (D.ContState (x, cx, y, ext, extev, ynext, _), i) =
+      raise Fail "event_sub: ContState does not have event information"
 
 
   fun state_root (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root)) = root
    |  state_root (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = root
-   |  state_root (D.ContState (x, cx, y, ext, extev, ynext, yrsp, _)) = D.RootBefore
+   |  state_root (D.ContState (x, cx, y, ext, extev, ynext, _)) = D.RootBefore
+
+  fun state_h (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, (h,err), root)) = h
+   |  state_h (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, (h,err), root)) = h
+   |  state_h (D.ContState (x, cx, y, ext, extev, ynext, (h,err))) = h
+
+  fun update_state_h (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, (h,err), root), h') =
+    D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, (h',err), root)
+   |  update_state_h (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, (h,err), root), h') =
+      D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, (h',err), root)
+   |  update_state_h (D.ContState (x, cx, y, ext, extev, ynext, (h,err)), h') =
+      D.ContState (x, cx, y, ext, extev, ynext, (h',err))
 
   fun copy_array a =
     let val len = Array.length a
@@ -192,13 +210,22 @@ struct
    |  copy_state (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, (h,err), root)) =
       D.EventState (x, cx, copy_array y, copy_array ev, copy_array ext, copy_array extev,
                     ynext, yrsp, enext, (h,err), root) 
-   |  copy_state (D.ContState (x, cx, y, ext, extev, ynext, yrsp, (h,err))) =
-      D.ContState (x, cx, copy_array y, copy_array ext, copy_array extev, ynext, yrsp, (h,err))
+   |  copy_state (D.ContState (x, cx, y, ext, extev, ynext, (h,err))) =
+      D.ContState (x, cx, copy_array y, copy_array ext, copy_array extev, ynext, (h,err))
                                                
 
-        
-  exception Index        
-  exception InvalidPopulationSet of string
+  val seed_init = RandomInit() (* seed for randomized initial values *)
+  val zt_init   = ZigInit()
+  fun random_normal () = RandomMTZig.randNormal(seed_init,zt_init)
+  fun random_uniform () = RandomMTZig.randUniform(seed_init)
+  fun random_uniform_vector () = RandomMTZig.randUniform(seed_init)
+  fun random_int (imin,imax) = 
+      let val range = imax - imin
+      in
+          imin + Real.round(Real.* (Real.fromInt(range), RandomMTZig.randUniform(seed_init)))
+      end
+
+  val global_h = ref 0.1
 
   val label = "{{group.name}}"
             
@@ -215,17 +242,8 @@ struct
 
   val D: real list = 
       [{% for pr in dict (group.projections) %}{{pr.value.delay.exprML}}{% if not loop.last %},{% endif %}{% endfor %}]
-
-  val seed_init = RandomInit() (* seed for randomized initial values *)
-  val zt_init   = ZigInit()
-  fun random_normal () = RandomMTZig.randNormal(seed_init,zt_init)
-  fun random_uniform () = RandomMTZig.randUniform(seed_init)
-  fun random_uniform_vector () = RandomMTZig.randUniform(seed_init)
-  fun random_int (imin,imax) = 
-      let val range = imax - imin
-      in
-          imin + Real.round(Real.* (Real.fromInt(range), RandomMTZig.randUniform(seed_init)))
-      end
+          
+  val minDelay = List.foldl Real.min (hd D) (tl D)
 
 {% for pop in dict (group.populations) %}
 
@@ -240,9 +258,9 @@ struct
       let
           val parameters     = {{pop.name}}_parameters
           val field_vector   = Vector.tabulate (N_{{pop.name}}, fn (i) => {{pop.value.prototype.name}}.fieldfun())
-          val make_initial_vector' = make_initial_vector ({{pop.value.prototype.name}}.alloc,{{pop.value.prototype.name}}.bool_alloc,
+          val make_initial_vector' = make_initial_vector ({{pop.value.prototype.name}}.make_real_state,{{pop.value.prototype.name}}.make_bool_state,
                                                           {{pop.value.prototype.name}}.n,{{pop.value.prototype.name}}.nev,{{pop.value.prototype.name}}.ndsc,
-                                                          {{pop.value.prototype.name}}.nregime)
+                                                          {{pop.value.prototype.name}}.nregime, Real.min((!global_h), minDelay))
       in
           List.tabulate
               (N_{{pop.name}},    
@@ -264,25 +282,27 @@ struct
   val {{pop.name}}_ext_ports = [{% for portspec in dict (group.projectionPorts) %}{% if portspec.name == pop.name %}{% for port in portspec.value %}{{port}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endfor %}]
                            
 
-  fun {{pop.name}}_f h (i,p,fld,rs,rszt) = 
-      D.integral({{pop.value.prototype.name}}.odefun (p,fld,rs,rszt),
-                 optApply {{pop.value.prototype.name}}.condfun (p,fld),
-                 optApply {{pop.value.prototype.name}}.posfun (p,fld,rs,rszt),
-                 optApply {{pop.value.prototype.name}}.negfun (p,fld,rs,rszt),
-                 optApply {{pop.value.prototype.name}}.dposfun (p,fld,rs,rszt),
-                 {{pop.value.prototype.name}}.regfun,
-                 h)
+  fun {{pop.name}}_f (i,p,fld,rs,rszt) = 
+    D.integral({{pop.value.prototype.name}}.odefun (p,fld,rs,rszt),
+               {{pop.value.prototype.name}}.interpfun,
+               optApply {{pop.value.prototype.name}}.condfun (p,fld),
+               optApply {{pop.value.prototype.name}}.posfun (p,fld,rs,rszt),
+               optApply {{pop.value.prototype.name}}.negfun (p,fld,rs,rszt),
+               optApply {{pop.value.prototype.name}}.dposfun (p,fld,rs,rszt),
+               {{pop.value.prototype.name}}.regfun)
 
                 
-  fun {{pop.name}}_run f h (rs,rszt) (statesample,extsample,evsample) (Wmap,n0) ((i,fld,input),(nstates,spikes,statelog)) =
+  fun {{pop.name}}_run f (rs,rszt) (statesample,extsample,evsample) n0 (Wmap,t_next) ((i,fld,input),(nstates,spikes,statelog)) =
     let 
-        val f' = f h (i,{{pop.name}}_parameters,fld,rs,rszt)
+        val f' = f (i,{{pop.name}}_parameters,fld,rs,rszt)
 
 (*
 {% if pop.value.prototype.fieldExprML %}
         val fieldV = getindex ({{pop.name}}_field_vector,i)
 {% endif %}
 *)
+        val t = state_indep input
+        val h = state_h input
 
         val update    = Unsafe.Array.update
         val ext_i     = state_ext input
@@ -292,28 +312,28 @@ struct
                             #2(List.foldr
                                    (fn(port,(index,ax)) =>
                                        case IntMap.find (spm, port) of
-                                           SOME lst => ((*putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
-                                                                                " total external events: ");
-                                                        List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
-                                                        putStrLn TextIO.stdOut "";*)
+                                           SOME lst => (if debug
+                                                        then (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
+                                                                                      " total external events: ");
+                                                              List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
+                                                              putStrLn TextIO.stdOut "")
+                                                        else ();
                                                         (index+1, (index,lst)::ax))
                                         |  NONE => (index+1, (index,[])::ax))
                                    (0,[]) {{pop.name}}_ext_ports)
                           | NONE => List.tabulate (List.length {{pop.name}}_ext_ports,
                                                    fn(i) => (i,[]))
                                                   
-        fun root2str (D.RootFound lst) = ("RootFound " ^ (String.concatWith ", " (map showReal lst)))
-          | root2str (D.RootStep lst)  = ("RootStep " ^ (String.concatWith ", " (map showReal lst)))
-          | root2str (D.RootAfter lst)  = ("RootAfter " ^ (String.concatWith ", " (map showReal lst)))
-          | root2str D.RootBefore    = "RootBefore"
                                   
         fun extevent extev_map t = 
           List.foldl
               (fn ((index,lst), ax) => 
-                  ((*putStrLn TextIO.stdOut ("extevent: cell " ^ (Int.toString i) ^ ": " ^ (Int.toString (List.length lst)) ^
-                                           " external events at t = " ^ (showReal t) ^ ": ");
-                   List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
-                   putStrLn TextIO.stdOut "";*)
+                  (if debug
+                   then (putStrLn TextIO.stdOut ("extevent: cell " ^ (Int.toString i) ^ ": " ^ (Int.toString (List.length lst)) ^
+                                                 " external events at t = " ^ (showReal t) ^ ": ");
+                         List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
+                         putStrLn TextIO.stdOut "")
+                   else ();
                    let
                        fun recur lst =
                          case lst of
@@ -350,33 +370,57 @@ struct
                                |  _ =>  statelog
                                             
               
-              (*val _ = putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: root state is " ^
-                                              (root2str (state_root nstate)))*)
+              val _ = if debug
+                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
+                                                   " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
+                                                   " root state is " ^ (showRoot (state_root nstate)))
+                      else ()
           in
                 case state_root nstate of
                     D.RootFound (hs) =>
-                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                 (root2str (state_root nstate)));*)
+                    (if debug
+                     then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                  (showRoot (state_root nstate)))
+                     else ();
                      recur (f' nstate, extev_map, spikes', statelog'))
                   | D.RootStep [] =>
-                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                             (root2str (state_root nstate)));*)
+                    (if debug
+                     then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                  (showRoot (state_root nstate)))
+                     else ();
                      (nstate, spikes', statelog'))
                   | D.RootStep (h::hs) =>
-                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                             (root2str (state_root nstate)));*)
+                    (if debug
+                     then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                  (showRoot (state_root nstate)))
+                     else ();
                      recur (f' nstate, extev_map, spikes', statelog'))
-                  | D.RootBefore =>  (nstate, spikes', statelog')
+                  | D.RootBefore =>
+                    if state_indep nstate < t_next
+                    then (let
+                             val t = state_indep input
+                             val h = state_h input
+                             val nstate' = if t_next < t+h
+                                            then update_state_h (nstate,t_next-t)
+                                            else nstate
+                          in
+                              recur (f' nstate', extev_map, spikes', statelog')
+                          end)
+                    else (nstate, spikes', statelog')
                   | D.RootAfter (_::hs) =>
-                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                             (root2str (state_root nstate)));*)
-                     let val extev_map' = extevent extev_map  ((state_indep input)+h)
+                    (if debug
+                     then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                  (showRoot (state_root nstate)))
+                     else ();
+                     let val extev_map' = extevent extev_map  t_next
                      in
                          recur (f' nstate, extev_map', spikes, statelog)
                      end)
                   | D.RootAfter [] =>
-                    ((*putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                             (root2str (state_root nstate)));*)
+                    (if debug
+                     then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                  (showRoot (state_root nstate)))
+                     else ();
                      (f' nstate, spikes', statelog'))
             end
 
@@ -384,12 +428,20 @@ struct
                         then ((i+n0,copy_state input))::statelog
                         else statelog
 
+        val extev_map' = extevent extev_map t_next
 
-        (*val _ = putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": run: root state is " ^
-                                        (root2str (state_root input)))*)
+        val input' = if t_next < t+h
+                     then update_state_h (input,t_next-t)
+                     else input
+                        
 
-        val extev_map' = extevent extev_map  ((state_indep input) + h)
-        val (nstate,spikes',statelog') = recur (f' input,extev_map',spikes,statelog')
+        val _ = if debug
+                then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": run: " ^
+                                             "t = " ^ (showReal t) ^ " t_next = " ^ (showReal t_next) ^ " h = " ^ (showReal h) ^
+                                             " root state is " ^ (showRoot (state_root input)))
+                else ()
+
+        val (nstate,spikes',statelog') = recur (f' input',extev_map',spikes,statelog')
     in 
         ((i,fld,nstate)::nstates, spikes', statelog')
          
@@ -440,7 +492,7 @@ struct
         {% endfor %}
     ]
          
-    fun frun (rss, rszts) (statesample,extsample,evsample) h I
+    fun frun (rss, rszts) (statesample,extsample,evsample) (I,t_next)
              (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
@@ -451,7 +503,7 @@ struct
             val rs   = List.nth(rss, {{loop.index0}})
             val rszt = List.nth(rszts, {{loop.index0}})
             val ({{pop.name}}_states,{{pop.name}}_spikes,{{pop.name}}_statelog) = 
-                List.foldl ({{pop.name}}_run {{pop.name}}_f h (rs,rszt) (statesample,extsample,evsample) (I,{{pop.name}}_n0))
+                List.foldl ({{pop.name}}_run {{pop.name}}_f (rs,rszt) (statesample,extsample,evsample) {{pop.name}}_n0 (I,t_next))
                            ([],[],[]) {{pop.name}}_state_vector
 
 {% endfor %}
