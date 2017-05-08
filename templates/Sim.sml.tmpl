@@ -250,12 +250,7 @@ let
         end
 
 in
-    if minDelay > 0.0
-    then 
-        (if (!global_h) > minDelay
-         then global_h := minDelay else ();
-         netrun (0.0,0.0,DQ,initial_vector,{{group.name}}.SEQ.empty,[],0.0))
-    else raise Fail "minimum delay is zero"
+    netrun (0.0,0.0,DQ,initial_vector,{{group.name}}.SEQ.empty,[],0.0)
 end
 
 exception Exit of OS.Process.status 
@@ -302,7 +297,8 @@ fun main (name,args) =
                    putStrLn TextIO.stdErr ("State traces and spike event times will not be recorded."))
                 | (_, _, _, _) => ()
                                       
-      val _     = case is_timestep of SOME dt => (global_h := (Real.min(dt, minDelay)) | NONE => ()
+      val _     = case is_timestep of SOME dt => (global_h := (Real.min(dt, minDelay)))
+                                    | NONE => (global_h := (Real.min(!global_h, minDelay)))
       val tstop = case is_time of SOME t => t | NONE => 150.0
       val logperiod = case is_logperiod of SOME t => t | NONE => 100.0
                                                                      
@@ -384,7 +380,9 @@ fun main (name,args) =
                                                       "list of random seeds does not match number of populations")
           val rszts   = List.tabulate (P, fn(i) => ZigInit())
                                       
-                                      
+          val _     = D.maxstep := (!global_h)
+          val _     = if minDelay <= 0.0 then raise Fail "minimum delay is zero" else ()
+                                                                                          
           val _     = putStrLn TextIO.stdOut ("starting simulation...")
           val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, global_h, initial, frun, 
                                               ftime, fspikes spikelog, finfo, tstop, logperiod,
