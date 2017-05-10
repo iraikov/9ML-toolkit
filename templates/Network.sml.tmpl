@@ -17,7 +17,7 @@ struct
                                type value = int
                                fun value (x : P.item) = (#2(x)))
 
-  val debug = false
+  val debug = true
                   
   fun putStrLn out str = 
       (TextIO.output (out, str);
@@ -293,7 +293,8 @@ struct
 
                 
   fun {{pop.name}}_run f (rs,rszt) (statesample,extsample,evsample) n0 (Wmap,t_next) ((i,fld,input),(nstates,spikes,statelog)) =
-    let 
+    let
+        val tol = 1E~11
         val f' = f (i,{{pop.name}}_parameters,fld,rs,rszt)
 
 (*
@@ -396,17 +397,24 @@ struct
                      else ();
                      recur (f' nstate, extev_map, spikes', statelog'))
                   | D.RootBefore =>
-                    if state_indep nstate < t_next
-                    then (let
-                             val t = state_indep input
-                             val h = state_h input
-                             val nstate' = if t_next < t+h
+                    (if debug
+                     then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                  (showRoot (state_root nstate)) ^
+                                                  " t = " ^ (showReal (state_indep nstate)) ^
+                                                  " t_next = " ^ (showReal t_next) ^
+                                                  " t_next - t = " ^ (showReal (t_next - (state_indep nstate))))
+                     else ();
+                     if (t_next - (state_indep nstate)) > tol
+                     then (let
+                              val t = state_indep input
+                              val h = state_h input
+                              val nstate' = if t_next < t+h
                                             then update_state_h (nstate,t_next-t)
                                             else nstate
                           in
                               recur (f' nstate', extev_map, spikes', statelog')
                           end)
-                    else (nstate, spikes', statelog')
+                    else (nstate, spikes', statelog'))
                   | D.RootAfter (_::hs) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
@@ -430,10 +438,9 @@ struct
 
         val extev_map' = extevent extev_map t_next
 
-        val input' = if t_next < t+h
+        val input' = if ((t+h) - t_next) > tol
                      then update_state_h (input,t_next-t)
                      else input
-                        
 
         val _ = if debug
                 then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": run: " ^
