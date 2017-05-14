@@ -193,7 +193,8 @@
    `((name      . ,name)
      (prototype . ,prototype)
      (size      . ,(inexact->exact size))
-     (start     . ,(inexact->exact order)))
+     (start     . ,(inexact->exact order))
+     )
    ))
 
 
@@ -210,9 +211,8 @@
                       (let ((kids (sxml:kids node)))
                         (fold (lambda (x ax)
                                 (lset-union population= 
-                                    (make-population-set x populations) ax))
-                              '() kids)
-                        ))
+                                            (make-population-set x populations) ax))
+                              '() kids)))
                     ))
 
        (union-template 
@@ -275,13 +275,30 @@
     
     
 (define (make-population-set-tenv name populations)
-  (alist->tenv
-   `((name        . ,name)
-     (populations . ,(map cdr populations))
-     (size        . ,(fold + 0 (map (lambda (x) 
-                                      (ersatz:tvalue->sexpr (alist-ref 'size (cdr x)))) 
-                                    populations)))
-     )))
+  (let* (
+         (populations (map cdr populations))
+         (populations1
+          (car
+           (fold (lambda (x ax)
+                   (let ((pop (car x)) (size (cdr x))
+                         (plst (car ax)) (offset (cadr ax)))
+                     (list (cons (cons `(relativeStart . ,offset)
+                                       pop) plst)
+                           (+ size offset))))
+                 `(() 0)
+                 (map (lambda (x) 
+                        (cons x (ersatz:tvalue->sexpr (alist-ref 'size x))))
+                      populations))
+           ))
+         )
+    (alist->tenv
+     `((name        . ,name)
+       (populations . ,populations1)
+       (size        . ,(fold + 0 (map (lambda (x) 
+                                        (ersatz:tvalue->sexpr (alist-ref 'size x)))
+                                      populations1)))
+       ))
+    ))
   
 
 (define (make-projection-tenv name type source destination connectivity response response-ports plasticity del properties)

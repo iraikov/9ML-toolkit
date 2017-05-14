@@ -47,10 +47,10 @@
 
           ;; event times per node
           (event-times
-           (let ((v (make-vector nmax '())))
+           (let ((v (make-vector (+ 1 nmax) '())))
              (for-each (match-lambda
                         ((t . ns)
-                         (for-each (lambda (n) (vector-set! v (- n 1) (cons t (vector-ref v (- n 1)))))
+                         (for-each (lambda (n) (vector-set! v n (cons t (vector-ref v n))))
                                    ns)))
                        (reverse data))
              v))

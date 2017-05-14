@@ -183,20 +183,10 @@ let
                                   (D,S))
                       ))
                       DQ spike_i
-
-    (* Compensated summation *)
-    fun csum (x, cx, h) =
-      let
-          val dx  = h + cx
-          val x'  = x + dx
-          val cx' = (x - x') + dx
-      in
-          (x', cx')
-      end
                              
-    fun netrun (t_n,t_cx,DQ,state_vector,spikelog,statelog,tlog) =
+    fun netrun (t_n,n,DQ,state_vector,spikelog,statelog,tlog) =
         let 
-            val (t_i, t_cx) = csum (t_n, t_cx, (!global_h))
+            val t_i = (Real.fromInt n) * (!global_h)
 
             val _ = if debug
                     then (putStrLn TextIO.stdOut ("netrun: global_h = " ^ (showReal (!global_h)) ^
@@ -208,6 +198,10 @@ let
                               (fn (t,_) => Real.<=(t,t_i),
                                fn (t,(i,port,w),I) => 
                                   let
+                                      val _ = if debug
+                                              then putStrLn TextIO.stdOut ("netrun: event at t = " ^ (showReal t) ^
+                                                                           " i = " ^ (Int.toString i))
+                                              else ()
                                       val im = IntMap.find (I, i)
                                       val im = case im of 
                                                    SOME m => IntMap.unionWith
@@ -246,11 +240,11 @@ let
             
             if t_i >= tstop
             then state_vector_i
-            else netrun (t_i, t_cx, DQ'', state_vector_i, spikelog', statelog', tlog')
+            else netrun (t_i, Int.+(n,1), DQ'', state_vector_i, spikelog', statelog', tlog')
         end
 
 in
-    netrun (0.0,0.0,DQ,initial_vector,{{group.name}}.SEQ.empty,[],0.0)
+    netrun (0.0,1,DQ,initial_vector,{{group.name}}.SEQ.empty,[],0.0)
 end
 
 exception Exit of OS.Process.status 
