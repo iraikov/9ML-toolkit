@@ -341,7 +341,7 @@ struct
                              (t',v)::rst =>
                              if t' < tstart
                              then recur rst
-                             else (if (tstart <= t') andalso (t' <= tend)
+                             else (if t' <= tend
                                    then 
                                        (update (ext_i, index, v); 
                                         update (extev_i, index, t');
