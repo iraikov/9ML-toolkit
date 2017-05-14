@@ -38,7 +38,7 @@ struct
   fun showRealArray v = 
       (String.concatWith ", " (Array.foldr (fn (x, ax) => (showReal x)::ax) [] v))
 
-  fun showRoot (D.RootFound lst) = ("RootFound " ^ (String.concatWith ", " (map showReal lst)))
+  fun showRoot (D.RootFound (i,lst)) = ("RootFound " ^ (String.concatWith ", " (map showReal lst)))
     | showRoot (D.RootStep lst)  = ("RootStep " ^ (String.concatWith ", " (map showReal lst)))
     | showRoot (D.RootAfter lst)  = ("RootAfter " ^ (String.concatWith ", " (map showReal lst)))
     | showRoot D.RootBefore    = "RootBefore"
