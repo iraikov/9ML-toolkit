@@ -339,12 +339,14 @@ struct
                        fun recur lst =
                          case lst of
                              (t',v)::rst =>
-                             (if (tstart < t') andalso (t' <= tend)
-                              then 
-                                  (update (ext_i, index, v); 
-                                   update (extev_i, index, t');
-                                   (index,rst)::ax)
-                              else (index,lst)::ax)
+                             if t' < tstart
+                             then recur rst
+                             else (if (tstart <= t') andalso (t' <= tend)
+                                   then 
+                                       (update (ext_i, index, v); 
+                                        update (extev_i, index, t');
+                                        (index,rst)::ax)
+                                   else (index,lst)::ax)
                            | [] =>
                              (update (ext_i, index, 0.0); 
                               update (extev_i, index, Real.posInf);
