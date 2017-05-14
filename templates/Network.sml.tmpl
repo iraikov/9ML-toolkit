@@ -326,7 +326,7 @@ struct
                                                    fn(i) => (i,[]))
                                                   
                                   
-        fun extevent extev_map t = 
+        fun extevent extev_map (tstart, tend) = 
           List.foldl
               (fn ((index,lst), ax) => 
                   (if debug
@@ -339,7 +339,7 @@ struct
                        fun recur lst =
                          case lst of
                              (t',v)::rst =>
-                             (if t' <= t
+                             (if (tstart < t') andalso (t' <= tend)
                               then 
                                   (update (ext_i, index, v); 
                                    update (extev_i, index, t');
@@ -421,7 +421,7 @@ struct
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
-                     let val extev_map' = extevent extev_map  t_next
+                     let val extev_map' = extevent extev_map (state_indep nstate, t_next)
                      in
                          recur (f' nstate, extev_map', spikes, statelog)
                      end)
@@ -437,7 +437,7 @@ struct
                         then ((i+n0,copy_state input))::statelog
                         else statelog
 
-        val extev_map' = extevent extev_map t_next
+        val extev_map' = extevent extev_map (state_indep input, t_next)
 
         val input' = if ((t+h) - t_next) > tol
                      then update_state_h (input,t_next-t)
