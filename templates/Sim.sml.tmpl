@@ -147,7 +147,7 @@ fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (stat
   end
 
 
-fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod, rss, rszts,
+fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod, rs_vector, rszt_vector,
            (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix),
            (statesample,extsample,evsample)) =
 
@@ -156,7 +156,7 @@ let
     val isub = Unsafe.IntArray.sub
     val update = Unsafe.Real64Array.update
 
-    val frun' = frun (rss, rszts) (statesample,extsample,evsample)
+    val frun' = frun (statesample,extsample,evsample)
           
     val writeLog' = writeLog Plabels (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix)
 
@@ -215,7 +215,7 @@ let
                                DQ)
 
 
-            val (state_vector_i, spikes_i, statelog_i) = frun' (I,t_i) state_vector
+            val (state_vector_i, spikes_i, statelog_i) = frun' (I,t_i) (state_vector, rs_vector, rszt_vector)
 
             val (all_spike_i, log_spike_i) = fspikes spikes_i
                 
@@ -366,13 +366,12 @@ fun main (name,args) =
                      | NONE => ()
                   )
                       
-          val rss   = case is_randomseeds of
-                          NONE => List.tabulate (P, fn(i) => RandomInit())
-                       |  SOME lst => if (List.length lst)=P
-                                      then List.map RandomInitFromInt lst
-                                      else exitError (CommandLine.name(),
-                                                      "list of random seeds does not match number of populations")
-          val rszts   = List.tabulate (P, fn(i) => ZigInit())
+          val rs_seeds  = case is_randomseeds of
+                              NONE => List.tabulate (P, fn(i) => RandomInit())
+                           |  SOME lst => if (List.length lst)=P
+                                          then List.map RandomInitFromInt lst
+                                          else exitError (CommandLine.name(),
+                                                          "list of random seeds does not match number of populations")
                                       
           val _     = D.maxstep := (!global_h)
           val _     = if minDelay <= 0.0 then raise Fail "minimum delay is zero" else ()
@@ -380,7 +379,7 @@ fun main (name,args) =
           val _     = putStrLn TextIO.stdOut ("starting simulation...")
           val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, global_h, initial, frun, 
                                               ftime, fspikes spikelog, finfo, tstop, logperiod,
-                                              rss, rszts,
+                                              rs_vector, rszt_vector,
                                               (spikeout_filepath,stateout_prefix,
                                                extout_prefix,eventout_prefix),
                                               (statesample,extsample,evsample)))
