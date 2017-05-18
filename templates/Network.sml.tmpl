@@ -315,12 +315,12 @@ struct
         val extev_i   = state_extev input
         val extev_map = case IntMap.find (Wmap, i+n0) of
                             SOME spm =>
-                            #2(List.foldr
+                            #2(List.foldl
                                    (fn(port,(index,ax)) =>
                                        case IntMap.find (spm, port) of
                                            SOME lst => (if debug
                                                         then (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
-                                                                                      " total external events: ");
+                                                                                      " total external events at port " ^ (Int.toString port) ^ " index " ^ (Int.toString index) ^ ": ");
                                                               List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
                                                               putStrLn TextIO.stdOut "")
                                                         else ();
