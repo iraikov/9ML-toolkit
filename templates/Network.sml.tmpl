@@ -40,7 +40,7 @@ struct
 
   fun showRoot (D.RootFound (i,lst)) = ("RootFound " ^ (String.concatWith ", " (map showReal lst)))
     | showRoot (D.RootStep lst)  = ("RootStep " ^ (String.concatWith ", " (map showReal lst)))
-    | showRoot (D.RootAfter lst)  = ("RootAfter " ^ (String.concatWith ", " (map showReal lst)))
+    | showRoot (D.RootAfter (i,lst))  = ("RootAfter " ^ (String.concatWith ", " (map showReal lst)))
     | showRoot D.RootBefore    = "RootBefore"
       
   fun foldl1 f lst = let val v = List.hd lst
@@ -315,18 +315,22 @@ struct
         val extev_i   = state_extev input
         val extev_map = case IntMap.find (Wmap, i+n0) of
                             SOME spm =>
-                            #2(List.foldl
-                                   (fn(port,(index,ax)) =>
-                                       case IntMap.find (spm, port) of
-                                           SOME lst => (if debug
-                                                        then (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
-                                                                                      " total external events at port " ^ (Int.toString port) ^ " index " ^ (Int.toString index) ^ ": ");
-                                                              List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
-                                                              putStrLn TextIO.stdOut "")
-                                                        else ();
-                                                        (index+1, (index,lst)::ax))
-                                        |  NONE => (index+1, (index,[])::ax))
-                                   (0,[]) {{pop.name}}_ext_ports)
+                            (if debug
+                             then (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ " external events: ");
+                                   IntMap.appi (fn (port, lst) =>
+                                                   (putStr TextIO.stdOut (" port " ^ (Int.toString port) ^ ": ");
+                                                    List.app (fn(t,v) => putStr TextIO.stdOut ("[" ^ (showReal t) ^ " : " ^
+                                                                                               (showReal v) ^ "]")) lst;
+                                                    putStrLn TextIO.stdOut "")
+                                               )
+                                               spm)
+                             else ();
+                             #2(List.foldl
+                                    (fn(port,(index,ax)) =>
+                                        case IntMap.find (spm, port) of
+                                            SOME lst => (index+1, (index,lst)::ax)
+                                          |  NONE => (index+1, (index,[])::ax))
+                                    (0,[]) {{pop.name}}_ext_ports))
                           | NONE => List.tabulate (List.length {{pop.name}}_ext_ports,
                                                    fn(i) => (i,[]))
                                                   
@@ -336,6 +340,7 @@ struct
               (fn ((index,lst), ax) => 
                   (if debug
                    then (putStrLn TextIO.stdOut ("extevent: cell " ^ (Int.toString i) ^ ": " ^ (Int.toString (List.length lst)) ^
+                                                 " tstart = " ^ (showReal tstart) ^ " tend = " ^ (showReal tend) ^ " " ^
                                                  " external events at t = " ^ (showReal t) ^ ": ");
                          List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
                          putStrLn TextIO.stdOut "")
@@ -353,9 +358,13 @@ struct
                                         (index,rst)::ax)
                                    else (index,lst)::ax)
                            | [] =>
-                             (update (ext_i, index, 0.0); 
-                              update (extev_i, index, Real.posInf);
-                              (index,[])::ax)
+                             if getindex(extev_i, index) <= tstart
+                             then 
+                                 (update (ext_i, index, 0.0); 
+                                  update (extev_i, index, Real.posInf);
+                                  ((index,[])::ax))
+                             else
+                                  ((index,[])::ax)
                    in
                        recur lst
                    end))
@@ -381,11 +390,12 @@ struct
               val _ = if debug
                       then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
                                                    " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
-                                                   " root state is " ^ (showRoot (state_root nstate)))
+                                                   " root state is " ^ (showRoot (state_root nstate)) ^
+                                                   " extev is " ^ (showRealArray (state_extev nstate)))
                       else ()
           in
                 case state_root nstate of
-                    D.RootFound (hs) =>
+                    D.RootFound (i,hs) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
@@ -423,21 +433,31 @@ struct
                               recur (nstate'', extev_map, spikes', statelog')
                           end)
                     else (nstate, spikes', statelog'))
-                  | D.RootAfter (_::hs) =>
+                  | D.RootAfter (i,_::hs) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
-                     let val extev_map' = extevent extev_map (state_indep nstate, t_next)
+                     let
+                         val extev_map' = extevent extev_map (state_indep nstate, t_next)
                      in
                          recur (f' nstate, extev_map', spikes, statelog)
                      end)
-                  | D.RootAfter [] =>
+                  | D.RootAfter (i,[]) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
-                     (f' nstate, spikes', statelog'))
+                     let
+                         (*val _ = (update (ext_i, i, 0.0); 
+                                  update (extev_i, i, Real.posInf))*)
+                         val nstate'   = f' nstate
+                         val statelog'' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
+                                          then ((i+n0,copy_state nstate'))::statelog'
+                                          else statelog'
+                     in
+                         (nstate', spikes', statelog'')
+                     end)
             end
 
         val statelog' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
@@ -497,9 +517,15 @@ struct
 {% endfor %}
     )
 
-    val rs_vector = (
+    fun make_rs_vector NONE = (
 {% for pop in dict (group.populations) %}
-        Vector.tabulate (N_{{pop.name}}, fn (i) => RandomInit()){% if not loop.last %},{% endif %}
+        Vector.tabulate (N_{{pop.name}}, fn (i) => RandomInitFromInt(i+{{pop.name}}_n0)){% if not loop.last %},{% endif %}
+
+{% endfor %}
+    )
+      | make_rs_vector (SOME seeds) = (
+{% for pop in dict (group.populations) %}
+        (let val seed = List.nth (seeds, {{loop.index0}}) in Vector.tabulate (N_{{pop.name}}, fn (i) => RandomInitFromInt(i+seed)) end){% if not loop.last %},{% endif %}
 
 {% endfor %}
     )

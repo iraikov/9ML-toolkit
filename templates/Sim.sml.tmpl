@@ -200,7 +200,9 @@ let
                                   let
                                       val _ = if debug
                                               then putStrLn TextIO.stdOut ("netrun: event at t = " ^ (showReal t) ^
-                                                                           " i = " ^ (Int.toString i))
+                                                                           " i = " ^ (Int.toString i) ^
+                                                                           " port = " ^ (Int.toString port) ^
+                                                                           " w = " ^ (showReal w))
                                               else ()
                                       val im = IntMap.find (I, i)
                                       val im = case im of 
@@ -367,12 +369,14 @@ fun main (name,args) =
                   )
                       
           val rs_seeds  = case is_randomseeds of
-                              NONE => List.tabulate (P, fn(i) => RandomInit())
+                              NONE => NONE
                            |  SOME lst => if (List.length lst)=P
-                                          then List.map RandomInitFromInt lst
+                                          then SOME lst
                                           else exitError (CommandLine.name(),
                                                           "list of random seeds does not match number of populations")
-                                      
+
+          val rs_vector = make_rs_vector (rs_seeds)
+                                                         
           val _     = D.maxstep := (!global_h)
           val _     = if minDelay <= 0.0 then raise Fail "minimum delay is zero" else ()
                                                                                           
