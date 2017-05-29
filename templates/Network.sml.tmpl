@@ -384,6 +384,9 @@ struct
                               D.RootFound _ =>  (if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
                                                  then ((i+n0,copy_state nstate))::statelog
                                                  else statelog)
+                               | D.RootAfter _ =>  (if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
+                                                    then ((i+n0,copy_state nstate))::statelog
+                                                    else statelog)
                                |  _ =>  statelog
                                             
               
@@ -400,7 +403,11 @@ struct
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
-                     recur (f' nstate, extev_map, spikes', statelog'))
+                     let
+                         val nstate'    = f' nstate
+                     in
+                         recur (nstate', extev_map, spikes', statelog')
+                     end)
                   | D.RootStep [] =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
@@ -440,8 +447,9 @@ struct
                      else ();
                      let
                          val extev_map' = extevent extev_map (state_indep nstate, t_next)
+                         val nstate'    = f' nstate
                      in
-                         recur (f' nstate, extev_map', spikes, statelog)
+                         recur (nstate', extev_map', spikes, statelog')
                      end)
                   | D.RootAfter (i,[]) =>
                     (if debug
