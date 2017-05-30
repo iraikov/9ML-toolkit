@@ -292,7 +292,9 @@ fun main (name,args) =
                   (putStrLn TextIO.stdErr ("No options for state sampling or event recording have been specified;");
                    putStrLn TextIO.stdErr ("State traces and spike event times will not be recorded."))
                 | (_, _, _, _) => ()
-                                      
+
+      val _     = case is_tol of SOME v => (if v > 0.0 then (D.tol := (SOME v)) else ())
+                              |  NONE => ()
       val _     = case is_timestep of SOME dt => (global_h := (Real.min(dt, minDelay)))
                                     | NONE => (global_h := (Real.min(!global_h, minDelay)))
       val tstop = case is_time of SOME t => t | NONE => 150.0

@@ -309,7 +309,7 @@ struct
                 
   fun {{pop.name}}_run f (rs,rszt) (statesample,extsample,evsample) n0 (Wmap,t_next) ((i,fld,input),(nstates,spikes,statelog)) =
     let
-        val tol = 1E~11
+        val tol = !(D.tol)
         val f' = f (i,{{pop.name}}_parameters,fld,rs,rszt)
 
 (*
@@ -484,7 +484,7 @@ struct
 
         val extev_map' = extevent extev_map (state_indep input, t_next)
 
-        val input' = if ((t+h) - t_next) > tol
+        val input' = if ((t+h) - t_next) > D.evtol
                      then update_state_h (input,t_next-t)
                      else input
 
