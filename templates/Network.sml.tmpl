@@ -219,11 +219,21 @@ struct
   fun random_normal () = RandomMTZig.randNormal(seed_init,zt_init)
   fun random_uniform () = RandomMTZig.randUniform(seed_init)
   fun random_uniform_vector () = RandomMTZig.randUniform(seed_init)
-  fun random_int (imin,imax) = 
-      let val range = imax - imin
-      in
-          imin + Real.round(Real.* (Real.fromInt(range), RandomMTZig.randUniform(seed_init)))
-      end
+
+  fun sampleWithoutReplacement (populationSize, (* size of set sampling from *)
+                                sampleSize, (* size of sample *) 
+                                f) =
+    Loop.foldsi (0, sampleSize,
+                fn (m, t) => (* t: total inputs processed *)
+                   let
+                       val u = random_uniform()
+                   in
+                       if Real.>= (Real.*(Real.fromInt (populationSize - t), u), Real.fromInt (sampleSize - m))
+                       then Loop.SeqRecur (t+1)
+                       else (f(m, t); Loop.SeqAdvance (t+1))
+                   end,
+                0)
+                    
 
   val global_h = ref 0.1
 
@@ -754,10 +764,11 @@ struct
                                           val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
-                                                                 Loop.foldi (0,{{num | int}},
-                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),true)); 
-                                                                                          k+1),
-                                                                             k),
+                                                                 (sampleWithoutReplacement
+                                                                     ({{s.size}},{{num | int}},
+                                                                      fn (j,t) =>
+                                                                         (update (sample,k+j,(i,t,true))));
+                                                                  k+{{num | int}}),
                                                               0)
                                                                              
                                           val v = Array.vector sample
@@ -775,14 +786,15 @@ struct
 {% call preorder (sp,tp) %}          (let
                                           val sample = Array.array (Int.min({{num | int}},{{s.size}}) * {{t.size}}, (0,0,false))
                                           val update = Unsafe.Array.update
-                                          val _ = Loop.foldi (0,{{t.size}},
+                                          val _ = Loop.foldi (0,{{s.size}},
                                                               fn (i,k) => 
-                                                                 Loop.foldi (0,{{num| int}},
-                                                                             fn (j,k) => (update (sample,k,(i,random_int (0, {{s.size}}-1),true)); 
-                                                                                          k+1),
-                                                                             k),
+                                                                 (sampleWithoutReplacement
+                                                                     ({{t.size}},{{num | int}},
+                                                                      fn (j,t) =>
+                                                                         (update (sample,k+j,(i,t,true))));
+                                                                  k+{{num | int}}),
                                                               0)
-
+                                                                             
                                           val v = Array.vector sample
                                       in
                                           {offset=[{{t.start}},{{s.start}}],
@@ -869,7 +881,7 @@ struct
                 pr.value.connectivity.type.probability) %}
 {% endcall %}
 {% elseif ((pr.value.connectivity.type.stdlib == "RandomFanOut") || (pr.value.connectivity.type.stdlib == "http://nineml.net/9ML/1.0/connectionrules/RandomFanOut"))  &&  pr.value.connectivity.type.number %}
-{% call random_fan_out(pr.name, 
+{% call random_fan_out_num(pr.name, 
                 pr.value.source.populations,
                 pr.value.destination.populations,
                 pr.value.connectivity.type.number) %}

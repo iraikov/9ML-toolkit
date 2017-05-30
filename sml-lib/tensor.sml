@@ -69,6 +69,8 @@ signature MONO_VECTOR =
 
 structure Loop =
     struct
+        datatype 'a seq = SeqRecur of 'a | SeqAdvance of 'a
+
         fun all (a, b, f) =
             if a > b then
                 true
@@ -126,6 +128,19 @@ structure Loop =
                 foldi (a+1, b, f, f (a, init))
             else
                 init
+
+                    
+        fun foldsi (a, b, f, init) =
+          if a < b
+          then (let
+                   val init' = f (a, init)
+               in
+                   case init' of
+                      SeqAdvance v => foldsi (a+1, b, f, v)
+                    | SeqRecur v => foldsi (a, b, f, v)
+                end)
+          else
+              init
     end
 (*
   INDEX         -Signature-
