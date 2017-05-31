@@ -343,7 +343,13 @@ struct
                                     (0,[]) {{pop.name}}_ext_ports))
                           | NONE => List.tabulate (List.length {{pop.name}}_ext_ports,
                                                    fn(i) => (i,[]))
-                                                  
+
+        fun show_extev_map extev_map =
+          List.app (fn(index,lst) =>
+                       putStrLn TextIO.stdOut
+                                ("external event: index=" ^ (Int.toString index) ^
+                                 (String.concat (map (fn(t,v) => "[" ^ (showReal t) ^ ": " ^ (showReal v) ^ "]") lst))))
+                   extev_map          
                                   
         fun extevent extev_map (tstart, tend) = 
           List.foldl
@@ -360,21 +366,25 @@ struct
                          case lst of
                              (t',v)::rst =>
                              if t' < tstart
-                             then recur rst
+                             then raise Fail ("extevent: spike time out of range: tstart=" ^ (showReal tstart) ^
+                                              " tprev=" ^ (showReal (getindex(extev_i, index))) ^
+                                              " t'=" ^ (showReal t'))
                              else (if t' <= tend
                                    then 
                                        (update (ext_i, index, v); 
                                         update (extev_i, index, t');
-                                        (index,rst)::ax)
-                                   else (index,lst)::ax)
+                                        if List.null rst
+                                        then ax 
+                                        else (index,rst)::ax)
+                                   else (if List.null lst then ax else (index,lst)::ax))
                            | [] =>
                              if getindex(extev_i, index) <= tstart
                              then 
                                  (update (ext_i, index, 0.0); 
                                   update (extev_i, index, Real.posInf);
-                                  ((index,[])::ax))
+                                  ax)
                              else
-                                  ((index,[])::ax)
+                                  ax
                    in
                        recur lst
                    end))
@@ -423,7 +433,9 @@ struct
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
-                     (nstate, spikes', statelog'))
+                     if List.null extev_map
+                     then (nstate, spikes', statelog')
+                     else raise (Fail "RootStep: non-empty external event map"))
                   | D.RootStep (h::hs) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
@@ -449,7 +461,10 @@ struct
                           in
                               recur (nstate'', extev_map, spikes', statelog')
                           end)
-                    else (nstate, spikes', statelog'))
+                     else (if List.null extev_map
+                           then (nstate, spikes', statelog')
+                           else raise (show_extev_map extev_map;
+                                       Fail "RootBefore: non-empty external event map")))
                   | D.RootAfter (i,_::hs) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
@@ -474,7 +489,10 @@ struct
                                           then ((i+n0,copy_state nstate'))::statelog'
                                           else statelog'
                      in
-                         (nstate', spikes', statelog'')
+                         if List.null extev_map
+                         then (nstate', spikes', statelog'')
+                         else raise (show_extev_map extev_map;
+                                     Fail "RootAfter: non-empty external event map")
                      end)
             end
 
