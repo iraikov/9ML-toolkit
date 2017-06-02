@@ -388,7 +388,7 @@ struct
                                         else (index,rst)::ax)
                                    else (if List.null lst then ax else (index,lst)::ax))
                            | [] =>
-                             if getindex(extev_i, index) <= tstart
+                             if getindex(extev_i, index) < tstart
                              then 
                                  (update (ext_i, index, 0.0); 
                                   update (extev_i, index, Real.posInf);
