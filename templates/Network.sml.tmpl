@@ -339,15 +339,14 @@ struct
                                     (fn(port,(index,ax)) =>
                                         case IntMap.find (spm, port) of
                                             SOME lst => (index+1, (index,lst)::ax)
-                                          |  NONE => (index+1, (index,[])::ax))
+                                          |  NONE => (index+1, ax))
                                     (0,[]) {{pop.name}}_ext_ports))
-                          | NONE => List.tabulate (List.length {{pop.name}}_ext_ports,
-                                                   fn(i) => (i,[]))
+                          | NONE => []
 
         fun show_extev_map extev_map =
           List.app (fn(index,lst) =>
                        putStrLn TextIO.stdOut
-                                ("external event: index=" ^ (Int.toString index) ^
+                                ("external event: index=" ^ (Int.toString index) ^ ": " ^
                                  (String.concat (map (fn(t,v) => "[" ^ (showReal t) ^ ": " ^ (showReal v) ^ "]") lst))))
                    extev_map          
 
@@ -361,11 +360,11 @@ struct
                   else index+1)
               0 {{pop.name}}_ext_ports
 
-        fun extevent extev_map (tstart, tend) = 
+        fun extevent loc extev_map (tstart, tend) = 
           List.foldl
               (fn ((index,lst), ax) => 
                   (if debug
-                   then (putStrLn TextIO.stdOut ("extevent: cell " ^ (Int.toString i) ^ ": " ^ (Int.toString (List.length lst)) ^
+                   then (putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString i) ^ ": " ^ (Int.toString (List.length lst)) ^
                                                  " tstart = " ^ (showReal tstart) ^ " tend = " ^ (showReal tend) ^ " " ^
                                                  " external events at t = " ^ (showReal t) ^ ": ");
                          List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
@@ -376,7 +375,7 @@ struct
                          case lst of
                              (t',v)::rst =>
                              if t' < tstart
-                             then raise Fail ("extevent: event time out of range: tstart=" ^ (showReal tstart) ^
+                             then raise Fail ("extevent " ^ loc ^ ": event time out of range: tstart=" ^ (showReal tstart) ^
                                               " tprev=" ^ (showReal (getindex(extev_i, index))) ^
                                               " t'=" ^ (showReal t'))
                              else (if t' <= tend
@@ -445,13 +444,20 @@ struct
                      else ();
                      if List.null extev_map
                      then (nstate, spikes', statelog')
-                     else raise (Fail "RootStep: non-empty external event map"))
+                     else raise (Fail ("RootStep: non-empty external event map at t = " ^
+                                       (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next))))
                   | D.RootStep (h::hs) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
-                     recur (f' nstate, extev_map, spikes', statelog'))
+                     let
+                         val t          = state_indep nstate
+                         val extev_map' = extevent "RootStep" extev_map (t, t_next)
+                         val _          = extevent_clear t
+                     in
+                         recur (f' nstate, extev_map', spikes', statelog')
+                     end)
                   | D.RootBefore =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
@@ -471,21 +477,25 @@ struct
                           in
                               recur (nstate'', extev_map, spikes', statelog')
                           end)
-                     else (if List.null extev_map
-                           then (nstate, spikes', statelog')
-                           else raise (show_extev_map extev_map;
-                                       Fail "RootBefore: non-empty external event map")))
+                     else (let
+                              val t          = state_indep nstate
+                              val extev_map' = extevent "RootBefore" extev_map (t, t_next)
+                          in
+                              if List.null extev_map'
+                              then (nstate, spikes', statelog')
+                              else raise (show_extev_map extev_map';
+                                          Fail ("RootBefore: non-empty external event map at t = " ^
+                                                (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
+                          end))
                   | D.RootAfter (i,_::hs) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
                      let
-                         val extev_map' = extevent extev_map (state_indep nstate, t_next)
-                         val _          = extevent_clear (state_indep nstate);
                          val nstate'    = f' nstate
                      in
-                         recur (nstate', extev_map', spikes, statelog')
+                         recur (nstate', extev_map, spikes, statelog')
                      end)
                   | D.RootAfter (i,[]) =>
                     (if debug
@@ -512,8 +522,6 @@ struct
                         then ((i+n0,copy_state input))::statelog
                         else statelog
 
-        val extev_map' = extevent extev_map (state_indep input, t_next)
-
         val input' = if ((t+h) - t_next) > D.evtol
                      then update_state_h (input,t_next-t)
                      else input
@@ -524,7 +532,7 @@ struct
                                              " root state is " ^ (showRoot (state_root input)))
                 else ()
 
-        val (nstate,spikes',statelog') = recur (f' input',extev_map',spikes,statelog')
+        val (nstate,spikes',statelog') = recur (input',extev_map,spikes,statelog')
     in 
         ((i,fld,nstate)::nstates, spikes', statelog')
          
