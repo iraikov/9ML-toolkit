@@ -17,7 +17,7 @@ struct
                                type value = int
                                fun value (x : P.item) = (#2(x)))
 
-  val debug = true
+  val debug = false
                   
   fun putStrLn out str = 
       (TextIO.output (out, str);
@@ -350,10 +350,20 @@ struct
                                  (String.concat (map (fn(t,v) => "[" ^ (showReal t) ^ ": " ^ (showReal v) ^ "]") lst))))
                    extev_map          
 
-        fun extevent_clear tstart =
+        fun extevent_clear_before tstart =
           List.foldl
               (fn(port,index) =>
                   if tstart - getindex(extev_i, index) >= D.evtol
+                  then (update (ext_i, index, 0.0); 
+                        update (extev_i, index, Real.posInf);
+                        index+1)
+                  else index+1)
+              0 {{pop.name}}_ext_ports
+
+        fun extevent_clear_at tstart =
+          List.foldl
+              (fn(port,index) =>
+                  if getindex(extev_i, index) <= tstart
                   then (update (ext_i, index, 0.0); 
                         update (extev_i, index, Real.posInf);
                         index+1)
@@ -419,11 +429,12 @@ struct
                                |  _ =>  statelog
                                             
               
-              val _ = if debug
-                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
+              val _ = if debug 
+                      then (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
                                                    " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
                                                    " root state is " ^ (showRoot (state_root nstate)) ^
-                                                   " extev is " ^ (showRealArray (state_extev nstate)))
+                                                   " extev is " ^ (showRealArray (state_extev nstate)));
+                            show_extev_map extev_map)
                       else ()
           in
                 case state_root nstate of
@@ -453,8 +464,8 @@ struct
                      else ();
                      let
                          val t          = state_indep nstate
+                         val _          = extevent_clear_before t
                          val extev_map' = extevent "RootStep" extev_map (t, t_next)
-                         val _          = extevent_clear t
                      in
                          recur (f' nstate, extev_map', spikes', statelog')
                      end)
@@ -478,13 +489,11 @@ struct
                               recur (nstate'', extev_map, spikes', statelog')
                           end)
                      else (let
-                              val t          = state_indep nstate
-                              val extev_map' = extevent "RootBefore" extev_map (t, t_next)
-                              val _          = extevent_clear t
+                              val t = state_indep nstate
                           in
-                              if List.null extev_map'
+                              if List.null extev_map
                               then (nstate, spikes', statelog')
-                              else raise (show_extev_map extev_map';
+                              else raise (show_extev_map extev_map;
                                           Fail ("RootBefore: non-empty external event map at t = " ^
                                                 (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
                           end))
@@ -495,9 +504,10 @@ struct
                      else ();
                      let
                          val nstate'    = f' nstate
-                         val _          = extevent_clear (state_indep nstate')
+                         val _          = extevent_clear_at (state_indep nstate')
+                         val extev_map' = extevent "RootAfter" extev_map (state_indep nstate', t_next)
                      in
-                         recur (nstate', extev_map, spikes, statelog')
+                         recur (nstate', extev_map', spikes, statelog')
                      end)
                   | D.RootAfter (i,[]) =>
                     (if debug
@@ -508,7 +518,7 @@ struct
                          (*val _ = (update (ext_i, i, 0.0); 
                                   update (extev_i, i, Real.posInf))*)
                          val nstate'   = f' nstate
-                         val _          = extevent_clear (state_indep nstate')
+                         val _          = extevent_clear_at (state_indep nstate')
                          val statelog'' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
                                           then ((i+n0,copy_state nstate'))::statelog'
                                           else statelog'

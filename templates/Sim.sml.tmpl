@@ -183,7 +183,14 @@ let
                                   (D,S))
                       ))
                       DQ spike_i
-                             
+
+    fun mergeEvents (xs, ys) =
+      case (xs, ys) of
+          ([], _) => ys
+        | (_, []) => xs
+        | ((tx, wx) :: xrst, (ty, wy) :: yrst) =>
+          if Real.<=(tx, ty) then (tx, wx) :: mergeEvents (xrst, ys) else (ty, wy) :: mergeEvents (xs, yrst)
+                                                                    
     fun netrun (t_n,n,DQ,state_vector,spikelog,statelog,tlog) =
         let 
             val t_i = (Real.fromInt n) * (!global_h)
