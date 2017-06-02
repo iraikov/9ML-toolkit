@@ -17,7 +17,7 @@ struct
                                type value = int
                                fun value (x : P.item) = (#2(x)))
 
-  val debug = false
+  val debug = true
                   
   fun putStrLn out str = 
       (TextIO.output (out, str);
@@ -353,7 +353,7 @@ struct
         fun extevent_clear tstart =
           List.foldl
               (fn(port,index) =>
-                  if getindex(extev_i, index) < tstart
+                  if tstart - getindex(extev_i, index) >= D.evtol
                   then (update (ext_i, index, 0.0); 
                         update (extev_i, index, Real.posInf);
                         index+1)
@@ -364,10 +364,10 @@ struct
           List.foldl
               (fn ((index,lst), ax) => 
                   (if debug
-                   then (putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString i) ^ ": " ^ (Int.toString (List.length lst)) ^
+                   then (putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
                                                  " tstart = " ^ (showReal tstart) ^ " tend = " ^ (showReal tend) ^ " " ^
                                                  " external events at t = " ^ (showReal t) ^ ": ");
-                         List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t))) lst;
+                         List.app (fn(t,v) => putStr TextIO.stdOut (" " ^ (showReal t) ^ " : " ^ (showReal v))) lst;
                          putStrLn TextIO.stdOut "")
                    else ();
                    let
@@ -480,6 +480,7 @@ struct
                      else (let
                               val t          = state_indep nstate
                               val extev_map' = extevent "RootBefore" extev_map (t, t_next)
+                              val _          = extevent_clear t
                           in
                               if List.null extev_map'
                               then (nstate, spikes', statelog')
@@ -494,6 +495,7 @@ struct
                      else ();
                      let
                          val nstate'    = f' nstate
+                         val _          = extevent_clear (state_indep nstate')
                      in
                          recur (nstate', extev_map, spikes, statelog')
                      end)
@@ -505,8 +507,8 @@ struct
                      let
                          (*val _ = (update (ext_i, i, 0.0); 
                                   update (extev_i, i, Real.posInf))*)
-                         val _          = extevent_clear (state_indep nstate);
                          val nstate'   = f' nstate
+                         val _          = extevent_clear (state_indep nstate')
                          val statelog'' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
                                           then ((i+n0,copy_state nstate'))::statelog'
                                           else statelog'

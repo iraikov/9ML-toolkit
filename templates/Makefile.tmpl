@@ -2,4 +2,4 @@ all: Sim_{{group.name}}
 
 
 Sim_{{group.name}}: Sim_{{group.name}}.mlb Sim_{{group.name}}.sml {{group.name}}.sml 
-	mlton -default-ann 'allowFFI true' -cc-opt "-O3" -mlb-path-var "SALT_HOME {{salt_home}}" -mlb-path-var "SALT_LIB {{sml_lib_home}}" -mlb-path-map "{{sml_lib_home}}/mlb-path-map" -mlb-path-var "TENSOR_LIB {{nineml_lib_home}}" -mlb-path-var "NINEML_LIB {{nineml_lib_home}}"   $< {{sml_lib_home}}/randmtzig/randmtziglib.c {% if UseCSolver %}{% for pop in dict (group.populations) %}{{pop.value.prototype.name}}.c {% endfor %} {% for f in CSolverFiles %}{{f}} {% endfor %}{% endif %} 
+	mlton -const "'Exn.keepHistory true'" -default-ann 'allowFFI true' -cc-opt "-O3" -mlb-path-var "SALT_HOME {{salt_home}}" -mlb-path-var "SALT_LIB {{sml_lib_home}}" -mlb-path-map "{{sml_lib_home}}/mlb-path-map" -mlb-path-var "TENSOR_LIB {{nineml_lib_home}}" -mlb-path-var "NINEML_LIB {{nineml_lib_home}}"   $< {{sml_lib_home}}/randmtzig/randmtziglib.c {% if UseCSolver %}{% for pop in dict (group.populations) %}{{pop.value.prototype.name}}.c {% endfor %} {% for f in CSolverFiles %}{{f}} {% endfor %}{% endif %} 
