@@ -350,7 +350,17 @@ struct
                                 ("external event: index=" ^ (Int.toString index) ^
                                  (String.concat (map (fn(t,v) => "[" ^ (showReal t) ^ ": " ^ (showReal v) ^ "]") lst))))
                    extev_map          
-                                  
+
+        fun extevent_clear tstart =
+          List.foldl
+              (fn(port,index) =>
+                  if getindex(extev_i, index) <= tstart
+                  then (update (ext_i, index, 0.0); 
+                        update (extev_i, index, Real.posInf);
+                        index+1)
+                  else index+1)
+              0 {{pop.name}}_ext_ports
+
         fun extevent extev_map (tstart, tend) = 
           List.foldl
               (fn ((index,lst), ax) => 
@@ -472,6 +482,7 @@ struct
                      else ();
                      let
                          val extev_map' = extevent extev_map (state_indep nstate, t_next)
+                         val _          = extevent_clear (state_indep nstate);
                          val nstate'    = f' nstate
                      in
                          recur (nstate', extev_map', spikes, statelog')
@@ -484,6 +495,7 @@ struct
                      let
                          (*val _ = (update (ext_i, i, 0.0); 
                                   update (extev_i, i, Real.posInf))*)
+                         val _          = extevent_clear (state_indep nstate);
                          val nstate'   = f' nstate
                          val statelog'' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
                                           then ((i+n0,copy_state nstate'))::statelog'
