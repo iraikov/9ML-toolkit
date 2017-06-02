@@ -376,7 +376,7 @@ struct
                          case lst of
                              (t',v)::rst =>
                              if t' < tstart
-                             then raise Fail ("extevent: spike time out of range: tstart=" ^ (showReal tstart) ^
+                             then raise Fail ("extevent: event time out of range: tstart=" ^ (showReal tstart) ^
                                               " tprev=" ^ (showReal (getindex(extev_i, index))) ^
                                               " t'=" ^ (showReal t'))
                              else (if t' <= tend
