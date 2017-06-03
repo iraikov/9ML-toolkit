@@ -350,16 +350,6 @@ struct
                                  (String.concat (map (fn(t,v) => "[" ^ (showReal t) ^ ": " ^ (showReal v) ^ "]") lst))))
                    extev_map          
 
-        fun extevent_clear_before tstart =
-          List.foldl
-              (fn(port,index) =>
-                  if tstart - getindex(extev_i, index) >= D.evtol
-                  then (update (ext_i, index, 0.0); 
-                        update (extev_i, index, Real.posInf);
-                        index+1)
-                  else index+1)
-              0 {{pop.name}}_ext_ports
-
         fun extevent_clear_at tstart =
           List.foldl
               (fn(port,index) =>
@@ -388,7 +378,7 @@ struct
                              then raise Fail ("extevent " ^ loc ^ ": event time out of range: tstart=" ^ (showReal tstart) ^
                                               " tprev=" ^ (showReal (getindex(extev_i, index))) ^
                                               " t'=" ^ (showReal t'))
-                             else (if t' <= tend
+                             else (if t' <= tend andalso ((getindex(extev_i, index) <= tstart) orelse (not (Real.isFinite(getindex(extev_i, index)))))
                                    then 
                                        (update (ext_i, index, v); 
                                         update (extev_i, index, t');
@@ -429,7 +419,7 @@ struct
                                |  _ =>  statelog
                                             
               
-              val _ = if debug 
+              val _ = if debug
                       then (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
                                                    " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
                                                    " root state is " ^ (showRoot (state_root nstate)) ^
@@ -464,7 +454,6 @@ struct
                      else ();
                      let
                          val t          = state_indep nstate
-                         val _          = extevent_clear_before t
                          val extev_map' = extevent "RootStep" extev_map (t, t_next)
                      in
                          recur (f' nstate, extev_map', spikes', statelog')
@@ -484,12 +473,14 @@ struct
                               val nstate' = if t_next < t+h
                                             then update_state_h (nstate,t_next-t)
                                             else nstate
+                              val _        = extevent_clear_at t
                               val nstate'' = f' nstate'
                           in
                               recur (nstate'', extev_map, spikes', statelog')
                           end)
                      else (let
                               val t = state_indep nstate
+                              val _ = extevent_clear_at t
                           in
                               if List.null extev_map
                               then (nstate, spikes', statelog')
@@ -503,8 +494,8 @@ struct
                                                   (showRoot (state_root nstate)))
                      else ();
                      let
+                         val _          = extevent_clear_at (state_indep nstate)
                          val nstate'    = f' nstate
-                         val _          = extevent_clear_at (state_indep nstate')
                          val extev_map' = extevent "RootAfter" extev_map (state_indep nstate', t_next)
                      in
                          recur (nstate', extev_map', spikes, statelog')
@@ -517,8 +508,8 @@ struct
                      let
                          (*val _ = (update (ext_i, i, 0.0); 
                                   update (extev_i, i, Real.posInf))*)
+                         val _          = extevent_clear_at (state_indep nstate)
                          val nstate'   = f' nstate
-                         val _          = extevent_clear_at (state_indep nstate')
                          val statelog'' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
                                           then ((i+n0,copy_state nstate'))::statelog'
                                           else statelog'
