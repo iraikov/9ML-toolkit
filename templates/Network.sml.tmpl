@@ -349,6 +349,16 @@ struct
                                 ("external event: index=" ^ (Int.toString index) ^ ": " ^
                                  (String.concat (map (fn(t,v) => "[" ^ (showReal t) ^ ": " ^ (showReal v) ^ "]") lst))))
                    extev_map          
+                   
+        fun merge_extevent xs =
+          case xs of
+              [] => xs
+            | [(tx, wx)] => xs
+            | ((tx, wx) :: (ty, wy) :: rst) =>
+              if Real.<= (Real.abs(Real.-(tx, ty)), D.evtol)
+              then (tx, wx+wy) :: (merge_extevent rst)
+              else (tx, wx) :: (merge_extevent ((ty, wy) :: rst))
+                                                                    
 
         fun extevent_clear_at tstart =
           List.foldl
