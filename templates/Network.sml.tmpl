@@ -374,11 +374,11 @@ struct
                        fun recur lst =
                          case lst of
                              (t',v)::rst =>
-                             if t' < tstart
-                             then raise Fail ("extevent " ^ loc ^ ": event time out of range: tstart=" ^ (showReal tstart) ^
+                             if tstart-t' > D.evtol
+                             then raise Fail ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": event time out of range: tstart=" ^ (showReal tstart) ^
                                               " tprev=" ^ (showReal (getindex(extev_i, index))) ^
-                                              " t'=" ^ (showReal t'))
-                             else (if t' <= tend andalso ((getindex(extev_i, index) <= tstart) orelse (not (Real.isFinite(getindex(extev_i, index)))))
+                                              " t'=" ^ (showReal t') ^ " tstart-t' = " ^ (showReal (tstart - t')))
+                             else (if t' <= tend andalso (let val tprev = getindex(extev_i, index) in ((not (Real.isFinite(tprev))) orelse (tprev < tstart)) end)
                                    then 
                                        (update (ext_i, index, v); 
                                         update (extev_i, index, t');
@@ -419,7 +419,7 @@ struct
                                |  _ =>  statelog
                                             
               
-              val _ = if debug
+              val _ = if debug 
                       then (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
                                                    " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
                                                    " root state is " ^ (showRoot (state_root nstate)) ^
