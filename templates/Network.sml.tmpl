@@ -504,7 +504,7 @@ struct
                                     raise Fail ("RootBefore: cell " ^ (Int.toString (i+n0)) ^ " has a non-empty external event map at t = " ^
                                                 (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
                           end))
-                  | D.RootAfter (i,_::hs) =>
+                  | D.RootAfter (i,_) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
@@ -516,27 +516,6 @@ struct
                          val extev_map' = extevent "RootAfter" extev_map (state_indep nstate', t_next)
                      in
                          recur (nstate', extev_map', spikes, statelog')
-                     end)
-                  | D.RootAfter (i,[]) =>
-                    (if debug
-                     then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                  (showRoot (state_root nstate)))
-                     else ();
-                     let
-                         (*val _ = (update (ext_i, i, 0.0); 
-                                  update (extev_i, i, Real.posInf))*)
-                         val _          = extevent_clear_at (state_indep nstate)
-                         val nstate'   = f' nstate
-                                         handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
-                         val statelog'' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
-                                          then ((i+n0,copy_state nstate'))::statelog'
-                                          else statelog'
-                     in
-                         if List.null extev_map
-                         then (nstate', spikes', statelog'')
-                         else (show_extev_map extev_map;
-                               raise Fail ("RootAfter: cell " ^ (Int.toString (i+n0)) ^ " has a non-empty external event map at t = " ^
-                                           (showReal (state_indep nstate')) ^ " t_next = " ^ (showReal t_next)))
                      end)
             end
 
