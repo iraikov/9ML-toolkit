@@ -311,6 +311,7 @@ struct
     let
         val tol = !(D.tol)
         val f' = f (i,{{pop.name}}_parameters,fld,rs,rszt)
+                   
 
 (*
 {% if pop.value.prototype.fieldExprML %}
@@ -319,6 +320,15 @@ struct
 *)
         val t = state_indep input
         val h = state_h input
+                   
+        fun merge_extevent xs =
+          case xs of
+              [] => xs
+            | [(tx, wx)] => xs
+            | ((tx, wx) :: (ty, wy) :: rst) =>
+              if Real.<= (Real.abs(Real.-(tx, ty)), D.evtol)
+              then merge_extevent ((tx, wx+wy) :: rst)
+              else (tx, wx) :: (merge_extevent ((ty, wy) :: rst))
 
         val update    = Unsafe.Array.update
         val ext_i     = state_ext input
@@ -338,7 +348,7 @@ struct
                              #2(List.foldl
                                     (fn(port,(index,ax)) =>
                                         case IntMap.find (spm, port) of
-                                            SOME lst => (index+1, (index,lst)::ax)
+                                            SOME lst => (index+1, (index,merge_extevent lst)::ax)
                                           |  NONE => (index+1, ax))
                                     (0,[]) {{pop.name}}_ext_ports))
                           | NONE => []
@@ -349,15 +359,6 @@ struct
                                 ("external event: index=" ^ (Int.toString index) ^ ": " ^
                                  (String.concat (map (fn(t,v) => "[" ^ (showReal t) ^ ": " ^ (showReal v) ^ "]") lst))))
                    extev_map          
-                   
-        fun merge_extevent xs =
-          case xs of
-              [] => xs
-            | [(tx, wx)] => xs
-            | ((tx, wx) :: (ty, wy) :: rst) =>
-              if Real.<= (Real.abs(Real.-(tx, ty)), D.evtol)
-              then (tx, wx+wy) :: (merge_extevent rst)
-              else (tx, wx) :: (merge_extevent ((ty, wy) :: rst))
                                                                     
 
         fun extevent_clear_at tstart =
@@ -445,6 +446,7 @@ struct
                      else ();
                      let
                          val nstate'    = f' nstate
+                                          handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
                      in
                          recur (nstate', extev_map, spikes', statelog')
                      end)
@@ -455,8 +457,8 @@ struct
                      else ();
                      if List.null extev_map
                      then (nstate, spikes', statelog')
-                     else raise (Fail ("RootStep: non-empty external event map at t = " ^
-                                       (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next))))
+                     else raise Fail ("RootStep: cell " ^ (Int.toString (i+n0)) ^ " has a non-empty external event map at t = " ^
+                                      (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
                   | D.RootStep (h::hs) =>
                     (if debug
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
@@ -465,8 +467,10 @@ struct
                      let
                          val t          = state_indep nstate
                          val extev_map' = extevent "RootStep" extev_map (t, t_next)
+                         val nstate'    = f' nstate
+                                          handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
                      in
-                         recur (f' nstate, extev_map', spikes', statelog')
+                         recur (nstate', extev_map', spikes', statelog')
                      end)
                   | D.RootBefore =>
                     (if debug
@@ -485,6 +489,8 @@ struct
                                             else nstate
                               val _        = extevent_clear_at t
                               val nstate'' = f' nstate'
+                                             handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
+
                           in
                               recur (nstate'', extev_map, spikes', statelog')
                           end)
@@ -494,8 +500,8 @@ struct
                           in
                               if List.null extev_map
                               then (nstate, spikes', statelog')
-                              else raise (show_extev_map extev_map;
-                                          Fail ("RootBefore: non-empty external event map at t = " ^
+                              else (show_extev_map extev_map;
+                                    raise Fail ("RootBefore: cell " ^ (Int.toString (i+n0)) ^ " has a non-empty external event map at t = " ^
                                                 (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
                           end))
                   | D.RootAfter (i,_::hs) =>
@@ -506,6 +512,7 @@ struct
                      let
                          val _          = extevent_clear_at (state_indep nstate)
                          val nstate'    = f' nstate
+                                          handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
                          val extev_map' = extevent "RootAfter" extev_map (state_indep nstate', t_next)
                      in
                          recur (nstate', extev_map', spikes, statelog')
@@ -520,14 +527,16 @@ struct
                                   update (extev_i, i, Real.posInf))*)
                          val _          = extevent_clear_at (state_indep nstate)
                          val nstate'   = f' nstate
+                                         handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
                          val statelog'' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
                                           then ((i+n0,copy_state nstate'))::statelog'
                                           else statelog'
                      in
                          if List.null extev_map
                          then (nstate', spikes', statelog'')
-                         else raise (show_extev_map extev_map;
-                                     Fail "RootAfter: non-empty external event map")
+                         else (show_extev_map extev_map;
+                               raise Fail ("RootAfter: cell " ^ (Int.toString (i+n0)) ^ " has a non-empty external event map at t = " ^
+                                           (showReal (state_indep nstate')) ^ " t_next = " ^ (showReal t_next)))
                      end)
             end
 
