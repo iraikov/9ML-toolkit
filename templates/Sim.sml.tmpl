@@ -56,7 +56,7 @@ fun writeProjection S prefix =
   ListPair.app
       (fn (W,p) =>
           let
-              val out = TextIO.openAppend (prefix ^ "." ^ (Int.toString p) ^ ".prj.dat")
+              val out = TextIO.openOut (prefix ^ "." ^ (Int.toString p) ^ ".prj.dat")
               val (m,n) = dimVals (BitSparseMatrix.shape W)
           in
               Loop.app (0, n,
