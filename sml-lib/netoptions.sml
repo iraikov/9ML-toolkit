@@ -13,7 +13,8 @@ datatype flag =  Help | Time of real | Timestep of real | Tol of real
                  | Spikeout of string | Stateprefix of string
                  | Eventprefix of string | Extprefix of string
                  | Prjprefix of string
-                 | Randomseeds of int list
+                 | CellRandomseeds of int list
+                 | PrjRandomseeds of int list
 
 fun list2str elem2str lst =
   String.concatWith "," (List.map elem2str lst) 
@@ -33,7 +34,8 @@ fun showflag (Help)       = "Help"
   | showflag (Stateprefix x)  = ("Stateprefix " ^ x)
   | showflag (Extprefix x)  = ("Extprefix " ^ x)
   | showflag (Prjprefix x)  = ("Prjprefix " ^ x)
-  | showflag (Randomseeds x)  = ("Randomseeds " ^ (list2str Int.toString x))
+  | showflag (CellRandomseeds x)  = ("CellRandomseeds " ^ (list2str Int.toString x))
+  | showflag (PrjRandomseeds x)  = ("PrjRandomseeds " ^ (list2str Int.toString x))
 		   
 
 val options = 
@@ -89,15 +91,26 @@ val options =
       help="record projections to files"},
 
      {short="",
-      long=["randomseeds"],
+      long=["cell-randomseeds"],
       desc=G.ReqArg (fn(x) =>
                         let
                             val lst = List.mapPartial Int.fromString (String.tokens (fn(c) => c=(#",")) x)
                         in
-                            Randomseeds lst
+                            CellRandomseeds lst
                         end,
                      "SEED1,...,SEEDN"),
-      help="random seeds for each population"},
+      help="random seeds for spike generation per each population"},
+
+     {short="",
+      long=["prj-randomseeds"],
+      desc=G.ReqArg (fn(x) =>
+                        let
+                            val lst = List.mapPartial Int.fromString (String.tokens (fn(c) => c=(#",")) x)
+                        in
+                            PrjRandomseeds lst
+                        end,
+                     "SEED1,...,SEEDN"),
+      help="random seeds for connectivity construction per each projection"},
 
      {short="",
       long=["spikeout"],
@@ -154,7 +167,8 @@ fun getstate (opts) =
 	val O_EXTPREFIX       = ref NONE
 	val O_EVENTPREFIX     = ref NONE
 	val O_PRJPREFIX       = ref NONE
-	val O_RANDOMSEEDS     = ref NONE
+	val O_CELL_RANDOMSEEDS = ref NONE
+	val O_PRJ_RANDOMSEEDS  = ref NONE
 
 	fun getstate' (opt) = 
 	    (case opt of 
@@ -173,7 +187,8 @@ fun getstate (opts) =
 	       | Extprefix x    => O_EXTPREFIX := SOME x
 	       | Eventprefix x  => O_EVENTPREFIX := SOME x
 	       | Prjprefix x    => O_PRJPREFIX := SOME x
-	       | Randomseeds x  => O_RANDOMSEEDS := SOME x
+	       | CellRandomseeds x => O_CELL_RANDOMSEEDS := SOME x
+	       | PrjRandomseeds x  => O_PRJ_RANDOMSEEDS := SOME x
             )
 
 	val _ = app getstate' opts
@@ -194,7 +209,8 @@ fun getstate (opts) =
 	is_eventprefix=(!O_EVENTPREFIX),
 	is_extprefix=(!O_EXTPREFIX),
 	is_prjprefix=(!O_PRJPREFIX),
-	is_randomseeds=(!O_RANDOMSEEDS)
+	is_cell_randomseeds=(!O_CELL_RANDOMSEEDS),
+	is_prj_randomseeds=(!O_PRJ_RANDOMSEEDS)
        }
     end
 

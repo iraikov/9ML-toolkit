@@ -115,27 +115,36 @@ struct
       case fopt of SOME f => SOME (f args) | NONE => NONE
 
                
-  fun make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0) 
-                          (i,condfun,initial,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
-      let 
-          val dinitial': real array -> real array = 
-              case dinitial of
-                  SOME v => v
-                | NONE => (fn v => v)
+  fun make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
+                          (i,condfun,initfun,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
+    let
+        val initial = initfun rs
+        val dinitial': real array -> real array = 
+            case dinitial of
+                SOME v => v
+              | NONE => (fn v => v)
       in
           D.condApply condfun (D.RegimeState (0.0, 0.0, initial(make_real_state n), evinitial (make_real_state nev), dinitial' (make_real_state ndsc), 
                                               rinitial (make_bool_state nregime), extinitial(), extevinitial(), make_real_state n, make_real_state n,
                                               make_real_state nev, (h0, make_real_state n), D.RootBefore))
       end
-   |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0) 
-                          (i,condfun,initial,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
-      D.condApply condfun (D.EventState (0.0, 0.0, initial(make_real_state n), evinitial (make_real_state nev), 
-                                         extinitial (), extevinitial (), initial(make_real_state n), initial(make_real_state n), 
-                                         make_real_state nev, (h0, make_real_state n), D.RootBefore))
-   |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0) 
-                          (i,condfun,initial,NONE,NONE,NONE,extinitial,extevinitial) =
-      D.ContState (0.0, 0.0, initial(make_real_state n), extinitial(), extevinitial(), make_real_state n, (h0, make_real_state n))
-   |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0) 
+   |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
+                          (i,condfun,initfun,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
+      let
+          val initial = initfun rs
+      in
+          D.condApply condfun (D.EventState (0.0, 0.0, (initfun rs)(make_real_state n), evinitial (make_real_state nev), 
+                                             extinitial (), extevinitial (), initial(make_real_state n), initial(make_real_state n), 
+                                             make_real_state nev, (h0, make_real_state n), D.RootBefore))
+      end
+   |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
+                         (i,condfun,initfun,NONE,NONE,NONE,extinitial,extevinitial) =
+      let
+          val initial = initfun rs
+      in
+          D.ContState (0.0, 0.0, (initfun rs)(make_real_state n), extinitial(), extevinitial(), make_real_state n, (h0, make_real_state n))
+      end
+   |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
                           (i,condfun,initial,_,_,_,extinitial,extevinitial) =
       (raise Fail "make_initial_vector: invalid domain")
 
@@ -214,19 +223,18 @@ struct
       D.ContState (x, cx, copy_array y, copy_array ext, copy_array extev, ynext, (h,err))
                                                
 
-  val seed_init = RandomInit() (* seed for randomized initial values *)
-  val zt_init   = ZigInit()
-  fun random_normal () = RandomMTZig.randNormal(seed_init,zt_init)
-  fun random_uniform () = RandomMTZig.randUniform(seed_init)
-  fun random_uniform_vector () = RandomMTZig.randUniform(seed_init)
+  fun random_normal (rs,zt) = RandomMTZig.randNormal(rs,zt)
+  fun random_uniform (rs) = RandomMTZig.randUniform(rs)
+  fun random_uniform_vector (rs) = RandomMTZig.randUniform(rs)
 
-  fun sampleWithoutReplacement (populationSize, (* size of set sampling from *)
-                                sampleSize, (* size of sample *) 
-                                f) =
+  fun sample_without_replacement (rs, (* random state *)
+                                  populationSize, (* size of set sampling from *)
+                                  sampleSize, (* size of sample *) 
+                                  f) =
     Loop.foldsi (0, sampleSize,
                 fn (m, t) => (* t: total inputs processed *)
                    let
-                       val u = random_uniform()
+                       val u = random_uniform rs
                    in
                        if Real.>= (Real.*(Real.fromInt (populationSize - t), u), Real.fromInt (sampleSize - m))
                        then Loop.SeqRecur (t+1)
@@ -263,14 +271,14 @@ struct
 
   val {{pop.name}}_parameters = {{pop.value.prototype.name}}.paramfun()
 
-
   val {{pop.name}}_initial_vector = 
       let
           val parameters     = {{pop.name}}_parameters
           val field_vector   = Vector.tabulate (N_{{pop.name}}, fn (i) => {{pop.value.prototype.name}}.fieldfun())
           val make_initial_vector' = make_initial_vector ({{pop.value.prototype.name}}.make_real_state,{{pop.value.prototype.name}}.make_bool_state,
                                                           {{pop.value.prototype.name}}.n,{{pop.value.prototype.name}}.nev,{{pop.value.prototype.name}}.ndsc,
-                                                          {{pop.value.prototype.name}}.nregime, Real.min((!global_h), minDelay))
+                                                          {{pop.value.prototype.name}}.nregime, Real.min((!global_h), minDelay), RandomInitFromInt ({{pop.name}}_n0)
+                                                         )
       in
           List.tabulate
               (N_{{pop.name}},    
@@ -278,14 +286,14 @@ struct
                   let
                       val fields       = Vector.sub(field_vector,i)
                       val cond         = optApply {{pop.value.prototype.name}}.condfun (parameters,fields)
-                      val initial      = {{pop.value.prototype.name}}.initfun(parameters,fields,seed_init,zt_init)
+                      val init         = fn(rs) => {{pop.value.prototype.name}}.initfun(parameters,fields,rs,ZigInit())
                       val evinitial    = {{pop.value.prototype.name}}.initcondfun
                       val dinitial     = optApply {{pop.value.prototype.name}}.dinitfun (parameters,fields)
                       val rinitial     = {{pop.value.prototype.name}}.initregfun
                       val extinitial   = {{pop.value.prototype.name}}.initextfun (parameters,fields)
                       val extevinitial = {{pop.value.prototype.name}}.initextevfun (parameters,fields)
                   in
-                      (i, fields, make_initial_vector' (i,cond,initial,evinitial,dinitial,rinitial,extinitial,extevinitial))
+                      (i, fields, make_initial_vector' (i,cond,init,evinitial,dinitial,rinitial,extinitial,extevinitial))
                   end)
       end
 
@@ -560,9 +568,22 @@ struct
 {% endif %}
 {% endfor %}{% endif %}
 
+{% if group.projections %}{% for prj in dict (group.projections) %}
+
+  val {{prj.name}}_rs = ref (RandomInit())
+
+{% endfor %}{% endif %}
+
     val initial = (
 {% for pop in dict (group.populations) %}
         {{pop.name}}_initial_vector{% if not loop.last %},{% endif %}
+
+{% endfor %}
+    )
+
+    fun update_projection_rs (seeds) = (
+{% for prj in dict (group.projections) %}
+    (let val seed = List.nth (seeds, {{loop.index0}}) in {{prj.name}}_rs := RandomInitFromInt(seed) end){% if not loop.last %};{% endif %}
 
 {% endfor %}
     )
@@ -589,6 +610,8 @@ struct
 
 
     val P = {{length(dict(group.populations))}}
+
+    val C = {{length(dict(group.conntypes))}}
                 
     val Pn = [
         {% for pop in dict (group.populations) %}
@@ -769,7 +792,7 @@ struct
 
 {% macro random_fan_in(name, sp, tp, prob) %}
              val Pr_{{name}} = let
-                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform ())) then true else false) 
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform (!{{name}}_rs))) then true else false) 
                                in
                                   BitSparseMatrix.fromGeneratorList [N,N]
                                   [
@@ -783,7 +806,7 @@ struct
 
 {% macro random_fan_out(name, sp, tp, prob) %}
              val Pr_{{name}} = let
-                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform())) then true else false)
+                                  val f = (fn (i) => if (Real.> ({{prob}}, random_uniform (!{{name}}_rs))) then true else false)
                                in
                                   BitSparseMatrix.fromGeneratorList [N,N]
                                   [
@@ -803,8 +826,8 @@ struct
                                           val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{t.size}},
                                                               fn (i,k) => 
-                                                                 (sampleWithoutReplacement
-                                                                     ({{s.size}},{{num | int}},
+                                                                 (sample_without_replacement
+                                                                     (!{{name}}_rs,{{s.size}},{{num | int}},
                                                                       fn (j,t) =>
                                                                          (update (sample,k+j,(i,t,true))));
                                                                   k+{{num | int}}),
@@ -827,8 +850,8 @@ struct
                                           val update = Unsafe.Array.update
                                           val _ = Loop.foldi (0,{{s.size}},
                                                               fn (i,k) => 
-                                                                 (sampleWithoutReplacement
-                                                                     ({{t.size}},{{num | int}},
+                                                                 (sample_without_replacement
+                                                                     (!{{name}}_rs,{{t.size}},{{num | int}},
                                                                       fn (j,t) =>
                                                                          (update (sample,k+j,(i,t,true))));
                                                                   k+{{num | int}}),

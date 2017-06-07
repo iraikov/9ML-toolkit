@@ -291,7 +291,9 @@ fun main (name,args) =
            is_spikeout, is_stateprefix,
            is_extprefix, is_eventprefix,
            is_prjprefix,
-           is_randomseeds} = Options.getstate (opts)
+           is_cell_randomseeds,
+           is_prj_randomseeds
+          } = Options.getstate (opts)
 					      
       val _ = if is_help then exitHelp (CommandLine.name()) else ()
       val _ = case (is_statesample, is_extsample, is_evsample, is_spikerecord) of
@@ -377,14 +379,21 @@ fun main (name,args) =
                      | NONE => ()
                   )
                       
-          val rs_seeds  = case is_randomseeds of
-                              NONE => NONE
-                           |  SOME lst => if (List.length lst)=P
-                                          then SOME lst
-                                          else exitError (CommandLine.name(),
-                                                          "list of random seeds does not match number of populations")
+          val _  = case is_prj_randomseeds of
+                       NONE => ()
+                    |  SOME lst => if (List.length lst)=C
+                                   then update_projection_rs lst
+                                   else exitError (CommandLine.name(),
+                                                   "list of projection random seeds does not match number of projections")
 
-          val rs_vector = make_rs_vector (rs_seeds)
+          val cell_rs_seeds  = case is_cell_randomseeds of
+                                   NONE => NONE
+                                |  SOME lst => if (List.length lst)=P
+                                               then SOME lst
+                                               else exitError (CommandLine.name(),
+                                                               "list of cell random seeds does not match number of populations")
+
+          val rs_vector = make_rs_vector (cell_rs_seeds)
                                                          
           val _     = D.maxstep := (!global_h)
           val _     = if minDelay <= 0.0 then raise Fail "minimum delay is zero" else ()
@@ -393,9 +402,9 @@ fun main (name,args) =
           val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, global_h, initial, frun, 
                                               ftime, fspikes spikelog, finfo, tstop, logperiod,
                                               rs_vector, rszt_vector,
-                                              (spikeout_filepath,stateout_prefix,
-                                               extout_prefix,eventout_prefix),
-                                              (statesample,extsample,evsample)))
+                                              (spikeout_filepath, stateout_prefix,
+                                               extout_prefix, eventout_prefix),
+                                              (statesample, extsample, evsample)))
       in
           putStrLn TextIO.stdOut ("simulation took " ^ (Time.toString t) ^ " s")
       end)
