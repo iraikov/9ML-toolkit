@@ -125,7 +125,7 @@ name}` in the current directory, which accepts the following
 arguments:
 
 * `-d, --duration=VALUE`:  simulation duration in milliseconds
-* `--timestep=VALUE`:  simulation timestep milliseconds
+* `--tol=VALUE`:  solver error tolerance
 * `-s, --spikerecord=POPULATION`:  name of population for spike recording
 * `--statesample=VALUE`:  sample size of neurons for state recording
 * `--extsample=VALUE`:  sample size of neurons for external input recording
@@ -138,14 +138,13 @@ Where operands are NineML user layer files that instantiate a single cell.
 The following options are recognized: 
 
 * `--platform=PLATFORM`:   simulation platform (one of mlton, chicken)
-* `-m, --method=PLATFORM`:  integration method (one of rkfe, rk3, rk4a, rk4b, rkoz, rkdp)
 
 The `9ML-singlecell` program will create an executable named
 `Sim_{model name}` in the current directory which accepts the
 following arguments:
 
 * `-d, --duration=VALUE`:  simulation duration in milliseconds
-* `--timestep=VALUE`:  simulation timestep milliseconds
+* `--tol=VALUE`:  solver error tolerance timestep milliseconds
 * `-v, --verbose`:  prints detailed information about the internal representation of the model during the code generation process
 
 
