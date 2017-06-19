@@ -58,12 +58,10 @@
 
 (define ivp-simulation-platform (make-parameter 'mlton))
 (define alsys-simulation-platform (make-parameter 'mlton))
-(define ivp-simulation-method (make-parameter 'rkfe))
 
 (define opt-defaults
   `(
     (platform . mlton)
-    (method . cerkdp)
     ))
 
 (define (defopt x)
@@ -72,13 +70,13 @@
 (define opt-grammar
   `(
 
-    (platform        "simulation platform (one of mlton, octave/mlton)"
+    (platform        "simulation platform (one of mlton, mlton/c, octave/mlton)"
 		     (value (required PLATFORM)
 			    (predicate 
 			     ,(lambda (x) 
 				(let ((s (string->symbol (string-downcase x))))
 				  (case s
-				    ((mlton octave/mlton) s)
+				    ((mlton mlton/c octave/mlton) s)
 				    (else (error '9ML-network "unrecognized platform" x))))))
 			    (transformer ,string->symbol)
                             ))
@@ -835,12 +833,15 @@
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
                 (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))
-                  (salt:codegen-ODE/ML node-name sim out: sml-port libs: '(random))
+                  (case (ivp-simulation-platform) 
+                    ((mlton/c)
+                     (salt:codegen-ODE/ML node-name sim out: sml-port libs: '(random) csysname: node-name))
+                    (else
+                     (salt:codegen-ODE/ML node-name sim out: sml-port libs: '(random))))
                   (close-output-port sml-port)
-                  (case (ivp-simulation-method) 
-                    ((crkdp)
+                  (case (ivp-simulation-platform) 
+                    ((mlton/c)
                      (let ((c-port (open-output-file (make-pathname source-dir (sprintf "~A.c" node-name)))))
-
                        (salt:codegen-ODE/C node-name sim out: c-port libs: '(random))
                        (close-output-port c-port)
                        ))
@@ -908,8 +909,8 @@
                                          models: (append 
                                                   group-tenv
                                                   `(
-                                                    (UseCSolver . ,(Tbool (case (ivp-simulation-method)
-                                                                            ((crk3 crk4a crk4b crkbs crkdp) #t)
+                                                    (UseCSolver . ,(Tbool (case (ivp-simulation-platform)
+                                                                            ((mlton/c) #t)
                                                                             (else #f))))
                                                     ))
                                          ))
@@ -932,8 +933,8 @@
                                                      (nineml_lib_home . ,(Tstr (make-pathname 
                                                                                 (make-pathname shared-dir "9ML")
                                                                                 "sml-lib")))
-                                                     (UseCSolver . ,(Tbool (case (ivp-simulation-method)
-                                                                             ((crk3 crk4a crk4b crkbs crkdp) #t)
+                                                     (UseCSolver . ,(Tbool (case (ivp-simulation-platform)
+                                                                             ((mlton/c) #t)
                                                                              (else #f))))
                                                      (CSolverFiles . ,(let ((csolver-path 
                                                                              (make-pathname
@@ -941,12 +942,8 @@
                                                                                (make-pathname shared-dir "salt")
                                                                                "sml-lib")
                                                                               "rk")))
-                                                                        (Tlist (case (ivp-simulation-method)
-                                                                                 ((crk3) (list (Tstr (make-pathname csolver-path "crk3.c"))))
-                                                                                 ((crk4a) (list (Tstr (make-pathname csolver-path "crk4a.c"))))
-                                                                                 ((crk4b) (list (Tstr (make-pathname csolver-path "crk4b.c"))))
-                                                                                 ((crkbs) (list (Tstr (make-pathname csolver-path "crkbs.c"))))
-                                                                                 ((crkdp) (list (Tstr (make-pathname csolver-path "crkdp.c"))))
+                                                                        (Tlist (case (ivp-simulation-platform)
+                                                                                 ((mlton/c) (list (Tstr (make-pathname csolver-path "crklib.c"))))
                                                                                  (else (list))))))
                                                                                 
                                                      ))
@@ -998,7 +995,6 @@
   
   (ivp-simulation-platform (simulation-platform))
   (alsys-simulation-platform (simulation-platform))
-  (ivp-simulation-method (simulation-method))
 
   (salt:model-quantities (cons (cons 'dimensionless Unity) (salt:model-quantities)))
   
