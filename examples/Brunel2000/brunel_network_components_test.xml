@@ -31,9 +31,9 @@
       </nineml:Component>
     </nineml:Cell>
   </nineml:Population>
-  <nineml:Projection name="Excitation">
+  <nineml:Projection name="ExtExc">
     <nineml:Source>
-      <nineml:Reference>Ext</nineml:Reference>
+      <nineml:Reference>ExtExc</nineml:Reference>
     </nineml:Source>
     <nineml:Destination>
       <nineml:Reference>Exc</nineml:Reference>
@@ -71,27 +71,81 @@
       <nineml:SingleValue>1.5</nineml:SingleValue>
     </nineml:Delay>
   </nineml:Projection>
+  <nineml:Projection name="Inhibition">
+    <nineml:Source>
+      <nineml:Reference>Inh</nineml:Reference>
+    </nineml:Source>
+    <nineml:Destination>
+      <nineml:Reference>Exc</nineml:Reference>
+      <nineml:FromResponse send_port="Isyn" receive_port="Isyn"/>
+    </nineml:Destination>
+    <nineml:Connectivity>
+      <nineml:Component name="AllToAll">
+        <nineml:Definition url="AllToAll.xml">AllToAll</nineml:Definition>
+      </nineml:Component>
+    </nineml:Connectivity>
+    <nineml:Response>
+      <nineml:Component name="syn">
+        <nineml:Definition url="AlphaPSR.xml">AlphaPSR</nineml:Definition>
+        <nineml:Property units="ms" name="tau_syn">
+          <nineml:SingleValue>0.1</nineml:SingleValue>
+        </nineml:Property>
+        <nineml:Initial units="nA" name="A">
+          <nineml:SingleValue>0.0</nineml:SingleValue>
+        </nineml:Initial>
+        <nineml:Initial units="nA" name="B">
+          <nineml:SingleValue>0.0</nineml:SingleValue>
+        </nineml:Initial>
+      </nineml:Component>
+      <nineml:FromPlasticity send_port="fixed_weight" receive_port="q"/>
+    </nineml:Response>
+    <nineml:Plasticity>
+      <nineml:Component name="InhibitoryPlasticity">
+        <nineml:Definition url="Static.xml">Static</nineml:Definition>
+        <nineml:Property units="nA" name="weight">
+          <nineml:SingleValue>-64.52</nineml:SingleValue>
+        </nineml:Property>
+      </nineml:Component>
+    </nineml:Plasticity>
+    <nineml:Delay units="ms">
+      <nineml:SingleValue>1.5</nineml:SingleValue>
+    </nineml:Delay>
+  </nineml:Projection>
   <nineml:Unit symbol="nA" dimension="current" power="-9"/>
   <nineml:Unit symbol="mV" dimension="voltage" power="-3"/>
   <nineml:Dimension i="-2" t="-3" m="1" l="2" name="resistance"/>
   <nineml:Dimension i="1" name="current"/>
-  <nineml:Population name="Ext">
+  <nineml:Population name="ExtExc">
     <nineml:Size>1</nineml:Size>
     <nineml:Cell>
       <nineml:Component name="stim">
         <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
         <nineml:Property units="Hz" name="rate">
-          <nineml:SingleValue>50.0</nineml:SingleValue>
+          <nineml:SingleValue>8714.0</nineml:SingleValue>
         </nineml:Property>
         <nineml:Initial units="ms" name="t_next">
-          <nineml:SingleValue>0.5</nineml:SingleValue>
+          <nineml:SingleValue>3.0</nineml:SingleValue>
         </nineml:Initial>
       </nineml:Component>
     </nineml:Cell>
   </nineml:Population>
-  <nineml:Projection name="Inhibition">
+  <nineml:Population name="ExtInh">
+    <nineml:Size>1</nineml:Size>
+    <nineml:Cell>
+      <nineml:Component name="stim">
+        <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
+        <nineml:Property units="Hz" name="rate">
+          <nineml:SingleValue>8714.0</nineml:SingleValue>
+        </nineml:Property>
+        <nineml:Initial units="ms" name="t_next">
+          <nineml:SingleValue>2.0</nineml:SingleValue>
+        </nineml:Initial>
+      </nineml:Component>
+    </nineml:Cell>
+  </nineml:Population>
+  <nineml:Projection name="ExtInh">
     <nineml:Source>
-      <nineml:Reference>Ext</nineml:Reference>
+      <nineml:Reference>ExtInh</nineml:Reference>
     </nineml:Source>
     <nineml:Destination>
       <nineml:Reference>Inh</nineml:Reference>
@@ -121,7 +175,7 @@
       <nineml:Component name="InhibitoryPlasticity">
         <nineml:Definition url="Static.xml">Static</nineml:Definition>
         <nineml:Property units="nA" name="weight">
-          <nineml:SingleValue>-61.965</nineml:SingleValue>
+          <nineml:SingleValue>13.77</nineml:SingleValue>
         </nineml:Property>
       </nineml:Component>
     </nineml:Plasticity>

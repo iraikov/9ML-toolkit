@@ -123,26 +123,39 @@ struct
             case dinitial of
                 SOME v => v
               | NONE => (fn v => v)
+                            
+        val err0 = case (!(D.tol)) of
+                       SOME tol => tol 
+                    |  NONE => 0.0
+
       in
           D.condApply condfun (D.RegimeState (0.0, 0.0, initial(make_real_state n), evinitial (make_real_state nev), dinitial' (make_real_state ndsc), 
                                               rinitial (make_bool_state nregime), extinitial(), extevinitial(), make_real_state n, make_real_state n,
-                                              make_real_state nev, (h0, make_real_state n), D.RootBefore))
+                                              make_real_state nev, D.Right (h0, h0, err0), D.RootBefore))
       end
    |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
                           (i,condfun,initfun,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
       let
           val initial = initfun rs
+          val err0 = case (!(D.tol)) of
+                         SOME tol => tol 
+                      |  NONE => 0.0
       in
           D.condApply condfun (D.EventState (0.0, 0.0, (initfun rs)(make_real_state n), evinitial (make_real_state nev), 
                                              extinitial (), extevinitial (), initial(make_real_state n), initial(make_real_state n), 
-                                             make_real_state nev, (h0, make_real_state n), D.RootBefore))
+                                             make_real_state nev, D.Right (h0, h0, err0), D.RootBefore))
       end
    |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
                          (i,condfun,initfun,NONE,NONE,NONE,extinitial,extevinitial) =
       let
           val initial = initfun rs
+                                
+          val err0 = case (!(D.tol)) of
+                         SOME tol => tol 
+                      |  NONE => 0.0
+
       in
-          D.ContState (0.0, 0.0, (initfun rs)(make_real_state n), extinitial(), extevinitial(), make_real_state n, (h0, make_real_state n))
+          D.ContState (0.0, 0.0, (initfun rs)(make_real_state n), extinitial(), extevinitial(), make_real_state n, D.Right (h0, h0, err0))
       end
    |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
                           (i,condfun,initial,_,_,_,extinitial,extevinitial) =
@@ -195,16 +208,19 @@ struct
    |  state_root (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = root
    |  state_root (D.ContState (x, cx, y, ext, extev, ynext, _)) = D.RootBefore
 
-  fun state_h (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, (h,err), root)) = h
-   |  state_h (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, (h,err), root)) = h
-   |  state_h (D.ContState (x, cx, y, ext, extev, ynext, (h,err))) = h
+  fun state_h (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, cst, root)) =
+    D.controller_h cst
+   |  state_h (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, cst, root)) = 
+    D.controller_h cst
+   |  state_h (D.ContState (x, cx, y, ext, extev, ynext, cst)) = 
+    D.controller_h cst
 
-  fun update_state_h (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, (h,err), root), h') =
-    D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, (h',err), root)
-   |  update_state_h (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, (h,err), root), h') =
-      D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, (h',err), root)
-   |  update_state_h (D.ContState (x, cx, y, ext, extev, ynext, (h,err)), h') =
-      D.ContState (x, cx, y, ext, extev, ynext, (h',err))
+  fun update_state_h (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, cst, root), h') =
+    D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, D.controller_update_h(cst,h'), root)
+   |  update_state_h (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, cst, root), h') =
+      D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, D.controller_update_h(cst,h'), root)
+   |  update_state_h (D.ContState (x, cx, y, ext, extev, ynext, cst), h') =
+      D.ContState (x, cx, y, ext, extev, ynext, D.controller_update_h(cst,h'))
 
   fun copy_array a =
     let val len = Array.length a
@@ -213,14 +229,14 @@ struct
         if len>0 then Array.copy {di=0, dst=b, src=a} else (); b
     end
                                                                      
-  fun copy_state (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, (h,err), root)) =
+  fun copy_state (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, cst, root)) =
     D.RegimeState(x, cx, copy_array y, copy_array ev, copy_array d, copy_array r,
-                  copy_array ext, copy_array extev, ynext, yrsp, enext, (h,err), root)
-   |  copy_state (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, (h,err), root)) =
+                  copy_array ext, copy_array extev, ynext, yrsp, enext, cst, root)
+   |  copy_state (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, cst, root)) =
       D.EventState (x, cx, copy_array y, copy_array ev, copy_array ext, copy_array extev,
-                    ynext, yrsp, enext, (h,err), root) 
-   |  copy_state (D.ContState (x, cx, y, ext, extev, ynext, (h,err))) =
-      D.ContState (x, cx, copy_array y, copy_array ext, copy_array extev, ynext, (h,err))
+                    ynext, yrsp, enext, cst, root) 
+   |  copy_state (D.ContState (x, cx, y, ext, extev, ynext, cst)) =
+      D.ContState (x, cx, copy_array y, copy_array ext, copy_array extev, ynext, cst)
                                                
 
   fun random_normal (rs,zt) = RandomMTZig.randNormal(rs,zt)

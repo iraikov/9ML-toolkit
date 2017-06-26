@@ -11,7 +11,7 @@
           <nineml:SingleValue>1.5</nineml:SingleValue>
         </nineml:Property>
         <nineml:Property units="mV" name="Vreset">
-          <nineml:SingleValue>10.0</nineml:SingleValue>
+          <nineml:SingleValue>0.0</nineml:SingleValue>
         </nineml:Property>
         <nineml:Property units="ms" name="tau">
           <nineml:SingleValue>20.0</nineml:SingleValue>
@@ -137,7 +137,7 @@
       <nineml:Component name="InhibitoryPlasticity">
         <nineml:Definition url="StaticConnection.xml">StaticConnection</nineml:Definition>
         <nineml:Initial units="nA" name="weight">
-          <nineml:SingleValue>-61.965</nineml:SingleValue>
+          <nineml:SingleValue>-68.854</nineml:SingleValue>
         </nineml:Initial>
       </nineml:Component>
     </nineml:Plasticity>
@@ -154,7 +154,7 @@
           <nineml:SingleValue>1.5</nineml:SingleValue>
         </nineml:Property>
         <nineml:Property units="mV" name="Vreset">
-          <nineml:SingleValue>10.0</nineml:SingleValue>
+          <nineml:SingleValue>0.0</nineml:SingleValue>
         </nineml:Property>
         <nineml:Property units="ms" name="tau">
           <nineml:SingleValue>20.0</nineml:SingleValue>
