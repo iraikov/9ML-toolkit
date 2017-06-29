@@ -454,13 +454,17 @@ struct
                                |  _ =>  statelog
                                             
               
-              val _ = if debug 
+              val _ = if debug
                       then (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
                                                    " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
                                                    " root state is " ^ (showRoot (state_root nstate)) ^
-                                                   " extev is " ^ (showRealArray (state_extev nstate)));
+                                                   " h is " ^ (showReal (state_h nstate)) ^
+                                                   " extev is " ^ (showRealArray (state_extev nstate))
+                                                   );
                             show_extev_map extev_map)
                       else ()
+
+              val _ = if (state_h nstate) <= 0.0 then raise Fail ("cell " ^ (Int.toString (i+n0)) ^ ": recur: zero time step") else ()
           in
                 case state_root nstate of
                     D.RootFound (i,hs) =>
@@ -508,8 +512,8 @@ struct
                      then (let
                               val t = state_indep nstate
                               val h = state_h nstate
-                              val nstate' = if t_next < t+h
-                                            then update_state_h (nstate,t_next-t)
+                              val nstate' = if ((h+t)-t_next) > D.evdelta
+                                            then update_state_h (nstate,Real.max(t_next-t,D.evdelta))
                                             else nstate
                               val _        = extevent_clear_at t
                               val nstate'' = f' nstate'
@@ -547,8 +551,8 @@ struct
                         then ((i+n0,copy_state input))::statelog
                         else statelog
 
-        val input' = if ((t+h) - t_next) > D.evdelta
-                     then update_state_h (input,t_next-t)
+        val input' = if ((h+t)-t_next) > D.evdelta
+                     then update_state_h (input,Real.max(t_next-t,D.evdelta))
                      else input
 
         val _ = if debug
