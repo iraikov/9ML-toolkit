@@ -214,7 +214,7 @@ let
                                       val im = IntMap.find (I, i)
                                       val im = case im of 
                                                    SOME m => IntMap.unionWith
-                                                                 (op @)
+                                                                 mergeEvents
                                                                  (m,IntMap.singleton(port,[(t,w)]))
                                                  | NONE => IntMap.singleton (port,[(t,w)])
                                   in
