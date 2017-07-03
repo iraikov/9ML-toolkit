@@ -350,7 +350,7 @@ struct
               [] => xs
             | [(tx, wx)] => xs
             | ((tx, wx) :: (ty, wy) :: rst) =>
-              if Real.<= (Real.abs(Real.-(tx, ty)), Real.*(2.0,D.evdelta))
+              if Real.<= (Real.abs(Real.-(tx, ty)), Real.*(2.0,D.float_eps))
               then merge_extevent ((tx, wx+wy) :: rst)
               else (tx, wx) :: (merge_extevent ((ty, wy) :: rst))
 
@@ -409,7 +409,7 @@ struct
                        fun recur lst =
                          case lst of
                              (t',v)::rst =>
-                             if tstart-t' > D.evdelta
+                             if tstart-t' > D.float_eps
                              then raise Fail ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": event time out of range: tstart=" ^ (showReal tstart) ^
                                               " tprev=" ^ (showReal (getindex(extev_i, index))) ^
                                               " t'=" ^ (showReal t') ^ " tstart-t' = " ^ (showReal (tstart - t')))
@@ -512,8 +512,8 @@ struct
                      then (let
                               val t = state_indep nstate
                               val h = state_h nstate
-                              val nstate' = if ((h+t)-t_next) > D.evdelta
-                                            then update_state_h (nstate,Real.max(t_next-t,D.evdelta))
+                              val nstate' = if ((h+t)-t_next) > D.float_eps
+                                            then update_state_h (nstate,Real.max(t_next-t,D.float_eps))
                                             else nstate
                               val _        = extevent_clear_at t
                               val nstate'' = f' nstate'
@@ -551,8 +551,8 @@ struct
                         then ((i+n0,copy_state input))::statelog
                         else statelog
 
-        val input' = if ((h+t)-t_next) > D.evdelta
-                     then update_state_h (input,Real.max(t_next-t,D.evdelta))
+        val input' = if ((h+t)-t_next) > D.float_eps
+                     then update_state_h (input,Real.max(t_next-t,D.float_eps))
                      else input
 
         val _ = if debug
