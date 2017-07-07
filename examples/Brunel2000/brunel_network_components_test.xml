@@ -121,7 +121,8 @@
       <nineml:Component name="stim">
         <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
         <nineml:Property units="Hz" name="rate">
-          <nineml:SingleValue>8714.0</nineml:SingleValue>
+          <!--<nineml:SingleValue>8714.0</nineml:SingleValue>-->
+          <nineml:SingleValue>38729.3950153</nineml:SingleValue>
         </nineml:Property>
         <nineml:Initial units="ms" name="t_next">
           <nineml:SingleValue>3.0</nineml:SingleValue>

@@ -9,13 +9,27 @@
 ;; in the original paper.
 ;;
 
-(use srfi-1 utils extras ssax sxpath sxpath-lolevel )
+(use srfi-1 utils extras ssax sxpath sxpath-lolevel statistics)
 (require-library sxml-transforms)
 (import (prefix sxml-transforms sxml:))
 (define shared-dir (make-pathname (chicken-home) "9ML"))
 
 (load (make-pathname shared-dir "stx-engine.scm"))
 (load (make-pathname shared-dir "SXML-to-XML.scm"))
+
+(define (psp-height tau_m R_m tau_syn)
+;; Calculate the height of the EPSP for a synaptic current with peak amplitude 1 nA.
+  (let* ((a    (/ tau_m tau_syn))
+         (b    (- (/ 1.0 tau_syn) (/ 1.0 tau_m)))
+         (x0   (lambert-Wm1 (/ (- (exp (/ -1.0 a))) a)))
+         ;; time of maximum
+         (t_max (* (/ 1.0 b) (- (- x0) (/ 1.0 a)))))
+    ;; height of PSP for current of amplitude 1 nA
+    (let ((x1 (/ 1.0 (* tau_syn tau_m (/ b R_m))))
+          (x2 (/ (- (exp (/ (- t_max) tau_m)) (exp (/ (- t_max) tau_syn))) b))
+          (x3 (* t_max (exp (/ (- t_max) tau_syn)))))
+      (* x1 (- x2 x3)))
+    ))
 
 (define (model-name s)
   (let ((cs (string->list (->string s))))
@@ -76,8 +90,28 @@
 
 
 (define (BrunelNetworkAlpha g eta)
-  (let ((w 13.77) (rate 9682.0))
-    `(
+  (let* ((order    2500)
+         (NE       (* 4 order))
+         (NI       (* 1 order))
+         (epsilon  0.1)
+         (theta    20.0)
+         (tau      20.0)
+         (tau-syn  0.1)
+         (tau-rp   2.0)
+         (R        1.5)
+         (del      1.5)
+         (J        0.1)
+         (CE       (* epsilon NE))
+         (CI       (* epsilon NI))
+         )
+
+    (let* ((scale-factor (psp-height tau R tau-syn))
+           (w (/ J scale-factor)) 
+           (nu-thr (/ theta (* w CE R tau-syn)))
+           (nu-ext (* eta nu-thr))
+           (input-rate  (* 1000.0 nu-ext CE)) ;; mean input spiking rate
+           )
+      `(
       (Population
        (@ (name "Exc"))
        (Number "10000")
@@ -135,7 +169,7 @@
          (Definition (@ (url "Poisson.xml")) "Poisson")
          (Property
           (@ (units "Hz") (name "rate"))
-          (SingleValue ,(* eta rate)))
+          (SingleValue ,input-rate))
          (Initial
           (@ (units "ms") (name "t_next"))
           (SingleValue "5.0")))))
@@ -210,11 +244,12 @@
        (Delay (@ (units "ms")) (SingleValue "1.5"))
        ))
     ))
+  )
 
 (define range-g (list-tabulate 8 (lambda (x) (+ 0.5 (* 0.5 x)))))
 (define range-eta (list-tabulate 8 (lambda (x) (+ 1.0 (* 1.0 x)))))
 
-(for-each
+#;(for-each
  (lambda (g)
    (for-each
     (lambda (eta)
@@ -248,9 +283,8 @@
      (call-with-output-file 
          (string-append (model-name (sprintf "Brunel_network_delta_~A" label)) ".xml")
        (lambda  (output)
-         (sxml:serialize-sxml
+         (pp
           (Prelude 
-           (BrunelNetworkDelta g eta))
-          output: output)))
+           (BrunelNetworkAlpha g eta)))))
      ))
  variants)
