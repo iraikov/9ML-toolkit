@@ -760,6 +760,8 @@
                             (plas-ports (alist-ref 'plasticity-ports ports))
                             (ext-event  (gensym 'event))
                             )
+                         (d "node name = ~A ports = ~A~%" 
+                            node-name ports)
                          (if response-node 
                              (match-let (
                                          (($ dynamics-node model-name model-formals model-env model-eqset)
@@ -796,11 +798,19 @@
                                             model-eqset))
                              (let* (
                                     (dim (alist-ref (cadr destination-ports) model-formals))
-                                    (decls `((define ,(cadr plas-ports) = external (dim ,dim) ,(cadr destination-ports))
-                                             (define ,ext-event = external-event +inf.0)
-                                             ((reduce (+ ,(cadr destination-ports))) = ,(cadr plas-ports))))
                                     )
-                               (salt:parse decls)
+                               (salt:make-astdecls
+                                `(
+                                  ,@(let* ((unit (alist-ref dim default-units)))
+                                      (salt:astdecls-decls
+                                       (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
+                                                     (define ,(cadr plas-ports) = external (dim ,dim) ,(car destination-ports))
+                                                     (define ,ext-event = external-event +inf.0)
+                                                     (,(car plas-ports) = ,(cadr plas-ports ))
+                                                     ((reduce (+ ,(cadr destination-ports))) = ,(car plas-ports))))
+                                        ;(define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
+                                       ))
+                                  ))
                                ))
                          ))
                       )
@@ -828,7 +838,7 @@
                      `(,@(salt:astdecls-decls response-destination-port-decls)
                        ,model-eqset . ,response-dynamics)))
                    )
-              (pp prototype-decls)
+
               (d "response-dynamics = ~A~%" response-dynamics)
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
