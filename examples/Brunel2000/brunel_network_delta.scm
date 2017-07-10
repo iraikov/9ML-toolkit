@@ -79,7 +79,7 @@
     `(
       (Population
        (@ (name "Exc"))
-       (Number ,NE)
+       (Size ,NE)
        (Cell
         (Component
          (@ (name "nrn"))
@@ -119,7 +119,7 @@
         (Item (@ (index "1")) (Reference "Inh"))))
       (Population
        (@ (name "Ext"))
-       (Number ,(+ NE NI))
+       (Size ,(+ NE NI))
        (Cell
         (Component
          (@ (name "stim"))
@@ -151,7 +151,7 @@
        (Delay (@ (units "ms")) (SingleValue ,del)))
       (Population
        (@ (name "Inh"))
-       (Number ,NI)
+       (Size ,NI)
        (Cell
         (Component
          (@ (name "nrn"))
