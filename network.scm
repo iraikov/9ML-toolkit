@@ -796,9 +796,9 @@
                                             model-eqset))
                              (let* (
                                     (dim (alist-ref (cadr destination-ports) model-formals))
-                                    (decls `((define ,(cadr plas-ports) = external (dim ,dim) ,(cadr destination-port))
+                                    (decls `((define ,(cadr plas-ports) = external (dim ,dim) ,(cadr destination-ports))
                                              (define ,ext-event = external-event +inf.0)
-                                             ((reduce (+ ,(cadr destination-port))) = ,(cadr plas-ports))))
+                                             ((reduce (+ ,(cadr destination-ports))) = ,(cadr plas-ports))))
                                     )
                                (salt:parse decls)
                                ))
