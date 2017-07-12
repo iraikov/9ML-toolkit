@@ -409,18 +409,27 @@ struct
                        fun recur lst =
                          case lst of
                              (t',v)::rst =>
-                             if tstart-t' > D.float_eps
-                             then raise Fail ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": event time out of range: tstart=" ^ (showReal tstart) ^
-                                              " tprev=" ^ (showReal (getindex(extev_i, index))) ^
-                                              " t'=" ^ (showReal t') ^ " tstart-t' = " ^ (showReal (tstart - t')))
-                             else (if t' <= tend andalso (let val tprev = getindex(extev_i, index) in ((not (Real.isFinite(tprev))) orelse (tprev < tstart)) end)
-                                   then 
-                                       (update (ext_i, index, v); 
-                                        update (extev_i, index, t');
-                                        if List.null rst
-                                        then ax 
-                                        else (index,rst)::ax)
-                                   else (if List.null lst then ax else (index,lst)::ax))
+                             (if debug
+                              then putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^
+                                                           " t' = " ^ (Real.toString t') ^
+                                                           " tprev = " ^ (Real.toString (getindex(extev_i, index))))
+                              else ();
+                              if tstart-t' > D.float_eps
+                              then raise Fail ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": event time out of range: tstart=" ^ (showReal tstart) ^
+                                               " tprev=" ^ (showReal (getindex(extev_i, index))) ^
+                                               " t'=" ^ (showReal t') ^ " tstart-t' = " ^ (showReal (tstart - t')))
+                              else (if t' <= tend andalso (let val tprev = getindex(extev_i, index) in ((not (Real.isFinite(tprev))) orelse (tprev < tstart)) end)
+                                    then 
+                                        (if debug
+                                         then putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^
+                                                                      " updating event with t' = " ^ (Real.toString t'))
+                                         else ();
+                                         update (ext_i, index, v); 
+                                         update (extev_i, index, t');
+                                         if List.null rst
+                                         then ax 
+                                         else (index,rst)::ax)
+                                    else (if List.null lst then ax else (index,lst)::ax)))
                            | [] =>
                              if getindex(extev_i, index) < tstart
                              then 
