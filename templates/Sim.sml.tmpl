@@ -222,6 +222,7 @@ let
                                   end,
                                IntMap.empty,
                                DQ)
+{% endif %}
 
 
             val (state_vector_i, spikes_i, statelog_i) = frun' (I,t_i) (state_vector, rs_vector, rszt_vector)
@@ -417,5 +418,10 @@ val _ = let val name = CommandLine.name()
 	    val args = CommandLine.arguments()
 	    val env  = Posix.ProcEnv.environ()
 	in
-	    Sim_{{group.name}}.main (name, args)
+	    Sim_{{group.name}}.main (name, args);
+{% if group.usempi %}
+           MPI.Finalize ()
+{% else %}
+           ()
+{% endif %}
 	end

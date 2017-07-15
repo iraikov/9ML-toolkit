@@ -1,6 +1,12 @@
 
 structure {{group.name}} =
 struct
+{% if group.usempi %}
+val _ = MPI.Init (CommandLine.arguments())
+val mysize = MPI.Comm.Size (MPI.Comm.World)
+val myrank = MPI.Comm.Rank (MPI.Comm.World)
+
+{% endif %}
 
   structure D = Dynamics
 
@@ -280,8 +286,11 @@ struct
   val minDelay = List.foldl Real.min (hd D) (tl D)
 
 {% for pop in dict (group.populations) %}
-
-  val N_{{pop.name}} = {{ pop.value.size }}
+{% if group.usempi %}
+val N_{{pop.name}} = MPI.Utils.chunkSize ({{ pop.value.size }}, mysize, myrank);
+{% else %}
+val N_{{pop.name}} = {{ pop.value.size }}
+{% endif %}
 
   val {{pop.name}}_n0 = {{pop.value.start}}
 
@@ -329,7 +338,6 @@ struct
                    optApply {{pop.value.prototype.name}}.dposfun (p,fld,rs,rszt),
                    {{pop.value.prototype.name}}.regfun)
     end
-
                 
   fun {{pop.name}}_run f (rs,rszt) (statesample,extsample,evsample) n0 (Wmap,t_next) ((i,fld,input),(nstates,spikes,statelog)) =
     let
@@ -633,9 +641,7 @@ struct
 
     val C = {{length(dict(group.conntypes))}}
                 
-    val Pn = [
-        {% for pop in dict (group.populations) %}
-        {{pop.name}}_n0{% if not loop.last %},{% endif %}
+    fun frun I
 
         {% endfor %}
     ]
