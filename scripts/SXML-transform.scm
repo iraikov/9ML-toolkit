@@ -468,7 +468,7 @@
     ))
 
 
-(define nineml-xmlns-base "http://nineml.incf.org/9ML/")
+(define nineml-xmlns-base "http://nineml.net/9ML/")
 
 (define (read-xml name) 
   (call-with-input-file name
@@ -493,7 +493,9 @@
                     (xsi:schemaLocation "http://nineml.incf.org/9ML/1.0 ../NineML_v1.0.xsd")
                     (name ,(sxml:attr 'name nineml:model)))
                  ,(nineml-apply-templates (sxml:kids nineml:model))))))
-       (print-fragments (generate-XML nineml:model1))))
+       ;;(print-fragments (generate-XML nineml:model1))
+       (pp nineml:model1)
+       ))
    operands))
 
                    

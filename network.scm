@@ -427,8 +427,9 @@
   ;;(pp `("UL node" . ,node) (current-error-port))
 
   (let* (
-         (source-dir       (pathname-directory operand))
          (prefix           (pathname-file operand))
+         (source-dir       (pathname-directory operand))
+         (build-dir        (make-pathname (pathname-directory operand) (string-append "." prefix ".9ML-build" )))
          (group-name       (or (sxml:attr node 'name) (string->symbol prefix)))
          (populations-sxml (sxml:kidsn 'nml:Population node))
          (selections-sxml  (sxml:kidsn 'nml:Selection  node))
@@ -707,11 +708,11 @@
              (mlb-tmpl       "Sim.mlb.tmpl")
              (makefile-tmpl  "Makefile.tmpl")
 
-             (group-path    (make-pathname source-dir (conc group-name ".sml")))
-             (sim-path      (make-pathname source-dir (conc "Sim_" group-name ".sml")))
-             (mlb-path      (make-pathname source-dir (conc "Sim_" group-name ".mlb")))
+             (group-path    (make-pathname build-dir (conc group-name ".sml")))
+             (sim-path      (make-pathname build-dir (conc "Sim_" group-name ".sml")))
+             (mlb-path      (make-pathname build-dir (conc "Sim_" group-name ".mlb")))
              (exec-path     (make-pathname source-dir (conc "Sim_" group-name)))
-             (makefile-path (make-pathname source-dir (conc "Makefile." group-name)))
+             (makefile-path (make-pathname build-dir (conc "Makefile." group-name)))
 
              
              (projection-ports
@@ -733,6 +734,7 @@
              
 
              )
+        (create-directory build-dir)
 
         (d "projection-ports = ~A~%" (ersatz:tvalue->sexpr projection-ports))
         (d "group-path = ~A~%" group-path)
@@ -844,7 +846,7 @@
               (d "response-dynamics = ~A~%" response-dynamics)
               (d "prototype-decls = ~A~%" prototype-decls)
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
-                (let ((sml-port (open-output-file (make-pathname source-dir (sprintf "~A.sml" node-name)))))
+                (let ((sml-port (open-output-file (make-pathname build-dir (sprintf "~A.sml" node-name)))))
                   (case (ivp-simulation-platform) 
                     ((mlton/c)
                      (salt:codegen-ODE/ML node-name sim out: sml-port libs: '(random) csysname: node-name))
@@ -853,7 +855,7 @@
                   (close-output-port sml-port)
                   (case (ivp-simulation-platform) 
                     ((mlton/c)
-                     (let ((c-port (open-output-file (make-pathname source-dir (sprintf "~A.c" node-name)))))
+                     (let ((c-port (open-output-file (make-pathname build-dir (sprintf "~A.c" node-name)))))
                        (salt:codegen-ODE/C node-name sim out: c-port libs: '(random))
                        (close-output-port c-port)
                        ))
@@ -885,7 +887,7 @@
                (map 
                 (match-lambda
                  ((population node-name . responses)
-                  (make-pathname source-dir (sprintf "~A.sml" node-name))))
+                  (make-pathname build-dir (sprintf "~A.sml" node-name))))
                 (population-prototype-env))))
           (make/proc
            `((,group-path 
@@ -957,7 +959,9 @@
                                                                         (Tlist (case (ivp-simulation-platform)
                                                                                  ((mlton/c) (list (Tstr (make-pathname csolver-path "crklib.c"))))
                                                                                  (else (list))))))
-                                                                                
+                                                     (build_dir . ,(Tstr build-dir))
+                                                     (src_paths . ,(Tlist (map Tstr (list mlb-path sim-path group-path))))
+                                                     (exec_path . ,(Tstr exec-path))
                                                      ))
                                           ))
                                   ))
