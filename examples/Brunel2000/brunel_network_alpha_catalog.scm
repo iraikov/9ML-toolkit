@@ -112,6 +112,12 @@
            )
 
       `(
+        (Selection
+         (@ (name "All"))
+         (Concatenate
+          (Item (@ (index "0")) (Reference "Exc"))
+          (Item (@ (index "1")) (Reference "Inh"))))
+
      (Population
        (@ (name "Exc"))
        (Size "10000")
