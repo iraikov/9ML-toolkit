@@ -14,7 +14,8 @@ fun showflag (Help)       = "Help"
   | showflag (Time x)     = ("Time" ^ (Real.toString x))
   | showflag (Timestep x) = ("Timestep" ^ (Real.toString x))
   | showflag (Tol x)      = ("Tol" ^ (Real.toString x))
-		   
+
+fun s2r s = Real.fromString (String.map (fn #"-" => #"~" | c => c) s)
 
 val options = 
     [
@@ -25,17 +26,17 @@ val options =
 
      {short="d",
       long=["duration"],
-      desc=G.ReqArg (fn(x) => Time (valOf(Real.fromString x)), "N"),
+      desc=G.ReqArg (fn(x) => Time (valOf(s2r x)), "N"),
       help="simulation duration"},
 
      {short="",
       long=["tol"],
-      desc=G.ReqArg (fn(x) => Tol (valOf(Real.fromString x)),"N"),
+      desc=G.ReqArg (fn(x) => Tol (valOf(s2r x)),"N"),
       help="error tolerance"},
 
      {short="",
       long=["timestep"],
-      desc=G.ReqArg (fn(x) => Timestep (valOf(Real.fromString x)),"N"),
+      desc=G.ReqArg (fn(x) => Timestep (valOf(s2r x)),"N"),
       help="simulation timestep"}
     ]
 

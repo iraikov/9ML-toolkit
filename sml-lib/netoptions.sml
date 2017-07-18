@@ -18,7 +18,7 @@ datatype flag =  Help | Time of real | Timestep of real | Tol of real
 
 fun list2str elem2str lst =
   String.concatWith "," (List.map elem2str lst) 
-
+                    
 fun showflag (Help)       = "Help"
   | showflag (Time x)     = ("Time " ^ (Real.toString x))
   | showflag (Timestep x) = ("Timestep " ^ (Real.toString x))
@@ -38,6 +38,9 @@ fun showflag (Help)       = "Help"
   | showflag (PrjRandomseeds x)  = ("PrjRandomseeds " ^ (list2str Int.toString x))
 		   
 
+fun s2r s = Real.fromString (String.map (fn #"-" => #"~" | c => c) s)
+fun s2i s = s2i (String.map (fn #"-" => #"~" | c => c) s)
+
 val options = 
     [
      {short="h",
@@ -47,37 +50,37 @@ val options =
 
      {short="d",
       long=["duration"],
-      desc=G.ReqArg (fn(x) => Time (valOf(Real.fromString x)), "N"),
+      desc=G.ReqArg (fn(x) => Time (valOf(s2r x)), "N"),
       help="simulation duration"},
 
      {short="",
       long=["tol"],
-      desc=G.ReqArg (fn(x) => Tol (valOf(Real.fromString x)),"N"),
+      desc=G.ReqArg (fn(x) => Tol (valOf(s2r x)),"N"),
       help="error tolerance"},
 
      {short="",
       long=["timestep"],
-      desc=G.ReqArg (fn(x) => Timestep (valOf(Real.fromString x)),"N"),
+      desc=G.ReqArg (fn(x) => Timestep (valOf(s2r x)),"N"),
       help="simulation timestep"},
 
      {short="",
       long=["logperiod"],
-      desc=G.ReqArg (fn(x) => Logperiod (valOf(Real.fromString x)),"N"),
+      desc=G.ReqArg (fn(x) => Logperiod (valOf(s2r x)),"N"),
       help="write out spike times and state information every N ms of simulated time"},
 
      {short="",
       long=["statesample"],
-      desc=G.ReqArg (fn(x) => Statesample (valOf(Int.fromString x)),"N"),
+      desc=G.ReqArg (fn(x) => Statesample (valOf(s2i x)),"N"),
       help="sample size of neurons for state recording"},
 
      {short="",
       long=["extsample"],
-      desc=G.ReqArg (fn(x) => Extsample (valOf(Int.fromString x)),"N"),
+      desc=G.ReqArg (fn(x) => Extsample (valOf(s2i x)),"N"),
       help="sample size of neurons for external input recording"},
 
      {short="",
       long=["evsample"],
-      desc=G.ReqArg (fn(x) => Evsample (valOf(Int.fromString x)),"N"),
+      desc=G.ReqArg (fn(x) => Evsample (valOf(s2i x)),"N"),
       help="sample size of neurons for event recording"},
 
      {short="s",
@@ -94,7 +97,7 @@ val options =
       long=["cell-randomseeds"],
       desc=G.ReqArg (fn(x) =>
                         let
-                            val lst = List.mapPartial Int.fromString (String.tokens (fn(c) => c=(#",")) x)
+                            val lst = List.mapPartial s2i (String.tokens (fn(c) => c=(#",")) x)
                         in
                             CellRandomseeds lst
                         end,
@@ -105,7 +108,7 @@ val options =
       long=["prj-randomseeds"],
       desc=G.ReqArg (fn(x) =>
                         let
-                            val lst = List.mapPartial Int.fromString (String.tokens (fn(c) => c=(#",")) x)
+                            val lst = List.mapPartial s2i (String.tokens (fn(c) => c=(#",")) x)
                         in
                             PrjRandomseeds lst
                         end,
