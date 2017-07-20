@@ -350,9 +350,15 @@ struct
               [] => xs
             | [(tx, wx)] => xs
             | ((tx, wx) :: (ty, wy) :: rst) =>
-              if Real.<= (Real.abs(Real.-(tx, ty)), Real.*(2.0,D.float_eps))
-              then merge_extevent ((tx, wx+wy) :: rst)
-              else (tx, wx) :: (merge_extevent ((ty, wy) :: rst))
+              let
+                  val diff = Real.-(tx, ty)
+              in
+                  if Real.<= (Real.abs(diff), Real.*(2.0,D.float_eps))
+                  then merge_extevent ((tx, wx+wy) :: rst)
+                  else (if Real.<(diff, 0.0)
+                        then (tx, wx) :: (merge_extevent ((ty, wy) :: rst))
+                        else (ty, wy) :: (merge_extevent ((tx, wx) :: rst)))
+              end
 
         val update    = Unsafe.Array.update
         val ext_i     = state_ext input

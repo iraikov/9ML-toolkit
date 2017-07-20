@@ -183,13 +183,6 @@ let
                                   (D,S))
                       ))
                       DQ spike_i
-
-    fun mergeEvents (xs, ys) =
-      case (xs, ys) of
-          ([], _) => ys
-        | (_, []) => xs
-        | ((tx, wx) :: xrst, (ty, wy) :: yrst) =>
-          if Real.<=(tx, ty) then (tx, wx) :: mergeEvents (xrst, ys) else (ty, wy) :: mergeEvents (xs, yrst)
                                                                     
     fun netrun (t_n,n,DQ,state_vector,spikelog,statelog,tlog) =
         let 
@@ -214,7 +207,7 @@ let
                                       val im = IntMap.find (I, i)
                                       val im = case im of 
                                                    SOME m => IntMap.unionWith
-                                                                 mergeEvents
+                                                                 (op @)
                                                                  (m,IntMap.singleton(port,[(t,w)]))
                                                  | NONE => IntMap.singleton (port,[(t,w)])
                                   in
