@@ -317,8 +317,8 @@
       (@ (symbol "unitless") (power "0") (dimension "dimensionless"))))))
   )
 
-(define range-g (list-tabulate 8 (lambda (x) (+ 0.5 (* 0.5 x)))))
-(define range-eta (list-tabulate 8 (lambda (x) (+ 1.0 (* 1.0 x)))))
+(define range-g (list-tabulate 16 (lambda (x) (+ 0.5 (* 0.5 x)))))
+(define range-eta (list 1.0 2.0 4.0))
 
 (define parameter-sweep
   (concatenate
