@@ -39,7 +39,7 @@ fun showflag (Help)       = "Help"
 		   
 
 fun s2r s = Real.fromString (String.map (fn #"-" => #"~" | c => c) s)
-fun s2i s = s2i (String.map (fn #"-" => #"~" | c => c) s)
+fun s2i s = Int.fromString (String.map (fn #"-" => #"~" | c => c) s)
 
 val options = 
     [
