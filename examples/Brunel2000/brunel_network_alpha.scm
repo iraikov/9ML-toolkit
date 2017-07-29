@@ -246,15 +246,15 @@
     ))
   )
 
-(define range-g (list-tabulate 8 (lambda (x) (+ 0.5 (* 0.5 x)))))
-(define range-eta (list-tabulate 8 (lambda (x) (+ 1.0 (* 1.0 x)))))
+(define range-g (list-tabulate 16 (lambda (x) (+ 0.5 (* 0.5 x)))))
+(define range-eta `(0.0 1.0 2.0 4.0))
 
-#;(for-each
+(for-each
  (lambda (g)
    (for-each
     (lambda (eta)
       (with-output-to-file 
-          (string-append (model-name (sprintf "Brunel_network_alpha_g~A_eta~A" g eta)) ".xml")
+          (string-append (model-name (sprintf "brunel_network_alpha_g~A_eta~A" g eta)) ".xml")
         (lambda ()
           (print-fragments 
            (generate-XML
@@ -281,7 +281,7 @@
          (g (alist-ref 'g (cdr var)))
          (eta (alist-ref 'eta (cdr var))))
      (call-with-output-file 
-         (string-append (model-name (sprintf "Brunel_network_delta_~A" label)) ".xml")
+         (string-append (model-name (sprintf "brunel_network_alpha_~A" label)) ".xml")
        (lambda  (output)
          (pp
           (Prelude 
