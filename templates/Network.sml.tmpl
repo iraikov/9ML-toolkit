@@ -554,9 +554,9 @@ struct
                      else ();
                      let
                          val _          = extevent_clear_at (state_indep nstate)
+                         val extev_map' = extevent "RootAfter" extev_map (state_indep nstate, t_next)
                          val nstate'    = f' nstate
                                           handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
-                         val extev_map' = extevent "RootAfter" extev_map (state_indep nstate', t_next)
                      in
                          recur (nstate', extev_map', spikes, statelog')
                      end)
