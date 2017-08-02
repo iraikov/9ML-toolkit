@@ -29,8 +29,14 @@
   (if (< (length xs) 2)
       (error "variance: sequence must contain at least two elements")
       (let ((mean1 (mean xs)))
-        (/ (sum (map (lambda (x) (square (- mean1 x))) xs))
+        (/ (sum (map (lambda (x) (square (- x mean1))) xs))
            (- (length xs) 1)))))
+
+(define (standard-deviation xs)
+  (sqrt (variance xs)))
+
+(define (coefficient-of-variation m s)
+  (if (> m 0.0) (/ s m) 0.0))
 
 
 (define (event-stats data-file output-file)
@@ -69,16 +75,15 @@
                        (reverse data))
              v))
 
-          (event-intervals (map diffs (filter pair? (vector->list event-times))))
-          (mean-event-intervals (map mean event-intervals))
-          (mean-event-interval (mean mean-event-intervals))
-          (stdev-event-interval (if (null? mean-event-intervals) 0.0 
-                                    (sqrt (variance mean-event-intervals))))
-          (cv-event-interval (if (zero? mean-event-interval) 0.0
-                                 (* 100.0
-                                    (/ stdev-event-interval mean-event-interval))))
-
-          (nevents (filter-map (lambda (x) (and (not (null? x)) (length (cdr x)))) (vector->list event-times)))
+          (event-times-lst (vector->list event-times))
+          (event-intervals (map diffs (filter pair? event-times-lst)))
+          (all-event-intervals (concatenate event-intervals))
+          (mean-event-interval (mean all-event-intervals))
+          (stdev-event-interval (standard-deviation all-event-intervals))
+          (cv-event-interval (coefficient-of-variation
+                              mean-event-interval
+                              stdev-event-interval))
+          (nevents (filter-map (lambda (x) (and (not (null? x)) (length (cdr x)))) event-times-lst))
           (mean-rates (map (lambda (x) (* 1000 (/ x tmax))) nevents))
           (mean-event-frequency (round (mean mean-rates)))
 
