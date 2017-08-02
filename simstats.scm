@@ -1,4 +1,4 @@
-(require-extension matchable getopt-long)
+(require-extension matchable getopt-long statistics)
 (require-library srfi-1 srfi-13 irregex data-structures files posix extras)
 (import
  (only srfi-1 filter list-tabulate)
@@ -75,7 +75,8 @@
           (stdev-event-interval (if (null? mean-event-intervals) 0.0 
                                     (sqrt (variance mean-event-intervals))))
           (cv-event-interval (if (zero? mean-event-interval) 0.0
-                                 (/ stdev-event-interval mean-event-interval)))
+                                 (* 100.0
+                                    (/ stdev-event-interval mean-event-interval))))
 
           (nevents (filter-map (lambda (x) (and (not (null? x)) (length (cdr x)))) (vector->list event-times)))
           (mean-rates (map (lambda (x) (* 1000 (/ x tmax))) nevents))
