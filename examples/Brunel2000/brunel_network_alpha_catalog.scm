@@ -88,8 +88,8 @@
     ,@content))
 
 
-(define (BrunelNetworkAlpha g eta)
-  (let* ((order    10000)
+(define (BrunelNetworkAlpha order g eta)
+  (let* (
          (NE       (* 4 order))
          (NI       (* 1 order))
          (epsilon  0.1)
@@ -329,7 +329,7 @@
          `(,(model-name (sprintf "brunel_network_alpha_g~A_eta~A" g eta)) .
            ,(generate-XML
              (Prelude 
-              (BrunelNetworkAlpha (- g) eta)))))
+              (BrunelNetworkAlpha 10000 (- g) eta)))))
        range-eta
        ))
     range-g
@@ -365,7 +365,7 @@
          (print-fragments
           (generate-XML
            (Prelude 
-            (BrunelNetworkAlpha g eta)))
+            (BrunelNetworkAlpha 2500 g eta)))
           out: output)))
      ))
  variants)
