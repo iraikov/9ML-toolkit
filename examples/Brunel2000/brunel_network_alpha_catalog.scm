@@ -89,7 +89,7 @@
 
 
 (define (BrunelNetworkAlpha g eta)
-  (let* ((order    2500)
+  (let* ((order    10000)
          (NE       (* 4 order))
          (NI       (* 1 order))
          (epsilon  0.1)
@@ -99,7 +99,7 @@
          (tau-rp   2.0)
          (R        1.5)
          (del      1.5)
-         (J        0.1)
+         (J        0.2)
          (CE       (* epsilon NE))
          (CI       (* epsilon NI))
          )
@@ -120,7 +120,7 @@
 
      (Population
        (@ (name "Exc"))
-       (Size "10000")
+       (Size ,NE)
        (Cell
          (Component
            (@ (name "nrn"))
@@ -171,7 +171,7 @@
              "RandomFanIn")
            (Property
              (@ (units "unitless") (name "number"))
-             (SingleValue "1000"))))
+             (SingleValue ,CE))))
        (Response
          (Component
            (@ (name "syn"))
@@ -193,7 +193,7 @@
        (Delay (@ (units "ms")) (SingleValue "1.5")))
      (Population
        (@ (name "Ext"))
-       (Size "12500")
+       (Size ,(+ NI NE))
        (Cell
          (Component
            (@ (name "stim"))
@@ -219,7 +219,7 @@
              "RandomFanIn")
            (Property
              (@ (units "unitless") (name "number"))
-             (SingleValue "250"))))
+             (SingleValue ,CI))))
        (Response
          (Component
            (@ (name "syn"))
@@ -241,7 +241,7 @@
        (Delay (@ (units "ms")) (SingleValue "1.5")))
      (Population
        (@ (name "Inh"))
-       (Size "2500")
+       (Size ,NI)
        (Cell
          (Component
            (@ (name "nrn"))
