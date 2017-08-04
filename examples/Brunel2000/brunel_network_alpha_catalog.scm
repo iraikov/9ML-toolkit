@@ -237,7 +237,7 @@
            (Definition (@ (url "../../plasticity/Static.xml")) "Static")
            (Property
              (@ (units "nA") (name "weight"))
-             (SingleValue ,(* g w)))))
+             (SingleValue ,(- (* g w))))))
        (Delay (@ (units "ms")) (SingleValue "1.5")))
      (Population
        (@ (name "Inh"))
