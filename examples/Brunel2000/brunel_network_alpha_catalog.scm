@@ -329,7 +329,7 @@
          `(,(model-name (sprintf "brunel_network_alpha_g~A_eta~A" g eta)) .
            ,(generate-XML
              (Prelude 
-              (BrunelNetworkAlpha 10000 0.2 (- g) eta)))))
+              (BrunelNetworkAlpha 10000 0.2 g eta)))))
        range-eta
        ))
     range-g
