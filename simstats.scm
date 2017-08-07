@@ -85,7 +85,7 @@
                               stdev-event-interval))
           (nevents (filter-map (lambda (x) (and (not (null? x)) (length (cdr x)))) event-times-lst))
           (mean-rates (map (lambda (x) (* 1000 (/ x tmax))) nevents))
-          (mean-event-frequency (round (mean mean-rates)))
+          (mean-event-frequency (mean mean-rates))
 
           )
 
