@@ -434,7 +434,14 @@ struct
                                          update (extev_i, index, t');
                                          if List.null rst
                                          then ax 
-                                         else (index,rst)::ax)
+                                         else (case rst of
+                                                   (t'',v')::rst' =>
+                                                   (if t'' <= t'
+                                                    then raise Fail ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^
+                                                                     ": successive events with incorrect order: t'=" ^ (showReal t') ^ " t''=" ^ (showReal t''))
+                                                    else ())
+                                                 | _ => ();
+                                               (index,rst)::ax))
                                     else (if List.null lst then ax else (index,lst)::ax)))
                            | [] =>
                              if getindex(extev_i, index) < tstart

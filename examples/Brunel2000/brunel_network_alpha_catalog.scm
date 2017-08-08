@@ -88,8 +88,8 @@
     ,@content))
 
 
-(define (BrunelNetworkAlpha g eta)
-  (let* ((order    2500)
+(define (BrunelNetworkAlpha order J g eta)
+  (let* (
          (NE       (* 4 order))
          (NI       (* 1 order))
          (epsilon  0.1)
@@ -99,7 +99,7 @@
          (tau-rp   2.0)
          (R        1.5)
          (del      1.5)
-         (J        0.1)
+         (J        J)
          (CE       (* epsilon NE))
          (CI       (* epsilon NI))
          )
@@ -120,7 +120,7 @@
 
      (Population
        (@ (name "Exc"))
-       (Size "10000")
+       (Size ,NE)
        (Cell
          (Component
            (@ (name "nrn"))
@@ -171,7 +171,7 @@
              "RandomFanIn")
            (Property
              (@ (units "unitless") (name "number"))
-             (SingleValue "1000"))))
+             (SingleValue ,CE))))
        (Response
          (Component
            (@ (name "syn"))
@@ -193,7 +193,7 @@
        (Delay (@ (units "ms")) (SingleValue "1.5")))
      (Population
        (@ (name "Ext"))
-       (Size "12500")
+       (Size ,(+ NI NE))
        (Cell
          (Component
            (@ (name "stim"))
@@ -219,7 +219,7 @@
              "RandomFanIn")
            (Property
              (@ (units "unitless") (name "number"))
-             (SingleValue "250"))))
+             (SingleValue ,CI))))
        (Response
          (Component
            (@ (name "syn"))
@@ -237,11 +237,11 @@
            (Definition (@ (url "../../plasticity/Static.xml")) "Static")
            (Property
              (@ (units "nA") (name "weight"))
-             (SingleValue ,(* g w)))))
+             (SingleValue ,(- (* g w))))))
        (Delay (@ (units "ms")) (SingleValue "1.5")))
      (Population
        (@ (name "Inh"))
-       (Size "2500")
+       (Size ,NI)
        (Cell
          (Component
            (@ (name "nrn"))
@@ -329,7 +329,7 @@
          `(,(model-name (sprintf "brunel_network_alpha_g~A_eta~A" g eta)) .
            ,(generate-XML
              (Prelude 
-              (BrunelNetworkAlpha (- g) eta)))))
+              (BrunelNetworkAlpha 10000 0.2 g eta)))))
        range-eta
        ))
     range-g
@@ -365,7 +365,7 @@
          (print-fragments
           (generate-XML
            (Prelude 
-            (BrunelNetworkAlpha g eta)))
+            (BrunelNetworkAlpha 2500 0.1 g eta)))
           out: output)))
      ))
  variants)
