@@ -58,6 +58,8 @@
 
 (define ivp-simulation-platform (make-parameter 'mlton))
 (define alsys-simulation-platform (make-parameter 'mlton))
+(define keep-build (make-parameter #f))
+
 
 (define opt-defaults
   `(
@@ -70,6 +72,9 @@
 (define opt-grammar
   `(
 
+    (keep          "keep build files"
+                   (single-char #\k))
+
     (platform        "simulation platform (one of mlton, mlton/c, octave/mlton)"
 		     (value (required PLATFORM)
 			    (predicate 
@@ -79,7 +84,8 @@
 				    ((mlton mlton/c octave/mlton) s)
 				    (else (error '9ML-network "unrecognized platform" x))))))
 			    (transformer ,string->symbol)
-                            ))
+                            )
+                     (single-char #\p))
 
     (verbose          "print commands as they are executed"
 		      (single-char #\v))
@@ -968,7 +974,10 @@
                               )
 
                (exec-path (group-path sim-path mlb-path makefile-path)
-                          (run (make -f ,makefile-path)))
+                          (begin
+                            (run (make -f ,makefile-path))
+                            (if (not (keep-build)) (run (rm -rf ,build-dir)))
+                            ))
 
                )
 
@@ -1012,6 +1021,8 @@
   (ivp-simulation-platform (simulation-platform))
   (alsys-simulation-platform (simulation-platform))
 
+  (keep-build (options 'keep))
+  
   (salt:model-quantities (cons (cons 'dimensionless Unity) (salt:model-quantities)))
   
   (for-each

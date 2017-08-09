@@ -335,7 +335,6 @@ struct
     let
         val tol = !(D.tol)
         val f' = f (i,{{pop.name}}_parameters,fld,rs,rszt)
-                   
 
 (*
 {% if pop.value.prototype.fieldExprML %}
@@ -365,7 +364,7 @@ struct
         val extev_i   = state_extev input
         val extev_map = case IntMap.find (Wmap, i+n0) of
                             SOME spm =>
-                            (if debug
+                            (if debug 
                              then (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ " external events: ");
                                    IntMap.appi (fn (port, lst) =>
                                                    (putStr TextIO.stdOut (" port " ^ (Int.toString port) ^ ": ");
@@ -401,10 +400,10 @@ struct
                   else index+1)
               0 {{pop.name}}_ext_ports
 
-        fun extevent loc extev_map (tstart, tend) = 
+        fun extevent loc extev_map (tstart, tend, iter) = 
           List.foldl
               (fn ((index,lst), ax) => 
-                  (if debug
+                  (if debug orelse iter>100
                    then (putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
                                                  " tstart = " ^ (showReal tstart) ^ " tend = " ^ (showReal tend) ^ " " ^
                                                  " external events at t = " ^ (showReal t) ^ ": ");
@@ -415,7 +414,7 @@ struct
                        fun recur lst =
                          case lst of
                              (t',v)::rst =>
-                             (if debug
+                             (if debug orelse iter>100
                               then putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^
                                                            " t' = " ^ (Real.toString t') ^
                                                            " tprev = " ^ (Real.toString (getindex(extev_i, index))))
@@ -426,7 +425,7 @@ struct
                                                " t'=" ^ (showReal t') ^ " tstart-t' = " ^ (showReal (tstart - t')))
                               else (if t' <= tend andalso (let val tprev = getindex(extev_i, index) in ((not (Real.isFinite(tprev))) orelse (tprev < tstart)) end)
                                     then 
-                                        (if debug
+                                        (if debug orelse iter>100
                                          then putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^
                                                                       " updating event with t' = " ^ (Real.toString t'))
                                          else ();
@@ -457,7 +456,7 @@ struct
               [] extev_map
 
 
-        fun recur (nstate,extev_map,spikes,statelog: (int * D.model_state) list) = 
+        fun recur (nstate,extev_map,spikes,statelog: (int * D.model_state) list,iter) = 
           let
               val spikes' = case state_root nstate of
                                 D.RootFound (hs) =>
@@ -476,7 +475,7 @@ struct
                                |  _ =>  statelog
                                             
               
-              val _ = if debug
+              val _ = if debug orelse iter>100
                       then (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
                                                    " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
                                                    " root state is " ^ (showRoot (state_root nstate)) ^
@@ -486,11 +485,11 @@ struct
                             show_extev_map extev_map)
                       else ()
 
-              val _ = if (state_h nstate) <= 0.0 then raise Fail ("cell " ^ (Int.toString (i+n0)) ^ ": recur: zero time step") else ()
+              val _ = if (state_h nstate) < D.float_eps then raise Fail ("cell " ^ (Int.toString (i+n0)) ^ ": recur: zero time step") else ()
           in
                 case state_root nstate of
                     D.RootFound (i,hs) =>
-                    (if debug
+                    (if debug orelse iter>100
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
@@ -498,10 +497,10 @@ struct
                          val nstate'    = f' nstate
                                           handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
                      in
-                         recur (nstate', extev_map, spikes', statelog')
+                         recur (nstate', extev_map, spikes', statelog', iter+1)
                      end)
                   | D.RootStep [] =>
-                    (if debug
+                    (if debug orelse iter>100
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
@@ -510,27 +509,27 @@ struct
                      else raise Fail ("RootStep: cell " ^ (Int.toString (i+n0)) ^ " has a non-empty external event map at t = " ^
                                       (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
                   | D.RootStep (h::hs) =>
-                    (if debug
+                    (if debug orelse iter>100
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
                      let
                          val t          = state_indep nstate
-                         val extev_map' = extevent "RootStep" extev_map (t, t_next)
+                         val extev_map' = extevent "RootStep" extev_map (t, t_next, iter)
                          val nstate'    = f' nstate
                                           handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
                      in
-                         recur (nstate', extev_map', spikes', statelog')
+                         recur (nstate', extev_map', spikes', statelog', iter+1)
                      end)
                   | D.RootBefore =>
-                    (if debug
+                    (if debug orelse iter>100
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)) ^
                                                   " t = " ^ (showReal (state_indep nstate)) ^
                                                   " t_next = " ^ (showReal t_next) ^
                                                   " t_next - t = " ^ (showReal (t_next - (state_indep nstate))))
                      else ();
-                     if (t_next - (state_indep nstate)) > 0.0
+                     if (t_next - (state_indep nstate)) > D.float_eps
                      then (let
                               val t = state_indep nstate
                               val h = state_h nstate
@@ -542,7 +541,7 @@ struct
                                              handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
 
                           in
-                              recur (nstate'', extev_map, spikes', statelog')
+                              recur (nstate'', extev_map, spikes', statelog', iter+1)
                           end)
                      else (let
                               val t = state_indep nstate
@@ -555,17 +554,17 @@ struct
                                                 (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
                           end))
                   | D.RootAfter (i,_) =>
-                    (if debug
+                    (if debug orelse iter>100
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
                      let
                          val _          = extevent_clear_at (state_indep nstate)
-                         val extev_map' = extevent "RootAfter" extev_map (state_indep nstate, t_next)
+                         val extev_map' = extevent "RootAfter" extev_map (state_indep nstate, t_next, iter)
                          val nstate'    = f' nstate
                                           handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
                      in
-                         recur (nstate', extev_map', spikes, statelog')
+                         recur (nstate', extev_map', spikes, statelog', iter+1)
                      end)
             end
 
@@ -576,14 +575,14 @@ struct
         val input' = if ((h+t)-t_next) > D.float_eps
                      then update_state_h (input,Real.max(t_next-t,D.float_eps))
                      else input
-
+                              
         val _ = if debug
                 then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": run: " ^
                                              "t = " ^ (showReal t) ^ " t_next = " ^ (showReal t_next) ^ " h = " ^ (showReal h) ^
                                              " root state is " ^ (showRoot (state_root input)))
                 else ()
 
-        val (nstate,spikes',statelog') = recur (input',extev_map,spikes,statelog')
+        val (nstate,spikes',statelog') = recur (input',extev_map,spikes,statelog',0)
     in 
         ((i,fld,nstate)::nstates, spikes', statelog')
          
@@ -612,7 +611,7 @@ struct
 
 {% if group.projections %}{% for prj in dict (group.projections) %}
 
-  val {{prj.name}}_rs = ref (RandomInit())
+  val {{prj.name}}_rs = ref (RandomInitFromInt({{loop.index}}))
 
 {% endfor %}{% endif %}
 
