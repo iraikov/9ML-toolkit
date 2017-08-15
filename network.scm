@@ -59,6 +59,7 @@
 (define ivp-simulation-platform (make-parameter 'mlton))
 (define alsys-simulation-platform (make-parameter 'mlton))
 (define keep-build (make-parameter #f))
+(define exception-history (make-parameter #f))
 
 
 (define opt-defaults
@@ -71,6 +72,13 @@
 
 (define opt-grammar
   `(
+    (codegen-trace        "trace one or more procedures in the code generation backend"
+                          (value (required NAMES)
+                                 (transformer ,(lambda (x) (map string->symbol (string-split x ","))))
+                                 )
+                          )
+    
+    (exception-history  "print exception traces in runtime")
 
     (keep          "keep build files"
                    (single-char #\k))
@@ -90,11 +98,6 @@
     (verbose          "print commands as they are executed"
 		      (single-char #\v))
 
-    (trace        "trace one or more procedures in the code generation backend"
-                  (value (required NAMES)
-                         (transformer ,(lambda (x) (map string->symbol (string-split x ","))))
-                         )
-                  )
 
     (help  "Print help"
 	    (single-char #\h))
@@ -953,6 +956,10 @@
                                                      (nineml_lib_home . ,(Tstr (make-pathname 
                                                                                 (make-pathname shared-dir "9ML")
                                                                                 "sml-lib")))
+                                                     (build_dir . ,(Tstr build-dir))
+                                                     (src_paths . ,(Tlist (map Tstr (list mlb-path sim-path group-path))))
+                                                     (exec_path . ,(Tstr exec-path))
+                                                     (ExnHistory . ,(Tbool (exception-history)))
                                                      (UseCSolver . ,(Tbool (case (ivp-simulation-platform)
                                                                              ((mlton/c) #t)
                                                                              (else #f))))
@@ -965,9 +972,6 @@
                                                                         (Tlist (case (ivp-simulation-platform)
                                                                                  ((mlton/c) (list (Tstr (make-pathname csolver-path "crklib.c"))))
                                                                                  (else (list))))))
-                                                     (build_dir . ,(Tstr build-dir))
-                                                     (src_paths . ,(Tlist (map Tstr (list mlb-path sim-path group-path))))
-                                                     (exec_path . ,(Tstr exec-path))
                                                      ))
                                           ))
                                   ))
@@ -1012,8 +1016,8 @@
         (utils-verbose 1)
         (network-verbose 1)))
 
-  (if (options 'trace) 
-      (for-each (lambda (name) (salt:add-trace name)) (options 'trace)))
+  (if (options 'codegen-trace) 
+      (for-each (lambda (name) (salt:add-trace name)) (options 'codegen-trace)))
   
   (simulation-platform (or (options 'platform) (defopt 'platform) ))
   (simulation-method (defopt 'method) )
@@ -1022,6 +1026,8 @@
   (alsys-simulation-platform (simulation-platform))
 
   (keep-build (options 'keep))
+  
+  (exception-history (options 'exception-history))
   
   (salt:model-quantities (cons (cons 'dimensionless Unity) (salt:model-quantities)))
   
