@@ -364,7 +364,7 @@ struct
         val extev_i   = state_extev input
         val extev_map = case IntMap.find (Wmap, i+n0) of
                             SOME spm =>
-                            (if debug orelse (i+n0)=29189
+                            (if debug 
                              then (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ " external events: ");
                                    IntMap.appi (fn (port, lst) =>
                                                    (putStr TextIO.stdOut (" port " ^ (Int.toString port) ^ ": ");
@@ -403,7 +403,7 @@ struct
         fun extevent loc extev_map (tstart, tend, iter) = 
           List.foldl
               (fn ((index,lst), ax) => 
-                  (if debug orelse (i+n0)=29189
+                  (if debug orelse iter>1000
                    then (putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
                                                  " tstart = " ^ (showReal tstart) ^ " tend = " ^ (showReal tend) ^ " " ^
                                                  " external events at t = " ^ (showReal t) ^ ": ");
@@ -414,7 +414,7 @@ struct
                        fun recur lst =
                          case lst of
                              (t',v)::rst =>
-                             (if debug  orelse (i+n0)=29189
+                             (if debug orelse iter>1000
                               then putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^
                                                            " t' = " ^ (Real.toString t') ^
                                                            " tprev = " ^ (Real.toString (getindex(extev_i, index))))
@@ -425,7 +425,7 @@ struct
                                                " t'=" ^ (showReal t') ^ " tstart-t' = " ^ (showReal (tstart - t')))
                               else (if t' <= tend andalso (let val tprev = getindex(extev_i, index) in ((not (Real.isFinite(tprev))) orelse (tprev < tstart)) end)
                                     then 
-                                        (if debug orelse (i+n0)=29189 
+                                        (if debug orelse iter>1000
                                          then putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^
                                                                       " updating event with t' = " ^ (Real.toString t'))
                                          else ();
@@ -475,7 +475,7 @@ struct
                                |  _ =>  statelog
                                             
               
-              val _ = if debug  orelse (i+n0)=29189
+              val _ = if debug orelse iter>1000
                       then (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
                                                    " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
                                                    " root state is " ^ (showRoot (state_root nstate)) ^
@@ -490,8 +490,8 @@ struct
                       else ()
           in
                 case state_root nstate of
-                    D.RootFound (i,hs) =>
-                    (if debug orelse (i+n0)=29189
+                    D.RootFound _ =>
+                    (if debug orelse iter>1000
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
@@ -502,7 +502,7 @@ struct
                          recur (nstate', extev_map, spikes', statelog', iter+1)
                      end)
                   | D.RootStep [] =>
-                    (if debug orelse (i+n0)=29189
+                    (if debug orelse iter>1000
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
@@ -511,7 +511,7 @@ struct
                      else raise Fail ("RootStep: cell " ^ (Int.toString (i+n0)) ^ " has a non-empty external event map at t = " ^
                                       (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
                   | D.RootStep (h::hs) =>
-                    (if debug orelse (i+n0)=29189
+                    (if debug orelse iter>1000
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)))
                      else ();
@@ -524,12 +524,13 @@ struct
                          recur (nstate', extev_map', spikes', statelog', iter+1)
                      end)
                   | D.RootBefore =>
-                    (if debug orelse (i+n0)=29189
+                    (if debug orelse iter>1000
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)) ^
                                                   " t = " ^ (showReal (state_indep nstate)) ^
                                                   " t_next = " ^ (showReal t_next) ^
-                                                  " t_next - t = " ^ (showReal (t_next - (state_indep nstate))))
+                                                  " t_next - t = " ^ (showReal (t_next - (state_indep nstate))) ^
+                                                  " t_next - t > D.float_eps = " ^ (showBoolean ((t_next - (state_indep nstate)) > D.float_eps)))
                      else ();
                      if (t_next - (state_indep nstate)) > D.float_eps
                      then (let
@@ -548,6 +549,12 @@ struct
                      else (let
                               val t = state_indep nstate
                               val _ = extevent_clear_at t
+                              val _ = if (i+n0)=96490
+                                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                                   (showRoot (state_root nstate)) ^
+                                                                   " before return: t = " ^ (showReal t))
+                                      else ()
+
                           in
                               if List.null extev_map
                               then (nstate, spikes', statelog')
@@ -555,16 +562,35 @@ struct
                                     raise Fail ("RootBefore: cell " ^ (Int.toString (i+n0)) ^ " has a non-empty external event map at t = " ^
                                                 (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
                           end))
-                  | D.RootAfter (i,_) =>
-                    (if debug orelse (i+n0)=29189
+                  | D.RootAfter _ =>
+                    (if debug orelse iter>1000
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                  (showRoot (state_root nstate)))
+                                                  (showRoot (state_root nstate)) ^
+                                                  " t = " ^ (showReal (state_indep nstate)))
                      else ();
                      let
-                         val _          = extevent_clear_at (state_indep nstate)
-                         val extev_map' = extevent "RootAfter" extev_map (state_indep nstate, t_next, iter)
+                         val t          = state_indep nstate
+                         val _          = extevent_clear_at t
+                         val extev_map' = extevent "RootAfter" extev_map (t, t_next, iter)
+                         val _          = if debug orelse iter>1000
+                                          then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
+                                                                       (showRoot (state_root nstate)) ^
+                                                                       " t = " ^ (showReal (state_indep nstate)) ^
+                                                                       " y = " ^ (showReal (getindex (state_y nstate, 0))) ^
+                                                                       " e = " ^ (showReal (getindex (state_event nstate, 0))) ^
+                                                                       " extev is " ^ (showRealArray (state_extev nstate)))
+                                          else ()
                          val nstate'    = f' nstate
                                           handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
+                         val _          = if debug orelse iter>1000
+                                          then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": (RootAfter) root state is " ^
+                                                                       (showRoot (state_root nstate')) ^
+                                                                       " t = " ^ (showReal (state_indep nstate')) ^
+                                                                       " y = " ^ (showReal (getindex (state_y nstate', 0))) ^
+                                                                       " e = " ^ (showReal (getindex (state_event nstate', 0))) ^
+                                                                       " e > float_eps = " ^ (showBoolean (abs(getindex (state_event nstate', 0)) > D.float_eps)) ^
+                                                                       " extev is " ^ (showRealArray (state_extev nstate')))
+                                          else ()
                      in
                          recur (nstate', extev_map', spikes, statelog', iter+1)
                      end)
@@ -578,7 +604,7 @@ struct
                      then update_state_h (input,Real.max(t_next-t,D.float_eps))
                      else input
                               
-        val _ = if debug orelse (i+n0)=29189
+        val _ = if debug 
                 then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": run: " ^
                                              "t = " ^ (showReal t) ^ " t_next = " ^ (showReal t_next) ^ " h = " ^ (showReal h) ^
                                              " root state is " ^ (showRoot (state_root input)))
