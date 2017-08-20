@@ -2,7 +2,13 @@
 structure Sim_{{group.name}} =
 struct
 
-val debug = false
+{% if (debug) %}
+  val debug = true
+
+{% else %}
+  val debug = false
+
+{% endif %}
 
 fun putStrLn out str = 
     (TextIO.output (out, str);
