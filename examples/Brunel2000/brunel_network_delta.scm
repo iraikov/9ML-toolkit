@@ -202,7 +202,7 @@
          (g (alist-ref 'g (cdr var)))
          (eta (alist-ref 'eta (cdr var))))
      (call-with-output-file 
-         (string-append (model-name (sprintf "Brunel_network_delta_~A" label)) ".xml")
+         (string-append (model-name (sprintf "brunel_network_delta_~A" label)) ".xml")
        (lambda  (output)
          (sxml:serialize-sxml
           (Prelude 
