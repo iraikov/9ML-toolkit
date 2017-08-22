@@ -454,17 +454,24 @@
          (dynamics     (safe-car ((sxpath `(// nml:Dynamics)) sxml)))
          (alsys        (safe-car ((sxpath `(// nml:AlgebraicSystem)) sxml)))
          (parameters   ((sxpath `(// nml:Parameter))  sxml))
-         (ports        (filter-map
+         (input-ports (filter-map
+                       (lambda (x)
+                         (let ((mode (sxml:attr x 'mode)))
+                           (and (or (not mode) (not (string=? mode "send"))) x)))
+                       ((sxpath `(// (*or* 
+                                      nml:AnalogReceivePort 
+                                      nml:AnalogReducePort 
+                                      nml:EventReceivePort
+                                      )))  sxml)))
+         (output-ports (filter-map
                         (lambda (x)
                           (let ((mode (sxml:attr x 'mode)))
                             (and (or (not mode) (not (string=? mode "send"))) x)))
                         ((sxpath `(// (*or* 
                                        nml:AnalogSendPort 
-                                       nml:AnalogReceivePort 
-                                       nml:AnalogReducePort 
                                        nml:EventSendPort
-                                       nml:EventReceivePort
                                        )))  sxml)))
+         (ports        (append input-ports output-ports))
          (states       ((sxpath `(// nml:StateVariable)) dynamics))
          (connection-rule (safe-car ((sxpath `(// nml:ConnectionRule)) sxml)))
          (random-dist (safe-car ((sxpath `(// nml:RandomDistribution)) sxml)))
@@ -487,7 +494,16 @@
              (dynamics-info (parse-al-sxml-dynamics dynamics-formals dynamics))
              (dynamics-body (alist-ref 'decls dynamics-info))
              (dynamics-env `((states . ,(alist-ref 'state-names dynamics-info))
-                             (ode-states . ,(alist-ref 'ode-state-names dynamics-info))))
+                             (ode-states . ,(alist-ref 'ode-state-names dynamics-info))
+                             (outputs . ,(map (lambda (x) 
+                                                (let ((name (sxml:attr x 'name)))
+                                                  (string->symbol name)))
+                                              output-ports))
+                             (inputs . ,(map (lambda (x) 
+                                               (let ((name (sxml:attr x 'name)))
+                                                 (string->symbol name)))
+                                             input-ports))
+                             ))
              (dynamics-body (alist-ref 'decls dynamics-info))
              )
         (make-dynamics-node name

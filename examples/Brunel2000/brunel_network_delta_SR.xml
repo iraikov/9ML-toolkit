@@ -44,9 +44,9 @@
   </Connectivity>
   <Plasticity>
     <Component name="ExcitatoryPlasticity">
-      <Definition url="StaticConnection.xml">StaticConnection</Definition>
+      <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>130.25</SingleValue>
+        <SingleValue>33.6</SingleValue>
       </Initial>
     </Component>
   </Plasticity>
@@ -68,10 +68,18 @@
     <Component name="stim">
       <Definition url="Poisson.xml">Poisson</Definition>
       <Property units="Hz" name="rate">
-        <SingleValue>20000.0</SingleValue>
+        <SingleValue>20.0</SingleValue>
       </Property>
       <Initial units="ms" name="t_next">
-        <SingleValue>5.0</SingleValue>
+        <Component name="uniform_t_next">
+          <Definition url="RandomUniform.xml">UniformDistribution</Definition>
+          <Property units="unitless" name="maximum">
+            <SingleValue>5.0</SingleValue>
+          </Property>
+          <Property units="unitless" name="minimum">
+            <SingleValue>0.1</SingleValue>
+          </Property>
+        </Component>
       </Initial>
     </Component>
   </Cell>
@@ -93,9 +101,9 @@
   </Connectivity>
   <Plasticity>
     <Component name="InhibitoryPlasticity">
-      <Definition url="StaticConnection.xml">StaticConnection</Definition>
+      <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>-651.25</SingleValue>
+        <SingleValue>-100.8</SingleValue>
       </Initial>
     </Component>
   </Plasticity>
@@ -139,15 +147,18 @@
     <FromResponse send_port="Isyn" receive_port="Isyn" />
   </Destination>
   <Connectivity>
-    <Component name="OneToOne">
-      <Definition url="OneToOne.xml">OneToOne</Definition>
+    <Component name="RandomExt">
+      <Definition url="RandomFanIn.xml">RandomFanIn</Definition>
+      <Property name="number">
+        <SingleValue>1000</SingleValue>
+      </Property>
     </Component>
   </Connectivity>
   <Plasticity>
     <Component name="ExternalPlasticity">
-      <Definition url="StaticConnection.xml">StaticConnection</Definition>
+      <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>130.25</SingleValue>
+        <SingleValue>33.6</SingleValue>
       </Initial>
     </Component>
   </Plasticity>

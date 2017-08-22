@@ -68,13 +68,13 @@
          (R        1.5)
          (del      1.5)
          (J        0.1)
-         (JE       130.25)
+         (JE       33.6)
          (JI       (* (- g) JE))
          (CE       (* epsilon NE))
          (CI       (* epsilon NI))
          (nu-thr   (/ theta (* J CE tau)))
          (nu-ext   (* eta nu-thr))
-         (p-rate   (* 1000.0 nu-ext CE))
+         (p-rate   (* 1000.0 nu-ext))
          )
     `(
       (Population
@@ -107,7 +107,7 @@
        (Plasticity
         (Component
          (@ (name "ExcitatoryPlasticity"))
-         (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
+         (Definition (@ (url "Static.xml")) "Static")
          (Initial
           (@ (units "nA") (name "weight"))
           (SingleValue ,JE))))
@@ -129,7 +129,19 @@
           (SingleValue ,p-rate))
          (Initial
           (@ (units "ms") (name "t_next"))
-          (SingleValue "5.0")))))
+          (Component
+           (@ (name "uniform_t_next"))
+           (Definition
+             (@ (url "RandomUniform.xml"))
+             "UniformDistribution")
+           (Property
+            (@ (units "unitless") (name "maximum"))
+            (SingleValue "5.0"))
+           (Property
+            (@ (units "unitless") (name "minimum"))
+            (SingleValue "0.1")))
+          ))
+        ))
       (Projection
        (@ (name "Inhibition"))
        (Source (Reference "Inh"))
@@ -144,7 +156,7 @@
        (Plasticity
         (Component
          (@ (name "InhibitoryPlasticity"))
-         (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
+         (Definition (@ (url "Static.xml")) "Static")
          (Initial
           (@ (units "nA") (name "weight"))
           (SingleValue ,JI))))
@@ -173,12 +185,13 @@
         (FromResponse (@ (send_port "Isyn") (receive_port "Isyn"))))
        (Connectivity
         (Component
-         (@ (name "OneToOne"))
-         (Definition (@ (url "OneToOne.xml")) "OneToOne")))
+         (@ (name "RandomExt"))
+         (Definition (@ (url "RandomFanIn.xml")) "RandomFanIn")
+         (Property (@ (name "number")) (SingleValue ,(inexact->exact CE)))))
        (Plasticity
         (Component
          (@ (name "ExternalPlasticity"))
-         (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
+         (Definition (@ (url "Static.xml")) "Static")
          (Initial
           (@ (units "nA") (name "weight"))
           (SingleValue ,JE))))
