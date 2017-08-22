@@ -73,7 +73,7 @@
       <nineml:Component name="InhibitoryPlasticity">
         <nineml:Definition url="StaticConnection.xml">StaticConnection</nineml:Definition>
         <nineml:Initial units="nA" name="weight">
-          <nineml:SingleValue>-64.52</nineml:SingleValue>
+          <nineml:SingleValue>-61.965</nineml:SingleValue>
         </nineml:Initial>
       </nineml:Component>
     </nineml:Plasticity>
@@ -91,7 +91,7 @@
       <nineml:Component name="stim">
         <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
         <nineml:Property units="Hz" name="rate">
-          <nineml:SingleValue>50.0</nineml:SingleValue>
+          <nineml:SingleValue>9000.0</nineml:SingleValue>
           <!--<nineml:SingleValue>38729.3950153</nineml:SingleValue> -->
         </nineml:Property>
         <nineml:Initial units="ms" name="t_next">
@@ -106,7 +106,7 @@
       <nineml:Component name="stim">
         <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
         <nineml:Property units="Hz" name="rate">
-          <nineml:SingleValue>50.0</nineml:SingleValue>
+          <nineml:SingleValue>9000.0</nineml:SingleValue>
         </nineml:Property>
         <nineml:Initial units="ms" name="t_next">
           <nineml:SingleValue>2.0</nineml:SingleValue>

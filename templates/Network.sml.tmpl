@@ -112,7 +112,10 @@ struct
   val ZigInit = RandomMTZig.ztnew
 
   fun optApply fopt args =
-      case fopt of SOME f => SOME (f args) | NONE => NONE
+    case fopt of SOME f => SOME (f args) | NONE => NONE
+                                                       
+  fun optApplyF fopt fargs =
+    case fopt of SOME f => SOME (fn(x) => f (fargs x)) | NONE => NONE
 
                
   fun make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
@@ -121,7 +124,7 @@ struct
         val initial = initfun rs
         val dinitial': real array -> real array = 
             case dinitial of
-                SOME v => v
+                SOME v => v rs
               | NONE => (fn v => v)
                             
         val err0 = case (!(D.tol)) of
@@ -304,7 +307,7 @@ struct
                       val cond         = optApply {{pop.value.prototype.name}}.condfun (parameters,fields)
                       val init         = fn(rs) => {{pop.value.prototype.name}}.initfun(parameters,fields,rs,ZigInit())
                       val evinitial    = {{pop.value.prototype.name}}.initcondfun
-                      val dinitial     = optApply {{pop.value.prototype.name}}.dinitfun (parameters,fields)
+                      val dinitial     = optApplyF {{pop.value.prototype.name}}.dinitfun (fn(rs) => (parameters,fields,rs,ZigInit()))
                       val rinitial     = {{pop.value.prototype.name}}.initregfun
                       val extinitial   = {{pop.value.prototype.name}}.initextfun (parameters,fields)
                       val extevinitial = {{pop.value.prototype.name}}.initextevfun (parameters,fields)
