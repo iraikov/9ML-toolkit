@@ -553,13 +553,14 @@
                               (list ($ (sxml:attr from-plasticity 'send_port))
                                     ($ (sxml:attr from-plasticity 'receive_port)))
                               )
-                           (list 'send_port 'receive_port)))
+                           destination-response-ports))
 
-                      (response-ports `(
-                                        (projection-port . ,(projection-port))
-                                        (plasticity-ports . ,response-plasticity-ports)
-                                        (destination-response-ports . ,destination-response-ports)
-                                        ))
+                      (response-ports
+                       `(
+                         (projection-port . ,(projection-port))
+                         (plasticity-ports . ,response-plasticity-ports)
+                         (destination-response-ports . ,destination-response-ports)
+                         ))
                       
                       (plasticity-node (sxml:kidn* 'nml:Plasticity node))
                       (plasticity-name (sxml:text (sxml:kidn* 'nml:Reference plasticity-node)))
@@ -771,7 +772,6 @@
                             (plas-ports (alist-ref 'plasticity-ports ports))
                             (ext-event  (gensym 'event))
                             )
-                         (print "plas-ports = " plas-ports)
                          (d "node name = ~A ports = ~A~%" 
                             node-name ports)
                          (if response-node 
@@ -819,7 +819,6 @@
                                                )
                                               (let ((states (alist-ref 'states plas-model-env ))
                                                     (outputs (alist-ref 'outputs plas-model-env )))
-                                                (print (salt:astdecls-decls plas-model-eqset))
                                                 (salt:make-astdecls
                                                  `(
                                                    ,@(let* ((unit (alist-ref dim default-units)))

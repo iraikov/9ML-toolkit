@@ -68,7 +68,7 @@
          (R        1.5)
          (del      1.5)
          (J        0.1)
-         (JE       33.6)
+         (JE       13.77)
          (JI       (* (- g) JE))
          (CE       (* epsilon NE))
          (CI       (* epsilon NI))
@@ -83,7 +83,7 @@
        (Cell
         (Component
          (@ (name "nrn"))
-         (Definition (@ (url "BrunelIaF.xml")) "BrunelIaF")
+         (Definition (@ (url "BrunelIaFdelta.xml")) "BrunelIaFdelta")
          (Property (@ (units "Mohm") (name "R")) (SingleValue ,R))
          (Property (@ (units "mV") (name "Vreset")) (SingleValue "10.0"))
          (Property (@ (units "ms") (name "tau")) (SingleValue ,tau))
@@ -167,7 +167,7 @@
        (Cell
         (Component
          (@ (name "nrn"))
-         (Definition (@ (url "BrunelIaF.xml")) "BrunelIaF")
+         (Definition (@ (url "BrunelIaFdelta.xml")) "BrunelIaFdelta")
          (Property (@ (units "Mohm") (name "R")) (SingleValue ,R))
          (Property (@ (units "mV") (name "Vreset")) (SingleValue "10.0"))
          (Property (@ (units "ms") (name "tau")) (SingleValue ,tau))
