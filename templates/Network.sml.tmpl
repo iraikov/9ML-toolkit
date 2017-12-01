@@ -552,11 +552,6 @@ struct
                      else (let
                               val t = state_indep nstate
                               val _ = extevent_clear_at t
-                              val _ = if (i+n0)=96490
-                                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                                   (showRoot (state_root nstate)) ^
-                                                                   " before return: t = " ^ (showReal t))
-                                      else ()
 
                           in
                               if List.null extev_map

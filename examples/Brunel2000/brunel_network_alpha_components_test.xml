@@ -116,12 +116,12 @@
   <nineml:Dimension i="-2" t="-3" m="1" l="2" name="resistance"/>
   <nineml:Dimension i="1" name="current"/>
   <nineml:Population name="ExtExc">
-    <nineml:Size>1</nineml:Size>
+    <nineml:Size>2</nineml:Size>
     <nineml:Cell>
       <nineml:Component name="stim">
         <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
         <nineml:Property units="Hz" name="rate">
-          <nineml:SingleValue>8714.0</nineml:SingleValue>
+          <nineml:SingleValue>9.0</nineml:SingleValue>
           <!--<nineml:SingleValue>38729.3950153</nineml:SingleValue> -->
         </nineml:Property>
         <nineml:Initial units="ms" name="t_next">
