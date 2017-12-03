@@ -2,7 +2,7 @@
   <Size>10000</Size>
   <Cell>
     <Component name="nrn">
-      <Definition url="BrunelIaF.xml">BrunelIaF</Definition>
+      <Definition url="BrunelIaFdelta.xml">BrunelIaFdelta</Definition>
       <Property units="Mohm" name="R">
         <SingleValue>1.5</SingleValue>
       </Property>
@@ -32,7 +32,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="Isyn" receive_port="Isyn" />
+    <FromResponse send_port="fixed_weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomExc">
@@ -46,7 +46,7 @@
     <Component name="ExcitatoryPlasticity">
       <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>33.6</SingleValue>
+        <SingleValue>13.77</SingleValue>
       </Initial>
     </Component>
   </Plasticity>
@@ -89,7 +89,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="Isyn" receive_port="Isyn" />
+    <FromResponse send_port="fixed_weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomInh">
@@ -103,7 +103,7 @@
     <Component name="InhibitoryPlasticity">
       <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>-100.8</SingleValue>
+        <SingleValue>-41.31</SingleValue>
       </Initial>
     </Component>
   </Plasticity>
@@ -114,7 +114,7 @@
   <Size>2500</Size>
   <Cell>
     <Component name="nrn">
-      <Definition url="BrunelIaF.xml">BrunelIaF</Definition>
+      <Definition url="BrunelIaFdelta.xml">BrunelIaFdelta</Definition>
       <Property units="Mohm" name="R">
         <SingleValue>1.5</SingleValue>
       </Property>
@@ -144,7 +144,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="Isyn" receive_port="Isyn" />
+    <FromResponse send_port="fixed_weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomExt">
@@ -158,7 +158,7 @@
     <Component name="ExternalPlasticity">
       <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>33.6</SingleValue>
+        <SingleValue>13.77</SingleValue>
       </Initial>
     </Component>
   </Plasticity>

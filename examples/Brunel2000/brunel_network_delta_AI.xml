@@ -103,7 +103,7 @@
     <Component name="InhibitoryPlasticity">
       <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>-68.854</SingleValue>
+        <SingleValue>-68.85</SingleValue>
       </Initial>
     </Component>
   </Plasticity>
