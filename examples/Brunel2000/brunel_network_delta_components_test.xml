@@ -6,7 +6,7 @@
     <nineml:Size>1</nineml:Size>
     <nineml:Cell>
       <nineml:Component name="nrn">
-        <nineml:Definition url="BrunelIaF.xml">BrunelIaF</nineml:Definition>
+        <nineml:Definition url="BrunelIaFdelta.xml">BrunelIaFdelta</nineml:Definition>
         <nineml:Property units="Mohm" name="R">
           <nineml:SingleValue>1.5</nineml:SingleValue>
         </nineml:Property>
@@ -37,7 +37,7 @@
     </nineml:Source>
     <nineml:Destination>
       <nineml:Reference>Exc</nineml:Reference>
-      <nineml:FromResponse send_port="Isyn" receive_port="Isyn"/>
+      <nineml:FromResponse send_port="fixed_weight" receive_port="q"/>
     </nineml:Destination>
     <nineml:Connectivity>
       <nineml:Component name="AllToAll">
@@ -62,7 +62,7 @@
     </nineml:Source>
     <nineml:Destination>
       <nineml:Reference>Exc</nineml:Reference>
-      <nineml:FromResponse send_port="Isyn" receive_port="Isyn"/>
+      <nineml:FromResponse send_port="fixed_weight" receive_port="q"/>
     </nineml:Destination>
     <nineml:Connectivity>
       <nineml:Component name="AllToAll">
@@ -120,7 +120,7 @@
     </nineml:Source>
     <nineml:Destination>
       <nineml:Reference>Inh</nineml:Reference>
-      <nineml:FromResponse send_port="Isyn" receive_port="Isyn"/>
+      <nineml:FromResponse send_port="fixed_weight" receive_port="q"/>
     </nineml:Destination>
     <nineml:Connectivity>
       <nineml:Component name="AllToAll">
@@ -143,7 +143,7 @@
     <nineml:Size>1</nineml:Size>
     <nineml:Cell>
       <nineml:Component name="nrn">
-        <nineml:Definition url="BrunelIaF.xml">BrunelIaF</nineml:Definition>
+        <nineml:Definition url="BrunelIaFdelta.xml">BrunelIaFdelta</nineml:Definition>
         <nineml:Property units="Mohm" name="R">
           <nineml:SingleValue>1.5</nineml:SingleValue>
         </nineml:Property>
