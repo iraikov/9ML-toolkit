@@ -32,7 +32,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="fixed_weight" receive_port="q" />
+    <FromResponse send_port="weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomExc">
@@ -44,7 +44,7 @@
   </Connectivity>
   <Plasticity>
     <Component name="ExcitatoryPlasticity">
-      <Definition url="Static.xml">Static</Definition>
+      <Definition url="StaticConnection.xml">StaticConnection</Definition>
       <Initial units="nA" name="weight">
         <SingleValue>13.77</SingleValue>
       </Initial>
@@ -68,7 +68,7 @@
     <Component name="stim">
       <Definition url="Poisson.xml">Poisson</Definition>
       <Property units="Hz" name="rate">
-        <SingleValue>20.0</SingleValue>
+        <SingleValue>20000.0</SingleValue>
       </Property>
       <Initial units="ms" name="t_next">
         <Component name="uniform_t_next">
@@ -89,7 +89,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="fixed_weight" receive_port="q" />
+    <FromResponse send_port="weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomInh">
@@ -101,7 +101,7 @@
   </Connectivity>
   <Plasticity>
     <Component name="InhibitoryPlasticity">
-      <Definition url="Static.xml">Static</Definition>
+      <Definition url="StaticConnection.xml">StaticConnection</Definition>
       <Initial units="nA" name="weight">
         <SingleValue>-68.85</SingleValue>
       </Initial>
@@ -144,7 +144,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="fixed_weight" receive_port="q" />
+    <FromResponse send_port="weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomExt">
@@ -156,7 +156,7 @@
   </Connectivity>
   <Plasticity>
     <Component name="ExternalPlasticity">
-      <Definition url="Static.xml">Static</Definition>
+      <Definition url="StaticConnection.xml">StaticConnection</Definition>
       <Initial units="nA" name="weight">
         <SingleValue>13.77</SingleValue>
       </Initial>

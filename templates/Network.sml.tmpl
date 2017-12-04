@@ -103,7 +103,7 @@ struct
 
   fun member (k,lst) = case List.find (fn(x)=>k=x) lst of SOME _ => true | NONE => false
 
-  val getindex = Unsafe.Array.sub
+  val getindex = Array.sub
 
 
   val RandomInitFromInt = RandomMTZig.fromInt
@@ -362,7 +362,7 @@ struct
                         else (ty, wy) :: (merge_extevent ((tx, wx) :: rst)))
               end
 
-        val update    = Unsafe.Array.update
+        val update    = Array.update
         val ext_i     = state_ext input
         val extev_i   = state_extev input
         val extev_map = case IntMap.find (Wmap, i+n0) of

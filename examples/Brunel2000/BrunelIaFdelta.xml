@@ -2,7 +2,7 @@
 <NineML xmlns="http://nineml.net/9ML/1.0">
   <Dimension name="current" i="1" k="0" j="0" m="0" l="0" n="0" t="0"/>
   <ComponentClass name="BrunelIaFdelta">
-    <AnalogReceivePort dimension="current" name="q"/>
+    <AnalogReducePort operator="+" dimension="current" name="q"/>
     <EventReceivePort name="spike"/>
     <AnalogSendPort dimension="time" name="t_rpend"/>
     <AnalogSendPort dimension="voltage" name="V"/>

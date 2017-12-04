@@ -824,33 +824,28 @@
                                                    ,@(let* ((unit (alist-ref dim default-units)))
                                                        (salt:astdecls-decls
                                                         (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
-                                                                      (define ,(cadr plas-ports) = external (dim ,dim) ,(car destination-ports))
                                                                       (define ,ext-event = external-event +inf.0)))
                                                         ))
                                                    ,(salt:make-astdecls
                                                      `(,@(salt:astdecls-decls plas-model-eqset)
-                                                       ,(salt:make-astdecls
-                                                         (salt:astdecls-decls
+                                                       ,@(salt:astdecls-decls
                                                           (salt:parse 
                                                            `(
-                                                             (,(car plas-ports) = ,(if (null? states) (first outputs) (first states)))
-                                                             ((reduce (* ,(cadr plas-ports))) = ,(car plas-ports ))
-                                                             ((reduce (+ ,(cadr destination-ports))) = ,(cadr plas-ports))
+                                                             ((reduce (+ ,(car plas-ports))) = ,(if (null? states) (first outputs) (first states)))
+                                                             ((reduce (+ ,(cadr destination-ports))) = ,(car plas-ports))
                                                              (event (,ext-event) () )
                                                              ))
                                                           ))
-                                                       ))
+                                                     ))
                                         ;,@(salt:astdecls-decls plas-model-eqset)
-                                                   ))
-                                                ))
+                                                 ))
+                                              )
                                    (salt:make-astdecls
                                     `(
                                       ,@(let* ((unit (alist-ref dim default-units)))
                                           (salt:astdecls-decls
                                            (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
-                                                         (define ,(cadr plas-ports) = external (dim ,dim) ,(car destination-ports))
                                                          (define ,ext-event = external-event +inf.0)
-                                                         (,(car plas-ports) = ,(cadr plas-ports ))
                                                          ((reduce (+ ,(cadr destination-ports))) = ,(car plas-ports))
                                                          (event (,ext-event) () )
                                                          ))

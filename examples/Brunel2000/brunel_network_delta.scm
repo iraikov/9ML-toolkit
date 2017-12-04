@@ -74,7 +74,7 @@
          (CI       (* epsilon NI))
          (nu-thr   (/ theta (* J CE tau)))
          (nu-ext   (* eta nu-thr))
-         (p-rate   (* 1000.0 nu-ext))
+         (p-rate   (* 1000.0 nu-ext CE))
          )
     `(
       (Population
@@ -98,7 +98,7 @@
        (Source (Reference "Exc"))
        (Destination
         (Reference "All neurons")
-        (FromResponse (@ (send_port "fixed_weight") (receive_port "q"))))
+        (FromResponse (@ (send_port "weight") (receive_port "q"))))
        (Connectivity
         (Component
          (@ (name "RandomExc"))
@@ -107,7 +107,7 @@
        (Plasticity
         (Component
          (@ (name "ExcitatoryPlasticity"))
-         (Definition (@ (url "Static.xml")) "Static")
+         (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
          (Initial
           (@ (units "nA") (name "weight"))
           (SingleValue ,JE))))
@@ -147,7 +147,7 @@
        (Source (Reference "Inh"))
        (Destination
         (Reference "All neurons")
-        (FromResponse (@ (send_port "fixed_weight") (receive_port "q"))))
+        (FromResponse (@ (send_port "weight") (receive_port "q"))))
        (Connectivity
         (Component
          (@ (name "RandomInh"))
@@ -156,7 +156,7 @@
        (Plasticity
         (Component
          (@ (name "InhibitoryPlasticity"))
-         (Definition (@ (url "Static.xml")) "Static")
+         (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
          (Initial
           (@ (units "nA") (name "weight"))
           (SingleValue ,JI))))
@@ -182,7 +182,7 @@
        (Source (Reference "Ext"))
        (Destination
         (Reference "All neurons")
-        (FromResponse (@ (send_port "fixed_weight") (receive_port "q"))))
+        (FromResponse (@ (send_port "weight") (receive_port "q"))))
        (Connectivity
         (Component
          (@ (name "RandomExt"))
@@ -191,7 +191,7 @@
        (Plasticity
         (Component
          (@ (name "ExternalPlasticity"))
-         (Definition (@ (url "Static.xml")) "Static")
+         (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
          (Initial
           (@ (units "nA") (name "weight"))
           (SingleValue ,JE))))
