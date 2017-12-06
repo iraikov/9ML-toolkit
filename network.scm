@@ -60,6 +60,8 @@
 (define alsys-simulation-platform (make-parameter 'mlton))
 (define keep-build (make-parameter #f))
 (define exception-history (make-parameter #f))
+(define check-bounds (make-parameter #f))
+(define simulation-trace (make-parameter #f))
 
 
 (define opt-defaults
@@ -78,10 +80,14 @@
                                  )
                           )
     
+    (check-bounds     "perform bounds checking on array access")
+
     (exception-history  "print exception traces in runtime")
 
     (keep          "keep build files"
                    (single-char #\k))
+    
+    
 
     (platform        "simulation platform (one of mlton, mlton/c, octave/mlton)"
 		     (value (required PLATFORM)
@@ -95,6 +101,7 @@
                             )
                      (single-char #\p))
 
+    (sim-trace        "trace simulation execution")
     (verbose          "print commands as they are executed"
 		      (single-char #\v))
 
@@ -759,18 +766,22 @@
              (($ dynamics-node model-name model-formals model-env model-eqset)
               (alist-ref node-name ul-node-env))
              )
-            (d "node name = ~A model-formals = ~A model-eqset = ~A responses = ~A~%" 
+            (d "node name = ~A model-formals = ~A model-eqset = ~A responses = ~A~%"
                node-name model-formals model-eqset responses)
-            (let* ((response-dynamics
+
+            (let* (
+                   (response-index (list-tabulate (length responses) (lambda (x) x)))
+                   (event-index-map (make-parameter '()))
+                   (response-dynamics
                     (map
-                     (match-lambda 
-                      ((source-population response-node plasticity-node . ports)
-                       (let
+                     (match-lambda*
+                      (((source-population response-node plasticity-node . ports) r-index)
+                       (let*
                            (
                             (projection-port   (alist-ref 'projection-port ports))
                             (destination-ports (alist-ref 'destination-response-ports ports))
-                            (plas-ports (alist-ref 'plasticity-ports ports))
-                            (ext-event  (gensym 'event))
+                            (plas-ports        (alist-ref 'plasticity-ports ports))
+                            (dim               (alist-ref (cadr destination-ports) model-formals))
                             )
                          (d "node name = ~A ports = ~A~%" 
                             node-name ports)
@@ -809,8 +820,12 @@
                                                         ))
                                             model-eqset))
                              (let* (
-                                    (dim (alist-ref (cadr destination-ports) model-formals))
+                                    (inputs    (alist-ref 'inputs model-env ))
+                                    (ext-event (car inputs))
+                                    (ext-var   (cadr inputs))
+                                    (ext-dim   (alist-ref ext-var model-formals))
                                     )
+                               
                                (if plasticity-node
                                    (match-let (
                                                (($ dynamics-node plas-model-name 
@@ -823,8 +838,10 @@
                                                  `(
                                                    ,@(let* ((unit (alist-ref dim default-units)))
                                                        (salt:astdecls-decls
-                                                        (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
-                                                                      (define ,ext-event = external-event +inf.0)))
+                                                        (salt:parse
+                                                         `(
+                                                           (define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
+                                                           ))
                                                         ))
                                                    ,(salt:make-astdecls
                                                      `(,@(salt:astdecls-decls plas-model-eqset)
@@ -833,11 +850,9 @@
                                                            `(
                                                              ((reduce (+ ,(car plas-ports))) = ,(if (null? states) (first outputs) (first states)))
                                                              ((reduce (+ ,(cadr destination-ports))) = ,(car plas-ports))
-                                                             (event (,ext-event) () )
                                                              ))
                                                           ))
                                                      ))
-                                        ;,@(salt:astdecls-decls plas-model-eqset)
                                                  ))
                                               )
                                    (salt:make-astdecls
@@ -845,17 +860,38 @@
                                       ,@(let* ((unit (alist-ref dim default-units)))
                                           (salt:astdecls-decls
                                            (salt:parse `((define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
-                                                         (define ,ext-event = external-event +inf.0)
+                                                         ;;(define ,ext-event = external-event +inf.0)
+                                                         (define ,ext-var = external (dim ,dim) 0.0 * ,unit)
                                                          ((reduce (+ ,(cadr destination-ports))) = ,(car plas-ports))
                                                          (event (,ext-event) () )
                                                          ))
-                                        ;(define ,(cadr plas-ports) = unknown (dim ,dim) UNITZERO)
                                            ))
                                       ))
                                    ))
                              ))
                        ))
-                     responses))
+                     responses
+                     response-index))
+                   
+                   (response-ext-decls
+                    (let ((need-response-ext-decl?
+                           (not
+                            (every
+                             (match-lambda 
+                              ((source-population response-node plasticity-node . ports)
+                               response-node))
+                             responses))))
+                      (if need-response-ext-decl?
+                          (let ((inputs (alist-ref 'inputs model-env )))
+                            (let* (
+                                   (ext-event (car inputs))
+                                   (ext-var   (cadr inputs))
+                                   (ext-dim   (alist-ref ext-var model-formals))
+                                   (ext-unit  (alist-ref ext-dim default-units))
+                                   )
+                              (salt:astdecls-decls (salt:parse `((define ,ext-var = external (dim ,ext-dim) 0.0 * ,ext-unit))))))
+                          '())))
+                   
                    (response-destination-port-decls
                     (salt:parse
                      (delete-duplicates
@@ -877,6 +913,7 @@
                    (prototype-decls
                     (salt:make-astdecls
                      `(,@(salt:astdecls-decls response-destination-port-decls)
+                       ,@response-ext-decls
                        ,model-eqset . ,response-dynamics)))
                    )
 
@@ -935,7 +972,15 @@
                      (print (ersatz:from-file 
                              network-tmpl
                              env: (template-std-env search-path: `(,template-dir))
-                             models: group-tenv)))))
+                             models: (append
+                                      group-tenv
+                                      `(
+                                        (trace       . ,(Tbool (simulation-trace)))
+                                        (CheckBounds . ,(Tbool (check-bounds)))
+                                        )
+                                      ))
+                            ))
+                   ))
               ))
            (list group-path))
           )
@@ -948,8 +993,15 @@
                              (print (ersatz:from-file 
                                      sim-tmpl
                                      env: (template-std-env search-path: `(,template-dir))
-                                     models: group-tenv))))
-                         )
+                                     models: (append
+                                              group-tenv
+                                              `(
+                                                (trace       . ,(Tbool (simulation-trace)))
+                                                (CheckBounds . ,(Tbool (check-bounds)))
+                                                )
+                                              ))
+                                    ))
+                         ))
                
                (mlb-path (group-path)
                          (with-output-to-file mlb-path 
@@ -984,11 +1036,11 @@
                                                      (nineml_lib_home . ,(Tstr (make-pathname 
                                                                                 (make-pathname shared-dir "9ML")
                                                                                 "sml-lib")))
-                                                     (build_dir . ,(Tstr build-dir))
-                                                     (src_paths . ,(Tlist (map Tstr (list mlb-path sim-path group-path))))
-                                                     (exec_path . ,(Tstr exec-path))
-                                                     (ExnHistory . ,(Tbool (exception-history)))
-                                                     (UseCSolver . ,(Tbool (case (ivp-simulation-platform)
+                                                     (build_dir   . ,(Tstr build-dir))
+                                                     (src_paths   . ,(Tlist (map Tstr (list mlb-path sim-path group-path))))
+                                                     (exec_path   . ,(Tstr exec-path))
+                                                     (ExnHistory  . ,(Tbool (exception-history)))
+                                                     (UseCSolver  . ,(Tbool (case (ivp-simulation-platform)
                                                                              ((mlton/c) #t)
                                                                              (else #f))))
                                                      (CSolverFiles . ,(let ((csolver-path 
@@ -1047,6 +1099,7 @@
   (if (options 'codegen-trace) 
       (for-each (lambda (name) (salt:add-trace name)) (options 'codegen-trace)))
   
+  (simulation-trace (options 'sim-trace))
   (simulation-platform (or (options 'platform) (defopt 'platform) ))
   (simulation-method (defopt 'method) )
   
@@ -1056,6 +1109,8 @@
   (keep-build (options 'keep))
   
   (exception-history (options 'exception-history))
+  
+  (check-bounds (options 'check-bounds))
   
   (salt:model-quantities (cons (cons 'dimensionless Unity) (salt:model-quantities)))
   

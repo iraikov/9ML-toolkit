@@ -2,11 +2,11 @@
 structure Sim_{{group.name}} =
 struct
 
-{% if (debug) %}
-  val debug = true
+{% if (trace) %}
+  val trace = true
 
 {% else %}
-  val debug = false
+  val trace = false
 
 {% endif %}
 
@@ -157,10 +157,16 @@ fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspi
            (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix),
            (statesample,extsample,evsample)) =
 
-let
-    val sub = Unsafe.Real64Array.sub
-    val isub = Unsafe.IntArray.sub
+  let
+{% if CheckBounds %}
+    val sub    = Real64Array.sub
+    val isub   = IntArray.sub
+    val update = Real64Array.update
+{% else %}
+    val sub    = Unsafe.Real64Array.sub
+    val isub   = Unsafe.IntArray.sub
     val update = Unsafe.Real64Array.update
+{% endif %}
 
     val frun' = frun (statesample,extsample,evsample)
           
@@ -194,7 +200,7 @@ let
         let 
             val t_i = (Real.fromInt n) * (!global_h)
 
-            val _ = if debug
+            val _ = if trace
                     then (putStrLn TextIO.stdOut ("netrun: global_h = " ^ (showReal (!global_h)) ^
                                                   " t_n = " ^ (showReal t_n) ^ " t_i = " ^ (showReal t_i)))
                     else ()
@@ -204,7 +210,7 @@ let
                               (fn (t,_) => Real.<=(t,t_i),
                                fn (t,(i,port,w),I) => 
                                   let
-                                      val _ = if debug
+                                      val _ = if trace
                                               then putStrLn TextIO.stdOut ("netrun: event at t = " ^ (showReal t) ^
                                                                            " i = " ^ (Int.toString i) ^
                                                                            " port = " ^ (Int.toString port) ^
