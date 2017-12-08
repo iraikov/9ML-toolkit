@@ -819,11 +819,9 @@
                              (let* (
                                     (inputs    (alist-ref 'inputs model-env ))
                                     (ext-event (if (< 0 r-index) (gensym (car inputs)) (car inputs)))
-                                    (ext-var   (if (< 0 r-index) (gensym (cadr inputs)) (cadr inputs)))
+                                    (ext-var   (gensym 'extv))
                                     (ext-dim   (alist-ref (cadr inputs) model-formals))
                                     )
-                               (print "destination-ports = " destination-ports)
-                               (print "plas-ports = " plas-ports)
                                (if plasticity-node
                                    (match-let (
                                                (($ dynamics-node plas-model-name 
@@ -838,27 +836,20 @@
                                                        (salt:astdecls-decls
                                                         (salt:parse
                                                           `(
-                                                            ,@(if (< 0 r-index)
-                                                                  `(
-                                                                    (define ,ext-event = external-event +inf.0)
-                                                                    (define ,ext-var = external (dim ,ext-dim) 0.0 * ,unit)
-                                                                    )
-                                                                  '())
+                                                            ,@(if (< 0 r-index) `((define ,ext-event = external-event +inf.0)) '())
+                                                            ;(define ,ext-var = external (dim ,ext-dim) 0.0 * ,unit)
+                                                            (define ,ext-var = external 0.0)
                                                             (define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
                                                             ))
                                                         ))
                                                    ,(salt:make-astdecls
                                                      `(,@(salt:astdecls-decls plas-model-eqset)
-                                                       ,@(if (< 0 r-index)
-                                                             (salt:astdecls-decls (salt:parse `((event (,ext-event) () ))))
-                                                             '())
                                                        ,@(salt:astdecls-decls
                                                           (salt:parse 
                                                            `(
                                                              ;;((reduce (+ ,(car plas-ports))) = ,(if (null? plas-states) (first plas-outputs) (first plas-states)))
-                                                             ((reduce (+ ,(cadr destination-ports))) = ,ext-var)
-                                                             ((reduce (* ,(cadr destination-ports))) = ,(car plas-ports))
-                                                             
+                                                             ((reduce (+ ,(cadr destination-ports))) = ,ext-var * ,(car plas-ports))
+                                                             (event (,ext-event) () )
                                                              ))
                                                           ))
                                                      ))
@@ -923,8 +914,10 @@
                    (prototype-decls
                     (salt:make-astdecls
                      `(,@(salt:astdecls-decls response-destination-port-decls)
-                       ,@response-ext-decls
-                       ,model-eqset . ,response-dynamics)))
+                       ;,@response-ext-decls
+                       ,@(salt:astdecls-decls model-eqset)
+                       ,@response-dynamics
+                       )))
                    )
 
               (d "response-dynamics = ~A~%" response-dynamics)
