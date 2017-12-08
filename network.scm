@@ -749,7 +749,6 @@
                                (append properties ul-properties) ))
 
              
-
              )
         (create-directory build-dir)
 
@@ -771,7 +770,6 @@
 
             (let* (
                    (response-index (list-tabulate (length responses) (lambda (x) x)))
-                   (event-index-map (make-parameter '()))
                    (response-dynamics
                     (map
                      (match-lambda*
@@ -785,12 +783,11 @@
                             )
                          (d "node name = ~A ports = ~A~%" 
                             node-name ports)
-                         (if response-node 
+                         (if response-node
                              (match-let (
                                          (($ dynamics-node model-name model-formals model-env model-eqset)
                                           (alist-ref (string->symbol response-node) ul-node-env))
                                          )
-                                        
                                         (if plasticity-node
                                             (match-let (
                                                         (($ dynamics-node plas-model-name 
@@ -821,35 +818,47 @@
                                             model-eqset))
                              (let* (
                                     (inputs    (alist-ref 'inputs model-env ))
-                                    (ext-event (car inputs))
-                                    (ext-var   (cadr inputs))
-                                    (ext-dim   (alist-ref ext-var model-formals))
+                                    (ext-event (if (< 0 r-index) (gensym (car inputs)) (car inputs)))
+                                    (ext-var   (if (< 0 r-index) (gensym (cadr inputs)) (cadr inputs)))
+                                    (ext-dim   (alist-ref (cadr inputs) model-formals))
                                     )
-                               
+                               (print "destination-ports = " destination-ports)
+                               (print "plas-ports = " plas-ports)
                                (if plasticity-node
                                    (match-let (
                                                (($ dynamics-node plas-model-name 
                                                    plas-model-formals plas-model-env plas-model-eqset)
                                                 (alist-ref (string->symbol plasticity-node) ul-node-env))
                                                )
-                                              (let ((states (alist-ref 'states plas-model-env ))
-                                                    (outputs (alist-ref 'outputs plas-model-env )))
+                                              (let ((plas-states (alist-ref 'states plas-model-env ))
+                                                    (plas-outputs (alist-ref 'outputs plas-model-env )))
                                                 (salt:make-astdecls
                                                  `(
                                                    ,@(let* ((unit (alist-ref dim default-units)))
                                                        (salt:astdecls-decls
                                                         (salt:parse
-                                                         `(
-                                                           (define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
-                                                           ))
+                                                          `(
+                                                            ,@(if (< 0 r-index)
+                                                                  `(
+                                                                    (define ,ext-event = external-event +inf.0)
+                                                                    (define ,ext-var = external (dim ,ext-dim) 0.0 * ,unit)
+                                                                    )
+                                                                  '())
+                                                            (define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
+                                                            ))
                                                         ))
                                                    ,(salt:make-astdecls
                                                      `(,@(salt:astdecls-decls plas-model-eqset)
+                                                       ,@(if (< 0 r-index)
+                                                             (salt:astdecls-decls (salt:parse `((event (,ext-event) () ))))
+                                                             '())
                                                        ,@(salt:astdecls-decls
                                                           (salt:parse 
                                                            `(
-                                                             ((reduce (+ ,(car plas-ports))) = ,(if (null? states) (first outputs) (first states)))
-                                                             ((reduce (+ ,(cadr destination-ports))) = ,(car plas-ports))
+                                                             ;;((reduce (+ ,(car plas-ports))) = ,(if (null? plas-states) (first plas-outputs) (first plas-states)))
+                                                             ((reduce (+ ,(cadr destination-ports))) = ,ext-var)
+                                                             ((reduce (* ,(cadr destination-ports))) = ,(car plas-ports))
+                                                             
                                                              ))
                                                           ))
                                                      ))
@@ -910,6 +919,7 @@
                         )
                        responses))
                      ))
+                   
                    (prototype-decls
                     (salt:make-astdecls
                      `(,@(salt:astdecls-decls response-destination-port-decls)
@@ -919,6 +929,7 @@
 
               (d "response-dynamics = ~A~%" response-dynamics)
               (d "prototype-decls = ~A~%" prototype-decls)
+              
               (let* ((sim (salt:simcreate (salt:elaborate prototype-decls))))
                 (let ((sml-port (open-output-file (make-pathname build-dir (sprintf "~A.sml" node-name)))))
                   (case (ivp-simulation-platform) 
