@@ -481,7 +481,7 @@ struct
         fun recur (nstate,extev_map,spikes,statelog: (int * D.model_state) list,iter) = 
           let
               val spikes' = case state_root nstate of
-                                D.RootFound (hs) =>
+                                D.RootFound _ =>
                                 if (Real.>= (event_sub(nstate,0), 0.0))
                                 then (i+n0,state_indep nstate,1.0)::spikes
                                 else spikes
@@ -579,7 +579,7 @@ struct
                                     raise Fail ("RootBefore: cell " ^ (Int.toString (i+n0)) ^ " has a non-empty external event map at t = " ^
                                                 (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next)))
                           end))
-                  | D.RootAfter _ =>
+                  | D.RootAfter (ei,_) =>
                     (if trace
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
                                                   (showRoot (state_root nstate)) ^
