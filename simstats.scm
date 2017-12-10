@@ -43,21 +43,22 @@
   (match-let 
 
    (
-    ((data tmax nmax)
+    ((data tmin tmax nmax)
      (fold
       (lambda (data-file ax)
-        (match-let (((data tmax nmax)  ax))
+        (match-let (((data tmin tmax nmax)  ax))
                    (let ((data1 (filter-map
                                  (lambda (line)
                                    (and (not (string-prefix? "#" line))
                                         (map string->number (string-split  line " "))))
                                  (read-lines data-file))))
-                     (let ((t1 (fold (lambda (row ax) (max (car row) ax)) tmax data1))
+                     (let ((tmax1 (fold (lambda (row ax) (max (car row) ax)) tmax data1))
+                           (tmin1 (fold (lambda (row ax) (min (car row) ax)) tmin data1))
                            (nmax1 (fold (lambda (row ax) (fold max ax (cdr row))) nmax data1)))
-                       (list (append data1 data) (max tmax t1) nmax1)
+                       (list (append data1 data) (min tmin tmin1) (max tmax tmax1) nmax1)
                        ))
                    ))
-      '(() 0.0 0)
+      '(() +inf.0 0.0 0)
       (list data-file)))
     )
 
@@ -84,7 +85,7 @@
                               mean-event-interval
                               stdev-event-interval))
           (nevents (filter-map (lambda (x) (and (not (null? x)) (length (cdr x)))) event-times-lst))
-          (mean-rates (map (lambda (x) (* 1000 (/ x tmax))) nevents))
+          (mean-rates (map (lambda (x) (* 1000 (/ x (- tmax tmin)))) nevents))
           (mean-event-frequency (mean mean-rates))
 
           )
@@ -92,6 +93,7 @@
      (with-output-to-file output-file
        (lambda ()
          (printf "nmax: ~A~%" nmax)
+         (printf "t min: ~A~%" tmin)
          (printf "t max: ~A~%" tmax)
          (printf "mean number of events: ~A~%" (mean nevents))
          (printf "mean event frequency: ~A~%" mean-event-frequency)
