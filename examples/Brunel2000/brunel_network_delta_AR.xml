@@ -32,7 +32,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="weight" receive_port="q" />
+    <FromResponse send_port="fixed_weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomExc">
@@ -44,7 +44,7 @@
   </Connectivity>
   <Plasticity>
     <Component name="ExcitatoryPlasticity">
-      <Definition url="StaticConnection.xml">StaticConnection</Definition>
+      <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
         <SingleValue>0.067</SingleValue>
       </Initial>
@@ -89,7 +89,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="weight" receive_port="q" />
+    <FromResponse send_port="static_weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomInh">
@@ -101,7 +101,7 @@
   </Connectivity>
   <Plasticity>
     <Component name="InhibitoryPlasticity">
-      <Definition url="StaticConnection.xml">StaticConnection</Definition>
+      <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
         <SingleValue>-0.402</SingleValue>
       </Initial>
@@ -144,7 +144,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="weight" receive_port="q" />
+    <FromResponse send_port="static_weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomExt">
@@ -156,7 +156,7 @@
   </Connectivity>
   <Plasticity>
     <Component name="ExternalPlasticity">
-      <Definition url="StaticConnection.xml">StaticConnection</Definition>
+      <Definition url="Static.xml">Static</Definition>
       <Initial units="nA" name="weight">
         <SingleValue>0.067</SingleValue>
       </Initial>

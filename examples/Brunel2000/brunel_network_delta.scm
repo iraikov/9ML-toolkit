@@ -98,7 +98,7 @@
        (Source (Reference "Exc"))
        (Destination
         (Reference "All neurons")
-        (FromResponse (@ (send_port "weight") (receive_port "q"))))
+        (FromResponse (@ (send_port "fixed_weight") (receive_port "q"))))
        (Connectivity
         (Component
          (@ (name "RandomExc"))
@@ -107,7 +107,7 @@
        (Plasticity
         (Component
          (@ (name "ExcitatoryPlasticity"))
-         (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
+         (Definition (@ (url "Static.xml")) "Static")
          (Initial
           (@ (units "nA") (name "weight"))
           (SingleValue ,JE))))
@@ -147,7 +147,7 @@
        (Source (Reference "Inh"))
        (Destination
         (Reference "All neurons")
-        (FromResponse (@ (send_port "weight") (receive_port "q"))))
+        (FromResponse (@ (send_port "static_weight") (receive_port "q"))))
        (Connectivity
         (Component
          (@ (name "RandomInh"))
@@ -156,7 +156,7 @@
        (Plasticity
         (Component
          (@ (name "InhibitoryPlasticity"))
-         (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
+         (Definition (@ (url "Static.xml")) "Static")
          (Initial
           (@ (units "nA") (name "weight"))
           (SingleValue ,JI))))
@@ -182,7 +182,7 @@
        (Source (Reference "Ext"))
        (Destination
         (Reference "All neurons")
-        (FromResponse (@ (send_port "weight") (receive_port "q"))))
+        (FromResponse (@ (send_port "static_weight") (receive_port "q"))))
        (Connectivity
         (Component
          (@ (name "RandomExt"))
@@ -191,7 +191,7 @@
        (Plasticity
         (Component
          (@ (name "ExternalPlasticity"))
-         (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
+         (Definition (@ (url "Static.xml")) "Static")
          (Initial
           (@ (units "nA") (name "weight"))
           (SingleValue ,JE))))
