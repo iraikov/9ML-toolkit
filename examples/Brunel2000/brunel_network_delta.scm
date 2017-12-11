@@ -68,7 +68,7 @@
          (R        1.5)
          (del      1.5)
          (J        0.1)
-         (JE       0.067)
+         (JE       (/ J R))
          (JI       (* (- g) JE))
          (CE       (* epsilon NE))
          (CI       (* epsilon NI))
@@ -108,7 +108,7 @@
         (Component
          (@ (name "ExcitatoryPlasticity"))
          (Definition (@ (url "Static.xml")) "Static")
-         (Initial
+         (Property
           (@ (units "nA") (name "weight"))
           (SingleValue ,JE))))
        (Delay (@ (units "ms")) (SingleValue ,del)))
@@ -157,7 +157,7 @@
         (Component
          (@ (name "InhibitoryPlasticity"))
          (Definition (@ (url "Static.xml")) "Static")
-         (Initial
+         (Property
           (@ (units "nA") (name "weight"))
           (SingleValue ,JI))))
        (Delay (@ (units "ms")) (SingleValue ,del)))
@@ -192,7 +192,7 @@
         (Component
          (@ (name "ExternalPlasticity"))
          (Definition (@ (url "Static.xml")) "Static")
-         (Initial
+         (Property
           (@ (units "nA") (name "weight"))
           (SingleValue ,JE))))
        (Delay (@ (units "ms")) (SingleValue ,del))
