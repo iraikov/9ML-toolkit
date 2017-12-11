@@ -147,7 +147,7 @@
        (Source (Reference "Inh"))
        (Destination
         (Reference "All neurons")
-        (FromResponse (@ (send_port "static_weight") (receive_port "q"))))
+        (FromResponse (@ (send_port "fixed_weight") (receive_port "q"))))
        (Connectivity
         (Component
          (@ (name "RandomInh"))
@@ -182,7 +182,7 @@
        (Source (Reference "Ext"))
        (Destination
         (Reference "All neurons")
-        (FromResponse (@ (send_port "static_weight") (receive_port "q"))))
+        (FromResponse (@ (send_port "fixed_weight") (receive_port "q"))))
        (Connectivity
         (Component
          (@ (name "RandomExt"))

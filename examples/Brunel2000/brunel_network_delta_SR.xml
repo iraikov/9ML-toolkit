@@ -89,7 +89,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="static_weight" receive_port="q" />
+    <FromResponse send_port="fixed_weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomInh">
@@ -144,7 +144,7 @@
   </Source>
   <Destination>
     <Reference>All neurons</Reference>
-    <FromResponse send_port="static_weight" receive_port="q" />
+    <FromResponse send_port="fixed_weight" receive_port="q" />
   </Destination>
   <Connectivity>
     <Component name="RandomExt">
