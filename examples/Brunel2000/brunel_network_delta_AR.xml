@@ -45,9 +45,9 @@
   <Plasticity>
     <Component name="ExcitatoryPlasticity">
       <Definition url="Static.xml">Static</Definition>
-      <Initial units="nA" name="weight">
-        <SingleValue>0.067</SingleValue>
-      </Initial>
+      <Property units="nA" name="weight">
+        <SingleValue>0.0666666666666667</SingleValue>
+      </Property>
     </Component>
   </Plasticity>
   <Delay units="ms">
@@ -102,9 +102,9 @@
   <Plasticity>
     <Component name="InhibitoryPlasticity">
       <Definition url="Static.xml">Static</Definition>
-      <Initial units="nA" name="weight">
-        <SingleValue>-0.402</SingleValue>
-      </Initial>
+      <Property units="nA" name="weight">
+        <SingleValue>-0.4</SingleValue>
+      </Property>
     </Component>
   </Plasticity>
   <Delay units="ms">
@@ -157,9 +157,9 @@
   <Plasticity>
     <Component name="ExternalPlasticity">
       <Definition url="Static.xml">Static</Definition>
-      <Initial units="nA" name="weight">
-        <SingleValue>0.067</SingleValue>
-      </Initial>
+      <Property units="nA" name="weight">
+        <SingleValue>0.0666666666666667</SingleValue>
+      </Property>
     </Component>
   </Plasticity>
   <Delay units="ms">
