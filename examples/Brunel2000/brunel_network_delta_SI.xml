@@ -46,7 +46,7 @@
     <Component name="ExcitatoryPlasticity">
       <Definition url="StaticConnection.xml">StaticConnection</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>13.77</SingleValue>
+        <SingleValue>0.067</SingleValue>
       </Initial>
     </Component>
   </Plasticity>
@@ -103,7 +103,7 @@
     <Component name="InhibitoryPlasticity">
       <Definition url="StaticConnection.xml">StaticConnection</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>-61.965</SingleValue>
+        <SingleValue>-0.3015</SingleValue>
       </Initial>
     </Component>
   </Plasticity>
@@ -158,7 +158,7 @@
     <Component name="ExternalPlasticity">
       <Definition url="StaticConnection.xml">StaticConnection</Definition>
       <Initial units="nA" name="weight">
-        <SingleValue>13.77</SingleValue>
+        <SingleValue>0.067</SingleValue>
       </Initial>
     </Component>
   </Plasticity>
