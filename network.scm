@@ -849,7 +849,7 @@
                                                            `(
                                                              ;;((reduce (+ ,(car plas-ports))) = ,(if (null? plas-states) (first plas-outputs) (first plas-states)))
                                                              ((reduce (+ ,(cadr destination-ports))) = ,ext-var * ,(car plas-ports))
-                                                             (event (,ext-event) () )
+                                                             ,@(if (< 0 r-index) `((event (,ext-event) () )) '())
                                                              ))
                                                           ))
                                                      ))
@@ -873,25 +873,6 @@
                      responses
                      response-index))
                    
-                   (response-ext-decls
-                    (let ((need-response-ext-decl?
-                           (not
-                            (every
-                             (match-lambda 
-                              ((source-population response-node plasticity-node . ports)
-                               response-node))
-                             responses))))
-                      (if need-response-ext-decl?
-                          (let ((inputs (alist-ref 'inputs model-env )))
-                            (let* (
-                                   (ext-event (car inputs))
-                                   (ext-var   (cadr inputs))
-                                   (ext-dim   (alist-ref ext-var model-formals))
-                                   (ext-unit  (alist-ref ext-dim default-units))
-                                   )
-                              (salt:astdecls-decls (salt:parse `((define ,ext-var = external (dim ,ext-dim) 0.0 * ,ext-unit))))))
-                          '())))
-                   
                    (response-destination-port-decls
                     (salt:parse
                      (delete-duplicates
@@ -914,7 +895,6 @@
                    (prototype-decls
                     (salt:make-astdecls
                      `(,@(salt:astdecls-decls response-destination-port-decls)
-                       ;,@response-ext-decls
                        ,@(salt:astdecls-decls model-eqset)
                        ,@response-dynamics
                        )))
