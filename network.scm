@@ -818,7 +818,7 @@
                                             model-eqset))
                              (let* (
                                     (inputs    (alist-ref 'inputs model-env ))
-                                    (ext-event (if (< 0 r-index) (gensym (car inputs)) (car inputs)))
+                                    (ext-event (gensym (car inputs)))
                                     (ext-var   (gensym 'extv))
                                     (ext-dim   (alist-ref (cadr inputs) model-formals))
                                     )
@@ -836,9 +836,9 @@
                                                        (salt:astdecls-decls
                                                         (salt:parse
                                                           `(
-                                                            ,@(if (< 0 r-index) `((define ,ext-event = external-event +inf.0)) '())
+                                                            (define ,ext-event = external-event (order ,r-index) (link ,(car inputs)) +inf.0)
                                                             ;(define ,ext-var = external (dim ,ext-dim) 0.0 * ,unit)
-                                                            (define ,ext-var = external 0.0)
+                                                            (define ,ext-var = external (order ,r-index) 0.0 )
                                                             (define ,(car plas-ports) = unknown (dim ,dim) 0.0 * ,unit)
                                                             ))
                                                         ))
@@ -849,7 +849,7 @@
                                                            `(
                                                              ;;((reduce (+ ,(car plas-ports))) = ,(if (null? plas-states) (first plas-outputs) (first plas-states)))
                                                              ((reduce (+ ,(cadr destination-ports))) = ,ext-var * ,(car plas-ports))
-                                                             ,@(if (< 0 r-index) `((event (,ext-event) () )) '())
+                                                             (event (,ext-event) () )
                                                              ))
                                                           ))
                                                      ))
