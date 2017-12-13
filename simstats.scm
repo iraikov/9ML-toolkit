@@ -85,9 +85,9 @@
                               mean-event-interval
                               stdev-event-interval))
           (nevents (filter-map (lambda (x) (and (not (null? x)) (length (cdr x)))) event-times-lst))
-          (mean-rates (map (lambda (x) (* 1000 (/ x (- tmax tmin)))) nevents))
-          (mean-event-rate (mean mean-rates))
-          (mean-event-frequency (/ 1000.0 mean-event-interval))
+          (mean-freqs (map (lambda (x) (* 1000 (/ x (- tmax tmin)))) nevents))
+          (mean-event-freq (mean mean-freqs))
+          (mean-event-rate (/ 1000.0 mean-event-interval))
 
           )
 
@@ -97,9 +97,9 @@
          (printf "t min: ~A~%" tmin)
          (printf "t max: ~A~%" tmax)
          (printf "mean number of events: ~A~%" (mean nevents))
-         (printf "mean event frequency: ~A~%" mean-event-rate)
+         (printf "mean event frequency: ~A~%" mean-event-freq)
          (printf "mean event interval: ~A~%" mean-event-interval)	 
-         (printf "mean event frequency as function of interval: ~A~%" mean-event-frequency)
+         (printf "expected mean event firing rate: ~A~%" mean-event-rate)
          (printf "stdev event interval: ~A~%" stdev-event-interval)
          (printf "cv event interval: ~A~%" cv-event-interval)
          ))
