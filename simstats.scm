@@ -1,4 +1,4 @@
-(require-extension matchable getopt-long statistics)
+(require-extension matchable getopt-long)
 (require-library srfi-1 srfi-13 irregex data-structures files posix extras)
 (import
  (only srfi-1 filter list-tabulate)
