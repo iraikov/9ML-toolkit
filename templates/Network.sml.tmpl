@@ -413,17 +413,19 @@ struct
                                                                     
 
         fun extevent_clear_at tstart =
-          List.foldl
+          (List.foldl
               (fn(port,index) =>
                   if getindex(extev_i, index) <= tstart
                   then (update (ext_i, index, 0.0); 
                         update (extev_i, index, Real.posInf);
                         index+1)
                   else index+1)
-              0 {{pop.name}}_ext_ports
+              0 {{pop.name}}_ext_ports)
+          before 
+           (ignore ({{pop.value.prototype.name}}.linkextevfun(extev_i,extev_i)))
 
         fun extevent loc extev_map (tstart, tend, iter) = 
-          List.foldl
+          (List.foldl
               (fn ((index,lst), ax) => 
                   (if trace
                    then (putStrLn TextIO.stdOut ("extevent " ^ loc ^ ": cell " ^ (Int.toString (i+n0)) ^ ": " ^ (Int.toString (List.length lst)) ^
@@ -475,7 +477,8 @@ struct
                    in
                        recur lst
                    end))
-              [] extev_map
+              [] extev_map) before
+           (ignore ({{pop.value.prototype.name}}.linkextevfun(extev_i,extev_i)))
 
 
         fun recur (nstate,extev_map,spikes,statelog: (int * D.model_state) list,iter) = 
