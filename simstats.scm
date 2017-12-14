@@ -113,12 +113,7 @@
 (define opt-grammar
   `(
 
-    (data-filename "name of file containing the data"
-                   (value (required FILENAME)
-                          (single-char #\d)
-                          ))
-
-    (output-filename "name of file containing the output (default is {INPUT-FILENAME}.simstats)"
+    (output-suffix "suffix of file containing the output (default is {INPUT-FILENAME}.simstats)"
                    (value (required FILENAME)
                           (single-char #\o)
                           ))
@@ -157,19 +152,18 @@
 
   (if (options 'help) (simstats:usage))
 
-  (if (not (opt 'data-filename))
-      (simstats:usage))
+  (if (null? (opt '@)) (simstats:usage))
 
   (let* (
-         (data-filename (or (opt 'data-filename) 
-                            (defopt 'data-filename)))
-         (output-filename (or (opt 'output-filename)
-                              (pathname-replace-extension 
-                               data-filename
-                               ".simstats")))
+         (output-suffix (or (opt 'output-suffix)
+                            ".simstats"))
          )
-    
-    (event-stats data-filename output-filename)
+
+    (for-each
+     (lambda (data-filename)
+       (let ((output-filename (pathname-replace-extension data-filename output-suffix)))
+         (event-stats data-filename output-filename)))
+     (opt '@))
     ))
 
 (main opt)
