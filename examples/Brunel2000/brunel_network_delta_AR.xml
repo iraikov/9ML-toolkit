@@ -147,11 +147,8 @@
     <FromResponse send_port="fixed_weight" receive_port="q" />
   </Destination>
   <Connectivity>
-    <Component name="RandomExt">
-      <Definition url="RandomFanIn.xml">RandomFanIn</Definition>
-      <Property name="number">
-        <SingleValue>1000</SingleValue>
-      </Property>
+    <Component name="OneToOne">
+      <Definition url="OneToOne.xml">OneToOne</Definition>
     </Component>
   </Connectivity>
   <Plasticity>

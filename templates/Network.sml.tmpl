@@ -843,7 +843,7 @@ struct
              val Pr_{{name}} = BitSparseMatrix.fromTensorList [N,N]
                                   [
 {% call cartesian_product (sp,tp) %}{offset=[{{t.start}},{{s.start}}],
-                                     tensor=(fromDiag ({{t.size}},{{s.size}},{{t.relativeStart}},BitArray.fromList [true],false)),
+                                     tensor=(fromDiag ({{t.size}},{{s.size}},{% if haskey(t,"relativeStart") %}{{t.relativeStart}}{% else %}0{% endif %},BitArray.fromList [true],false)),
                                      sparse=true}{% endcall %}
                                   ]
 {% endmacro %}

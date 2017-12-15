@@ -185,9 +185,8 @@
         (FromResponse (@ (send_port "fixed_weight") (receive_port "q"))))
        (Connectivity
         (Component
-         (@ (name "RandomExt"))
-         (Definition (@ (url "RandomFanIn.xml")) "RandomFanIn")
-         (Property (@ (name "number")) (SingleValue ,(inexact->exact CE)))))
+         (@ (name "OneToOne"))
+         (Definition (@ (url "OneToOne.xml")) "OneToOne")))
        (Plasticity
         (Component
          (@ (name "ExternalPlasticity"))

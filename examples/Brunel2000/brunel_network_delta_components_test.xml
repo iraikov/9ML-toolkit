@@ -31,24 +31,35 @@
       </nineml:Component>
     </nineml:Cell>
   </nineml:Population>
-  <nineml:Projection name="ExtExc">
+  <nineml:Selection name="All">
+  <nineml:Concatenate>
+    <nineml:Item index="0">
+      <nineml:Reference>Exc</nineml:Reference>
+    </nineml:Item>
+    <nineml:Item index="1">
+      <nineml:Reference>Inh</nineml:Reference>
+    </nineml:Item>
+  </nineml:Concatenate>
+</nineml:Selection>
+  <nineml:Projection name="External">
     <nineml:Source>
-      <nineml:Reference>ExtExc</nineml:Reference>
+      <nineml:Reference>Ext</nineml:Reference>
     </nineml:Source>
     <nineml:Destination>
-      <nineml:Reference>Exc</nineml:Reference>
+      <nineml:Reference>All</nineml:Reference>
       <nineml:FromResponse send_port="fixed_weight" receive_port="q"/>
     </nineml:Destination>
     <nineml:Connectivity>
-      <nineml:Component name="AllToAll">
-        <nineml:Definition url="AllToAll.xml">AllToAll</nineml:Definition>
+      <nineml:Component name="OneToOne">
+        <nineml:Definition url="OneToOne.xml">OneToOne</nineml:Definition>
       </nineml:Component>
     </nineml:Connectivity>
     <nineml:Plasticity>
-      <nineml:Component name="ExcitatoryPlasticity">
+      <nineml:Component name="ExternalPlasticity">
         <nineml:Definition url="Static.xml">Static</nineml:Definition>
         <nineml:Property units="nA" name="weight">
-          <nineml:SingleValue>0.067</nineml:SingleValue>
+          <!--<nineml:SingleValue>0.067</nineml:SingleValue>-->
+          <nineml:SingleValue>5.77</nineml:SingleValue>
         </nineml:Property>
       </nineml:Component>
     </nineml:Plasticity>
@@ -85,7 +96,7 @@
   <nineml:Unit symbol="mV" dimension="voltage" power="-3"/>
   <nineml:Dimension i="-2" t="-3" m="1" l="2" name="resistance"/>
   <nineml:Dimension i="1" name="current"/>
-  <nineml:Population name="ExtExc">
+  <nineml:Population name="Ext">
     <nineml:Size>2</nineml:Size>
     <nineml:Cell>
       <nineml:Component name="stim">
@@ -100,45 +111,6 @@
       </nineml:Component>
     </nineml:Cell>
   </nineml:Population>
-  <nineml:Population name="ExtInh">
-    <nineml:Size>1</nineml:Size>
-    <nineml:Cell>
-      <nineml:Component name="stim">
-        <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
-        <nineml:Property units="Hz" name="rate">
-          <nineml:SingleValue>9000.0</nineml:SingleValue>
-        </nineml:Property>
-        <nineml:Initial units="ms" name="t_next">
-          <nineml:SingleValue>2.0</nineml:SingleValue>
-        </nineml:Initial>
-      </nineml:Component>
-    </nineml:Cell>
-  </nineml:Population>
-  <nineml:Projection name="ExtInh">
-    <nineml:Source>
-      <nineml:Reference>ExtInh</nineml:Reference>
-    </nineml:Source>
-    <nineml:Destination>
-      <nineml:Reference>Inh</nineml:Reference>
-      <nineml:FromResponse send_port="fixed_weight" receive_port="q"/>
-    </nineml:Destination>
-    <nineml:Connectivity>
-      <nineml:Component name="AllToAll">
-        <nineml:Definition url="AllToAll.xml">AllToAll</nineml:Definition>
-      </nineml:Component>
-    </nineml:Connectivity>
-    <nineml:Plasticity>
-      <nineml:Component name="InhibitoryPlasticity">
-        <nineml:Definition url="Static.xml">Static</nineml:Definition>
-        <nineml:Property units="nA" name="weight">
-          <nineml:SingleValue>0.067</nineml:SingleValue>
-        </nineml:Property>
-      </nineml:Component>
-    </nineml:Plasticity>
-    <nineml:Delay units="ms">
-      <nineml:SingleValue>1.5</nineml:SingleValue>
-    </nineml:Delay>
-  </nineml:Projection>
   <nineml:Population name="Inh">
     <nineml:Size>1</nineml:Size>
     <nineml:Cell>
