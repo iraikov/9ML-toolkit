@@ -625,7 +625,7 @@ struct
                                                                        " extev = " ^ (showRealArray (state_extev nstate')))
                                           else ()
                      in
-                         recur (nstate', extev_map', spikes, statelog', iter+1)
+                         recur (nstate', extev_map', spikes', statelog', iter+1)
                      end)
             end
 
