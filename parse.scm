@@ -321,7 +321,7 @@
                                     (string->symbol (or (sxml:attr e 'src_port)
                                                         (sxml:attr e 'port))))
                                    )
-                                `(event ,e-port ,(map (lambda (var rhs) `(,var := ,rhs))
+                                `(event ,e-port ,(map (lambda (var rhs) `(,var := if ,regime-name then ,rhs else ,var))
                                                       e-assign-variables e-assign-rhss))
                                 ))
                             on-events))
