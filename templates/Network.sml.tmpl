@@ -44,6 +44,9 @@ struct
   fun showRealArray v = 
       (String.concatWith ", " (Array.foldr (fn (x, ax) => (showReal x)::ax) [] v))
 
+  fun showBoolArray v = 
+      (String.concatWith ", " (Array.foldr (fn (x, ax) => (showBoolean x)::ax) [] v))
+
   fun showRoot (D.RootFound (i,lst)) = ("RootFound " ^ (String.concatWith ", " (map showReal lst)))
     | showRoot (D.RootStep lst)  = ("RootStep " ^ (String.concatWith ", " (map showReal lst)))
     | showRoot (D.RootAfter (i,lst))  = ("RootAfter " ^ (String.concatWith ", " (map showReal lst)))
@@ -208,6 +211,10 @@ struct
   fun state_event (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root)) = ev
    |  state_event (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = ev
    |  state_event (D.ContState (x, cx, y, ext, extev, ynext, _)) = Array.fromList []
+
+  fun state_discrete (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root)) = d
+   |  state_discrete (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root)) = Array.fromList []
+   |  state_discrete (D.ContState (x, cx, y, ext, extev, ynext, _)) = Array.fromList []
 
   fun ext_sub (D.RegimeState (x, cx, y, ev, d, r, ext, extev, ynext, yrsp, enext, _, root), i) = getindex(ext, i)
    |  ext_sub (D.EventState (x, cx, y, ev, ext, extev, ynext, yrsp, enext, _, root), i) = getindex(ext, i)
@@ -504,6 +511,8 @@ struct
                       then (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
                                                    " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
                                                    " root state is " ^ (showRoot (state_root nstate)) ^
+                                                   " discrete state is " ^ (showRealArray (state_discrete nstate)) ^
+                                                   " regime state is " ^ (showBoolArray (state_regime nstate)) ^
                                                    " h is " ^ (showReal (state_h nstate)) ^
                                                    " extev is " ^ (showRealArray (state_extev nstate))
                                                    );
@@ -598,7 +607,9 @@ struct
                                                                        " t = " ^ (showReal (state_indep nstate)) ^
                                                                        " y = " ^ (showReal (getindex (state_y nstate, 0))) ^
                                                                        " e = " ^ (showReal (getindex (state_event nstate, 0))) ^
-                                                                       " extev is " ^ (showRealArray (state_extev nstate)))
+                                                                       " d = " ^ (showRealArray (state_discrete nstate)) ^
+                                                                       " r = " ^ (showBoolArray (state_regime nstate)) ^
+                                                                       " extev = " ^ (showRealArray (state_extev nstate)))
                                           else ()
                          val nstate'    = f' nstate
                                           handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
@@ -609,7 +620,9 @@ struct
                                                                        " y = " ^ (showReal (getindex (state_y nstate', 0))) ^
                                                                        " e = " ^ (showReal (getindex (state_event nstate', 0))) ^
                                                                        " e > float_eps = " ^ (showBoolean (abs(getindex (state_event nstate', 0)) > D.float_eps)) ^
-                                                                       " extev is " ^ (showRealArray (state_extev nstate')))
+                                                                       " d = " ^ (showRealArray (state_discrete nstate)) ^
+                                                                       " r = " ^ (showBoolArray (state_regime nstate)) ^
+                                                                       " extev = " ^ (showRealArray (state_extev nstate')))
                                           else ()
                      in
                          recur (nstate', extev_map', spikes, statelog', iter+1)
