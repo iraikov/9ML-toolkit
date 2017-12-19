@@ -333,6 +333,10 @@ fun main (name,args) =
                                                                            
   in
       (let
+          val _ = putStrLn TextIO.stdOut (" global time step is " ^ (showReal (!global_h)))
+          val _ = case !D.tol of
+                      SOME tol => putStrLn TextIO.stdOut (" tolerance is " ^ (showReal (tol)))
+                   |  NONE  => ()
           val     _ = putStrLn TextIO.stdOut ("constructing projections...")
           val (S,t) = timing fprojection
           val     _ = putStrLn TextIO.stdOut ("projections took " ^ (Time.toString t) ^ " s")

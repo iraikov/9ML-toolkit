@@ -849,7 +849,7 @@
                                                            `(
                                                              ;;((reduce (+ ,(car plas-ports))) = ,(if (null? plas-states) (first plas-outputs) (first plas-states)))
                                                              ((reduce (+ ,(cadr destination-ports))) = ,ext-var * ,(car plas-ports))
-                                                             (event (,ext-event) () )
+                                                             ;;(event (,ext-event) () )
                                                              ))
                                                           ))
                                                      ))

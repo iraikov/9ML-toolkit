@@ -46,11 +46,6 @@ struct
 
   fun showBoolArray v = 
       (String.concatWith ", " (Array.foldr (fn (x, ax) => (showBoolean x)::ax) [] v))
-
-  fun showRoot (D.RootFound (i,lst)) = ("RootFound " ^ (String.concatWith ", " (map showReal lst)))
-    | showRoot (D.RootStep lst)  = ("RootStep " ^ (String.concatWith ", " (map showReal lst)))
-    | showRoot (D.RootAfter (i,lst))  = ("RootAfter " ^ (String.concatWith ", " (map showReal lst)))
-    | showRoot D.RootBefore    = "RootBefore"
       
   fun foldl1 f lst = let val v = List.hd lst
                          val lst' = List.tl lst
@@ -421,7 +416,7 @@ struct
 
         fun extevent_clear_at tstart =
           (List.foldl
-              (fn(port,index) =>
+               (fn(port,index) =>
                   if getindex(extev_i, index) <= tstart
                   then (update (ext_i, index, 0.0); 
                         update (extev_i, index, Real.posInf);
@@ -510,7 +505,7 @@ struct
               val _ = if trace
                       then (putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": recur: " ^
                                                    " t = " ^ (showReal (state_indep nstate)) ^ " t_next = " ^ (showReal t_next) ^
-                                                   " root state is " ^ (showRoot (state_root nstate)) ^
+                                                   " root state is " ^ (D.showRoot (state_root nstate)) ^
                                                    " discrete state is " ^ (showRealArray (state_discrete nstate)) ^
                                                    " regime state is " ^ (showBoolArray (state_regime nstate)) ^
                                                    " h is " ^ (showReal (state_h nstate)) ^
@@ -527,7 +522,7 @@ struct
                     D.RootFound _ =>
                     (if trace
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                  (showRoot (state_root nstate)))
+                                                  (D.showRoot (state_root nstate)))
                      else ();
                      let
                          val nstate'    = f' nstate
@@ -538,7 +533,7 @@ struct
                   | D.RootStep [] =>
                     (if trace
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                  (showRoot (state_root nstate)))
+                                                  (D.showRoot (state_root nstate)))
                      else ();
                      if List.null extev_map
                      then (nstate, spikes', statelog')
@@ -547,7 +542,7 @@ struct
                   | D.RootStep (h::hs) =>
                     (if trace
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                  (showRoot (state_root nstate)))
+                                                  (D.showRoot (state_root nstate)))
                      else ();
                      let
                          val t          = state_indep nstate
@@ -560,7 +555,7 @@ struct
                   | D.RootBefore =>
                     (if trace
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                  (showRoot (state_root nstate)) ^
+                                                  (D.showRoot (state_root nstate)) ^
                                                   " t = " ^ (showReal (state_indep nstate)) ^
                                                   " t_next = " ^ (showReal t_next) ^
                                                   " t_next - t = " ^ (showReal (t_next - (state_indep nstate))) ^
@@ -594,7 +589,7 @@ struct
                   | D.RootAfter (ei,_) =>
                     (if trace
                      then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                  (showRoot (state_root nstate)) ^
+                                                  (D.showRoot (state_root nstate)) ^
                                                   " t = " ^ (showReal (state_indep nstate)))
                      else ();
                      let
@@ -603,7 +598,7 @@ struct
                          val extev_map' = extevent "RootAfter" extev_map (t, t_next, iter)
                          val _          = if trace
                                           then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": root state is " ^
-                                                                       (showRoot (state_root nstate)) ^
+                                                                       (D.showRoot (state_root nstate)) ^
                                                                        " t = " ^ (showReal (state_indep nstate)) ^
                                                                        " y = " ^ (showReal (getindex (state_y nstate, 0))) ^
                                                                        " e = " ^ (showReal (getindex (state_event nstate, 0))) ^
@@ -615,7 +610,7 @@ struct
                                           handle Fail s => raise Fail ("exception in function evaluation for cell " ^ (Int.toString (i+n0)) ^ ": " ^ s)
                          val _          = if trace
                                           then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": (RootAfter) root state is " ^
-                                                                       (showRoot (state_root nstate')) ^
+                                                                       (D.showRoot (state_root nstate')) ^
                                                                        " t = " ^ (showReal (state_indep nstate')) ^
                                                                        " y = " ^ (showReal (getindex (state_y nstate', 0))) ^
                                                                        " e = " ^ (showReal (getindex (state_event nstate', 0))) ^
@@ -640,7 +635,7 @@ struct
         val _ = if trace 
                 then putStrLn TextIO.stdOut ("cell " ^ (Int.toString (i+n0)) ^ ": run: " ^
                                              "t = " ^ (showReal t) ^ " t_next = " ^ (showReal t_next) ^ " h = " ^ (showReal h) ^
-                                             " root state is " ^ (showRoot (state_root input)))
+                                             " root state is " ^ (D.showRoot (state_root input)))
                 else ()
 
         val (nstate,spikes',statelog') = recur (input',extev_map,spikes,statelog',0)

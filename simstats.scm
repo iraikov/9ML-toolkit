@@ -99,9 +99,9 @@
          (printf "mean number of events: ~A~%" (mean nevents))
          (printf "mean event frequency: ~A~%" mean-event-freq)
          (printf "mean event interval: ~A~%" mean-event-interval)	 
-         (printf "expected mean event firing rate: ~A~%" mean-event-rate)
          (printf "stdev event interval: ~A~%" stdev-event-interval)
          (printf "cv event interval: ~A~%" cv-event-interval)
+         (printf "expected mean event rate: ~A~%" mean-event-rate)
          ))
     
      ))

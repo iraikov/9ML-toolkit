@@ -114,7 +114,7 @@
       `(
       (Population
        (@ (name "Exc"))
-       (Number "10000")
+       (Size "10000")
        (Cell
         (Component
          (@ (name "nrn"))
@@ -162,7 +162,7 @@
         (Item (@ (index "1")) (Reference "Inh"))))
       (Population
        (@ (name "Ext"))
-       (Number "12500")
+       (Size "12500")
        (Cell
         (Component
          (@ (name "stim"))
@@ -198,11 +198,11 @@
          (Definition (@ (url "StaticConnection.xml")) "StaticConnection")
          (Initial
           (@ (units "nA") (name "weight"))
-          (SingleValue ,(* g w)))))
+          (SingleValue ,(* (- g) w)))))
        (Delay (@ (units "ms")) (SingleValue "1.5")))
       (Population
        (@ (name "Inh"))
-       (Number "2500")
+       (Size "2500")
        (Cell
         (Component
          (@ (name "nrn"))
@@ -280,11 +280,12 @@
    (let ((label (car var))
          (g (alist-ref 'g (cdr var)))
          (eta (alist-ref 'eta (cdr var))))
-     (call-with-output-file 
+     (with-output-to-file 
          (string-append (model-name (sprintf "brunel_network_alpha_~A" label)) ".xml")
-       (lambda  (output)
-         (pp
-          (Prelude 
-           (BrunelNetworkAlpha g eta)))))
+       (lambda  ()
+         (print-fragments
+          (generate-XML
+           (Prelude 
+            (BrunelNetworkAlpha g eta))))))
      ))
  variants)

@@ -68,7 +68,7 @@
     <Component name="stim">
       <Definition url="Poisson.xml">Poisson</Definition>
       <Property units="Hz" name="rate">
-        <SingleValue>9000.0</SingleValue>
+        <SingleValue>20000.0</SingleValue>
       </Property>
       <Initial units="ms" name="t_next">
         <Component name="uniform_t_next">
