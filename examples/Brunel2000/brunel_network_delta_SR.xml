@@ -19,7 +19,15 @@
         <SingleValue>20.0</SingleValue>
       </Property>
       <Initial units="mV" name="V">
-        <SingleValue>0.0</SingleValue>
+        <Component name="uniform_rest_to_threshold">
+          <Definition url="Uniform.xml">UniformDistribution</Definition>
+          <Property units="unitless" name="maximum">
+            <SingleValue>20.0</SingleValue>
+          </Property>
+          <Property units="unitless" name="minimum">
+            <SingleValue>0.0</SingleValue>
+          </Property>
+        </Component>
       </Initial>
       <Initial units="ms" name="t_rpend">
         <SingleValue>0.0</SingleValue>
@@ -71,15 +79,7 @@
         <SingleValue>20000.0</SingleValue>
       </Property>
       <Initial units="ms" name="t_next">
-        <Component name="uniform_t_next">
-          <Definition url="RandomUniform.xml">UniformDistribution</Definition>
-          <Property units="unitless" name="maximum">
-            <SingleValue>5.0</SingleValue>
-          </Property>
-          <Property units="unitless" name="minimum">
-            <SingleValue>0.1</SingleValue>
-          </Property>
-        </Component>
+        <SingleValue>5.0</SingleValue>
       </Initial>
     </Component>
   </Cell>
@@ -131,7 +131,15 @@
         <SingleValue>20.0</SingleValue>
       </Property>
       <Initial units="mV" name="V">
-        <SingleValue>0.0</SingleValue>
+        <Component name="uniform_rest_to_threshold">
+          <Definition url="Uniform.xml">UniformDistribution</Definition>
+          <Property units="unitless" name="maximum">
+            <SingleValue>20.0</SingleValue>
+          </Property>
+          <Property units="unitless" name="minimum">
+            <SingleValue>0.0</SingleValue>
+          </Property>
+        </Component>
       </Initial>
       <Initial units="ms" name="t_rpend">
         <SingleValue>0.0</SingleValue>

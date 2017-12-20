@@ -89,7 +89,18 @@
          (Property (@ (units "ms") (name "tau")) (SingleValue ,tau))
          (Property (@ (units "ms") (name "tau_rp")) (SingleValue ,tau-rp))
          (Property (@ (units "mV") (name "theta")) (SingleValue ,theta))
-         (Initial (@ (units "mV") (name "V")) (SingleValue "0.0"))
+         (Initial (@ (units "mV") (name "V"))
+                  (Component
+                   (@ (name "uniform_rest_to_threshold"))
+                   (Definition
+                     (@ (url "Uniform.xml"))
+                     "UniformDistribution")
+                   (Property
+                    (@ (units "unitless") (name "maximum"))
+                    (SingleValue "20.0"))
+                   (Property
+                    (@ (units "unitless") (name "minimum"))
+                    (SingleValue "0.0"))))
          (Initial
           (@ (units "ms") (name "t_rpend"))
           (SingleValue "0.0")))))
@@ -129,18 +140,8 @@
           (SingleValue ,p-rate))
          (Initial
           (@ (units "ms") (name "t_next"))
-          (Component
-           (@ (name "uniform_t_next"))
-           (Definition
-             (@ (url "RandomUniform.xml"))
-             "UniformDistribution")
-           (Property
-            (@ (units "unitless") (name "maximum"))
-            (SingleValue "5.0"))
-           (Property
-            (@ (units "unitless") (name "minimum"))
-            (SingleValue "0.1")))
-          ))
+          (SingleValue "5.0"))
+          )
         ))
       (Projection
        (@ (name "Inhibition"))
@@ -173,7 +174,18 @@
          (Property (@ (units "ms") (name "tau")) (SingleValue ,tau))
          (Property (@ (units "ms") (name "tau_rp")) (SingleValue ,tau-rp))
          (Property (@ (units "mV") (name "theta")) (SingleValue ,theta))
-         (Initial (@ (units "mV") (name "V")) (SingleValue "0.0"))
+         (Initial (@ (units "mV") (name "V"))
+                  (Component
+                   (@ (name "uniform_rest_to_threshold"))
+                   (Definition
+                     (@ (url "Uniform.xml"))
+                     "UniformDistribution")
+                   (Property
+                    (@ (units "unitless") (name "maximum"))
+                    (SingleValue "20.0"))
+                   (Property
+                    (@ (units "unitless") (name "minimum"))
+                    (SingleValue "0.0"))))
          (Initial
           (@ (units "ms") (name "t_rpend"))
           (SingleValue "0.0")))))
@@ -201,7 +213,7 @@
 
 (define variants
   '(
-    (SI (g . 4.5) (eta . 0.9))
+    (SI (g . 4.5) (eta . 0.95))
     (AI (g . 5.0) (eta . 2.0))
     (AR (g . 6.0) (eta . 4.0))
     (SR (g . 3.0) (eta . 2.0))

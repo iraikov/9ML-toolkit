@@ -348,9 +348,9 @@
 (define variants
   '(
     (SIslow (g . 4.5) (eta . 0.9))
-    (AI (g . 5.0) (eta . 2.0))
+    (AI     (g . 5.0) (eta . 2.0))
     (SIfast (g . 6.0) (eta . 4.0))
-    (SR (g . 3.0) (eta . 2.0))
+    (SR     (g . 3.0) (eta . 2.0))
     ))
     
 
