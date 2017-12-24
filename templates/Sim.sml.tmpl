@@ -290,8 +290,8 @@ fun main (name,args) =
 	           SOME msg => exitError (CommandLine.name(), msg)
 	         | NONE => ())
 		  
-      val {is_help, is_time, is_timestep, is_tol, is_logperiod, 
-           is_statesample, is_extsample, is_evsample,
+      val {is_help, is_time, is_timestep, is_abstol, is_reltol,
+           is_logperiod, is_statesample, is_extsample, is_evsample,
            is_spikerecord, is_prjrecord, 
            is_spikeout, is_stateprefix,
            is_extprefix, is_eventprefix,
@@ -307,8 +307,10 @@ fun main (name,args) =
                    putStrLn TextIO.stdErr ("State traces and spike event times will not be recorded."))
                 | (_, _, _, _) => ()
 
-      val _     = case is_tol of SOME v => (if v > 0.0 then (D.tol := (SOME v)) else ())
-                              |  NONE => ()
+      val _     = case is_abstol of SOME v => (if v > 0.0 then (D.abstol := (SOME v)) else ())
+                                 |  NONE => ()
+      val _     = case is_reltol of SOME v => (if v > 0.0 then (D.reltol := (SOME v)) else ())
+                                 |  NONE => ()
       val _     = case is_timestep of SOME dt => (global_h := (Real.min(dt, minDelay)))
                                     | NONE => (global_h := (Real.min(!global_h, minDelay)))
       val tstop = case is_time of SOME t => t | NONE => 150.0
@@ -334,8 +336,11 @@ fun main (name,args) =
   in
       (let
           val _ = putStrLn TextIO.stdOut ("global time step is " ^ (showReal (!global_h)))
-          val _ = case !D.tol of
-                      SOME tol => putStrLn TextIO.stdOut ("error tolerance is " ^ (showReal (tol)))
+          val _ = case !D.abstol of
+                      SOME tol => putStrLn TextIO.stdOut ("absolute error tolerance is " ^ (showReal (tol)))
+                   |  NONE  => ()
+          val _ = case !D.reltol of
+                      SOME tol => putStrLn TextIO.stdOut ("relative error tolerance is " ^ (showReal (tol)))
                    |  NONE  => ()
           val     _ = putStrLn TextIO.stdOut ("constructing projections...")
           val (S,t) = timing fprojection

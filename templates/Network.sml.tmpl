@@ -139,7 +139,7 @@ struct
                 SOME v => v rs
               | NONE => (fn v => v)
                             
-        val err0 = case (!(D.tol)) of
+        val err0 = case (!(D.abstol)) of
                        SOME tol => tol 
                     |  NONE => 0.0
 
@@ -152,7 +152,7 @@ struct
                           (i,condfun,initfun,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
       let
           val initial = initfun rs
-          val err0 = case (!(D.tol)) of
+          val err0 = case (!(D.abstol)) of
                          SOME tol => tol 
                       |  NONE => 0.0
       in
@@ -165,7 +165,7 @@ struct
       let
           val initial = initfun rs
                                 
-          val err0 = case (!(D.tol)) of
+          val err0 = case (!(D.abstol)) of
                          SOME tol => tol 
                       |  NONE => 0.0
 
@@ -352,7 +352,6 @@ struct
                 
   fun {{pop.name}}_run f (rs,rszt) (statesample,extsample,evsample) n0 (Wmap,t_next) ((i,fld,input),(nstates,spikes,statelog)) =
     let
-        val tol = !(D.tol)
         val f' = f (i,{{pop.name}}_parameters,fld,rs,rszt)
 
 (*

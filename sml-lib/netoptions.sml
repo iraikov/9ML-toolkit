@@ -7,7 +7,8 @@ structure G = GetOpt
 exception Error
 	      
 
-datatype flag =  Help | Time of real | Timestep of real | Tol of real
+datatype flag =  Help | Time of real | Timestep of real
+                 | AbsTol of real | RelTol of real
                  | Statesample of int | Extsample of int | Evsample of int
                  | Spikerecord of string | Prjrecord | Logperiod of real
                  | Spikeout of string | Stateprefix of string
@@ -23,7 +24,8 @@ fun showflag (Help)       = "Help"
   | showflag (Time x)     = ("Time " ^ (Real.toString x))
   | showflag (Timestep x) = ("Timestep " ^ (Real.toString x))
   | showflag (Logperiod x) = ("Logperiod " ^ (Real.toString x))
-  | showflag (Tol x)      = ("Tol " ^ (Real.toString x))
+  | showflag (AbsTol x)   = ("AbsTol " ^ (Real.toString x))
+  | showflag (RelTol x)   = ("RelTol " ^ (Real.toString x))
   | showflag (Statesample x) = ("Statesample " ^ (Int.toString x))
   | showflag (Extsample x)   = ("Extsample " ^ (Int.toString x))
   | showflag (Evsample x)     = ("Evsample " ^ (Int.toString x))
@@ -54,9 +56,14 @@ val options =
       help="simulation duration"},
 
      {short="",
-      long=["tol"],
-      desc=G.ReqArg (fn(x) => Tol (valOf(s2r x)),"N"),
-      help="error tolerance"},
+      long=["abstol"],
+      desc=G.ReqArg (fn(x) => AbsTol (valOf(Real.fromString x)),"N"),
+      help="absolute error tolerance"},
+
+     {short="",
+      long=["reltol"],
+      desc=G.ReqArg (fn(x) => RelTol (valOf(Real.fromString x)),"N"),
+      help="relative error tolerance"},
 
      {short="",
       long=["timestep"],
@@ -156,7 +163,8 @@ fun getstate (opts) =
 
     let
 	val O_HELP       = ref false
-	val O_TOL        = ref NONE
+	val O_ABSTOL     = ref NONE
+	val O_RELTOL     = ref NONE
 	val O_TIME       = ref NONE
 	val O_TIMESTEP   = ref NONE
 	val O_LOGPERIOD       = ref NONE
@@ -176,7 +184,8 @@ fun getstate (opts) =
 	fun getstate' (opt) = 
 	    (case opt of 
 		 Help           => O_HELP := true	
-	       | Tol x          => O_TOL := SOME x
+	       | AbsTol x    => O_ABSTOL := SOME x
+	       | RelTol x    => O_RELTOL := SOME x
 	       | Time x         => O_TIME := SOME x
 	       | Timestep x     => O_TIMESTEP := SOME x
 	       | Logperiod x    => O_LOGPERIOD := SOME x
@@ -200,7 +209,8 @@ fun getstate (opts) =
         is_help=(!O_HELP), 
         is_time=(!O_TIME),
 	is_timestep=(!O_TIMESTEP),
-        is_tol=(!O_TOL), 
+        is_abstol=(!O_ABSTOL), 
+        is_reltol=(!O_RELTOL), 
         is_logperiod=(!O_LOGPERIOD), 
 	is_statesample=(!O_STATESAMPLE),
 	is_extsample=(!O_EXTSAMPLE),

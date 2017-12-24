@@ -120,7 +120,7 @@ val _ = (case !optStatus of
 	     SOME msg => exitError (CommandLine.name(), msg)
 	   | NONE => ())
 		    
-val {is_help, is_time, is_timestep, is_tol} = Options.getstate (opts)
+val {is_help, is_time, is_timestep, is_abstol, is_reltol} = Options.getstate (opts)
 						                 
 val _ = if is_help then exitHelp (CommandLine.name()) else ()
 
