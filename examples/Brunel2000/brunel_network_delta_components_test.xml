@@ -58,7 +58,7 @@
       <nineml:Component name="ExternalPlasticity">
         <nineml:Definition url="Static.xml">Static</nineml:Definition>
         <nineml:Property units="nA" name="weight">
-          <nineml:SingleValue>0.067</nineml:SingleValue>
+          <nineml:SingleValue>0.0666667</nineml:SingleValue>
         </nineml:Property>
       </nineml:Component>
     </nineml:Plasticity>
@@ -66,6 +66,7 @@
       <nineml:SingleValue>1.5</nineml:SingleValue>
     </nineml:Delay>
   </nineml:Projection>
+  <!--
   <nineml:Projection name="Inhibition">
     <nineml:Source>
       <nineml:Reference>Inh</nineml:Reference>
@@ -90,7 +91,8 @@
     <nineml:Delay units="ms">
       <nineml:SingleValue>1.5</nineml:SingleValue>
     </nineml:Delay>
-  </nineml:Projection>
+    </nineml:Projection>
+  -->
   <nineml:Unit symbol="nA" dimension="current" power="-9"/>
   <nineml:Unit symbol="mV" dimension="voltage" power="-3"/>
   <nineml:Dimension i="-2" t="-3" m="1" l="2" name="resistance"/>
@@ -101,7 +103,7 @@
       <nineml:Component name="stim">
         <nineml:Definition url="Poisson.xml">Poisson</nineml:Definition>
         <nineml:Property units="Hz" name="rate">
-          <nineml:SingleValue>9500.0</nineml:SingleValue>
+          <nineml:SingleValue>9000.0</nineml:SingleValue>
           <!--<nineml:SingleValue>38729.3950153</nineml:SingleValue> -->
         </nineml:Property>
         <nineml:Initial units="ms" name="t_next">

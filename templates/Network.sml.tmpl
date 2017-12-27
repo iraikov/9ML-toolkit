@@ -146,7 +146,7 @@ struct
       in
           D.condApply condfun (D.RegimeState (0.0, 0.0, initial(make_real_state n), evinitial (make_real_state nev), dinitial' (make_real_state ndsc), 
                                               rinitial (make_bool_state nregime), extinitial(), extevinitial(), make_real_state n, make_real_state n,
-                                              make_real_state nev, D.Right (h0, h0, err0), D.RootBefore))
+                                              make_real_state nev, D.Right {h=h0, cst=h0, r=err0, tevent=Real.posInf}, D.RootBefore))
       end
    |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
                           (i,condfun,initfun,SOME evinitial,NONE,NONE,extinitial,extevinitial) =
@@ -158,7 +158,7 @@ struct
       in
           D.condApply condfun (D.EventState (0.0, 0.0, (initfun rs)(make_real_state n), evinitial (make_real_state nev), 
                                              extinitial (), extevinitial (), initial(make_real_state n), initial(make_real_state n), 
-                                             make_real_state nev, D.Right (h0, h0, err0), D.RootBefore))
+                                             make_real_state nev, D.Right {h=h0, cst=h0, r=err0, tevent=Real.posInf}, D.RootBefore))
       end
    |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
                          (i,condfun,initfun,NONE,NONE,NONE,extinitial,extevinitial) =
@@ -170,7 +170,7 @@ struct
                       |  NONE => 0.0
 
       in
-          D.ContState (0.0, 0.0, (initfun rs)(make_real_state n), extinitial(), extevinitial(), make_real_state n, D.Right (h0, h0, err0))
+          D.ContState (0.0, 0.0, (initfun rs)(make_real_state n), extinitial(), extevinitial(), make_real_state n, D.Right {h=h0, cst=h0, r=err0, tevent=Real.posInf})
       end
    |  make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
                           (i,condfun,initial,_,_,_,extinitial,extevinitial) =
@@ -562,9 +562,11 @@ struct
                      else ();
                      if (t_next - (state_indep nstate)) > D.float_eps
                      then (let
+                              val t_next_event = if List.null extev_map then t_next
+                                                 else (foldl (fn((i,lst),ax) => Real.min(#1(hd lst), ax)) t_next extev_map)
                               val t = state_indep nstate
                               val h = state_h nstate
-                              val nstate' = if ((h+t)-t_next) > D.float_eps
+                              val nstate' = if ((h+t)-t_next_event) > D.float_eps
                                             then update_state_h (nstate,Real.max(t_next-t,D.float_eps))
                                             else nstate
                               val _        = extevent_clear_at t
@@ -627,8 +629,11 @@ struct
                         then ((i+n0,copy_state input))::statelog
                         else statelog
 
+        val t_next_event = if List.null extev_map
+                           then t_next else (foldl (fn((i,lst),ax) => Real.min(#1(hd lst), ax)) t_next extev_map)
+                                                                       
         val input' = if ((h+t)-t_next) > D.float_eps
-                     then update_state_h (input,Real.max(t_next-t,D.float_eps))
+                     then update_state_h (input,Real.max(t_next_event-t,D.float_eps))
                      else input
                               
         val _ = if trace 
