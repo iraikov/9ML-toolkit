@@ -153,7 +153,8 @@ fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (stat
   end
 
 
-fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod, rs_vector, rszt_vector,
+fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod,
+           rs_vector, rszt_vector,
            (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix),
            (statesample,extsample,evsample)) =
 
@@ -229,7 +230,7 @@ fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspi
                                DQ)
 
 
-            val (state_vector_i, spikes_i, statelog_i) = frun' (I,t_i) (state_vector, rs_vector, rszt_vector)
+            val (state_vector_i, spikes_i, statelog_i) = frun' (I, t_i, state_vector, rs_vector, rszt_vector)
 
             val (all_spike_i, log_spike_i) = fspikes spikes_i
                 
