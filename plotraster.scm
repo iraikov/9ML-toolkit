@@ -76,7 +76,7 @@
           (nevents (map (lambda (x) (if (null? x) 0 (length (cdr x)))) (vector->list event-times)))
           (average-rates (map (lambda (x) (* 1000 (/ x tmax))) nevents))
           
-          (average-event-frequency (round (/ (fold + 0.0 average-rates) eventnz)))
+          (average-event-frequency (/ (round (* 10.0 (/ (fold + 0.0 average-rates) eventnz))) 10.0))
 
           )
      
@@ -103,7 +103,7 @@
 	 (plot:arg "-cm" )
 	 (plot:arg "-pagesize"   "12,20");;PAPER
 	 (plot:arg "-textsize"   "12")
-	 (plot:arg "-cpulimit"   "120")
+	 (plot:arg "-cpulimit"   "320")
 	 (plot:arg "-maxrows"    "700000")
 	 (plot:arg "-maxfields"  "1400000")
 	 (plot:arg "-maxvector"  "700000")
