@@ -39,26 +39,11 @@ fun timing (action) =
     end
 
 
-structure TEventPriority = 
-struct
-       type priority     = real
-
-       fun compare (x,y) = Real.compare (x,y)
-       type item         = real * (int * int * real)
-       fun priority (x : item) = (#1(x))
-end
-    
-structure TEQ = TEventQueue (structure P = TEventPriority
-                             type value = (int * int * real)
-                             fun value (x : P.item) = (#2(x)))
-val DQ = TEQ.empty
-                             
-
 exception Index
 exception Shape
 fun dimVals [m,n] = (m,n) | dimVals _ = raise Shape
 
-fun writeProjection S prefix =
+fun outputProjection S prefix =
   ListPair.app
       (fn (W,p) =>
           let
@@ -83,7 +68,7 @@ fun writeProjection S prefix =
       (S, List.tabulate (List.length S, fn(i) => i))
 
                      
-fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (statelog,spikelog) =
+fun outputLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (statelog,spikelog) =
   let
       open {{group.name}}
       val _ = case state_prefix of
@@ -153,7 +138,8 @@ fun writeLog Plabels (spike_filepath,state_prefix,ext_prefix,event_prefix) (stat
   end
 
 
-fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod,
+
+fun start (N, S, D, Pn, Plabels, global_h, initial_vector, frun, ftime, fspikes, finfo, tstop, logperiod,
            rs_vector, rszt_vector,
            (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix),
            (statesample,extsample,evsample)) =
@@ -169,35 +155,44 @@ fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspi
     val update = Unsafe.Real64Array.update
 {% endif %}
 
+
     val frun' = frun (statesample,extsample,evsample)
           
-    val writeLog' = writeLog Plabels (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix)
+    val outputLog' = outputLog Plabels (spikeout_filepath,stateout_prefix,extout_prefix,eventout_prefix)
 
-    fun enqueueSpikes (spike_i, S, D, DQ) =
+    fun listLineWrite converter file x =
+      (List.app (fn x => (TextIO.output(file, " "^(converter x)))) x)
+          
+    fun intListLineWrite file x = (listLineWrite Int.toString file x; TextIO.output(file, "\n"))
+
+    fun enqueueSpikes (spike_i, S, D, spm) =
         {{group.name}}.SEQ.PQ.foldl
-                      (fn ((t,i),dq) =>
-                          ((*putStrLn TextIO.stdOut ("enqueuing spike for gid " ^ (Int.toString i) ^ " at time " ^ (showReal t));*)
-                           #2(ListPair.foldl
-                                  (fn (del,W,(port,dq)) =>
-                                      let
-                                          val sl = BitSparseMatrix.slice (W,1,i)
-                                      in
-                                          (port+1,
-                                           BitSparseMatrix.sliceFoldi 
-                                               (fn (j,x,dq) => 
-                                                   let 
-                                                       val tev = Real.+ (t,del)
-                                                   in
-                                                       TEQ.addEvent ((tev, (j,port,1.0)), dq)
-                                                   end)
-                                               dq sl)
-                                      end)
-                                  (0,dq)
-                                  (D,S))
-                      ))
-                      DQ spike_i
-                                                                    
-    fun netrun (t_n,n,DQ,state_vector,spikelog,statelog,tlog) =
+            (fn ((t,i),spm) =>
+                ((*putStrLn TextIO.stdOut ("enqueuing spike for gid " ^ (Int.toString i) ^ " at time " ^ (showReal t));*)
+                  let
+                      val spm' = 
+                          #2(ListPair.foldl
+                                 (fn (del,W,(port,spm)) =>
+                                     let
+                                         val sl = BitSparseMatrix.slice (W,1,i)
+                                     in
+                                         (port+1,
+                                          BitSparseMatrix.sliceFoldi
+                                              (fn (j,x,spm) => 
+                                                  let 
+                                                      val tev = Real.+ (t,del)
+                                                  in
+                                                      IntMap.insert(spm, j, IntMap.singleton(port, [(tev, 1.0)]))
+                                                  end)
+                                              spm sl)
+                                     end)
+                                 (0,IntMap.empty) (D,S))
+                  in
+                     {{group.name}}.union_spm (spm,spm')
+                  end)
+            ) spm spike_i
+
+    fun netrun (t_n,n,SPM,state_vector,spikelog,statelog,tlog) =
         let 
             val t_i = (Real.fromInt n) * (!global_h)
 
@@ -205,43 +200,19 @@ fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspi
                     then (putStrLn TextIO.stdOut ("netrun: global_h = " ^ (showReal (!global_h)) ^
                                                   " t_n = " ^ (showReal t_n) ^ " t_i = " ^ (showReal t_i)))
                     else ()
-                                   
-                                   
-            val (I,DQ') = TEQ.nextEventsFold 
-                              (fn (t,_) => Real.<=(t,t_i),
-                               fn (t,(i,port,w),I) => 
-                                  let
-                                      val _ = if trace
-                                              then putStrLn TextIO.stdOut ("netrun: event at t = " ^ (showReal t) ^
-                                                                           " i = " ^ (Int.toString i) ^
-                                                                           " port = " ^ (Int.toString port) ^
-                                                                           " w = " ^ (showReal w))
-                                              else ()
-                                      val im = IntMap.find (I, i)
-                                      val im = case im of 
-                                                   SOME m => IntMap.unionWith
-                                                                 (op @)
-                                                                 (m,IntMap.singleton(port,[(t,w)]))
-                                                 | NONE => IntMap.singleton (port,[(t,w)])
-                                  in
-                                      IntMap.insert (I,i,im)
-                                  end,
-                               IntMap.empty,
-                               DQ)
 
-
-            val (state_vector_i, spikes_i, statelog_i) = frun' (I, t_i, state_vector, rs_vector, rszt_vector)
+            val (SPM', state_vector_i, spikes_i, statelog_i) = frun' (SPM, t_i, state_vector, rs_vector, rszt_vector)
 
             val (all_spike_i, log_spike_i) = fspikes spikes_i
                 
             val _   = finfo state_vector_i
 
-            val DQ'' = enqueueSpikes (all_spike_i, S, D, DQ')
+            val SPM'' = enqueueSpikes (all_spike_i, S, D, SPM')
 
             val spikelog' = {{group.name}}.SEQ.merge (log_spike_i, spikelog)
                 
             val _ = if t_i >= tlog orelse t_i >= tstop
-                    then (writeLog' (if List.null statelog then statelog_i else ListPair.map (op @) (statelog_i, statelog),
+                    then (outputLog' (if List.null statelog then statelog_i else ListPair.map (op @) (statelog_i, statelog),
                                      spikelog'))
                     else ()
 
@@ -255,11 +226,11 @@ fun start (N, S, D, DQ, Pn, Plabels, global_h, initial_vector, frun, ftime, fspi
             
             if t_i >= tstop
             then state_vector_i
-            else netrun (t_i, Int.+(n,1), DQ'', state_vector_i, spikelog', statelog', tlog')
+            else netrun (t_i, Int.+(n,1), SPM'', state_vector_i, spikelog', statelog', tlog')
         end
 
 in
-    netrun (0.0,1,DQ,initial_vector,{{group.name}}.SEQ.empty,[],0.0)
+    netrun (0.0,1,{{group.name}}.make_spm(),initial_vector,{{group.name}}.SEQ.empty,[],0.0)
 end
 
 exception Exit of OS.Process.status 
@@ -348,7 +319,7 @@ fun main (name,args) =
           val     _ = putStrLn TextIO.stdOut ("projections took " ^ (Time.toString t) ^ " s")
                                
           val _ = if is_prjrecord
-                  then writeProjection S prjout_prefix
+                  then outputProjection S prjout_prefix
                   else ()
                            
           val _ = (case is_spikerecord of
@@ -414,7 +385,7 @@ fun main (name,args) =
           val _     = if minDelay <= 0.0 then raise Fail "minimum delay is zero" else ()
                                                                                           
           val _     = putStrLn TextIO.stdOut ("starting simulation...")
-          val (_,t) = timing (fn () => start (N, S, D, DQ, Pn, Plabels, global_h, initial, frun, 
+          val (_,t) = timing (fn () => start (N, S, D, Pn, Plabels, global_h, initial, frun, 
                                               ftime, fspikes spikelog, finfo, tstop, logperiod,
                                               rs_vector, rszt_vector,
                                               (spikeout_filepath, stateout_prefix,

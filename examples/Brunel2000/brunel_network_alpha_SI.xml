@@ -99,7 +99,7 @@
 <Component name="InhibitoryPlasticity">
 <Definition url="StaticConnection.xml">StaticConnection</Definition>
 <Initial units="nA" name="weight">
-<SingleValue>61.9684350620686</SingleValue></Initial></Component></Plasticity>
+<SingleValue>-61.9684350620686</SingleValue></Initial></Component></Plasticity>
 <Delay units="ms">
 <SingleValue>1.5</SingleValue></Delay></Projection>
 <Population name="Inh">

@@ -38,8 +38,19 @@
 (define (coefficient-of-variation m s)
   (if (> m 0.0) (/ s m) 0.0))
 
+(define labels
+  '("First event"
+    "Last event"
+    "Mean number of events"
+    "Mean event frequency"
+    "Mean event interval"
+    "Stdev event interval"
+    "CV event interval"
+    "Mean event rate"))
 
-(define (event-stats data-file output-file #!key (nmax-limit #f))
+(define (event-stats data-file output-file #!key )
+
+(define (event-stats data-file output-file #!key (nmax-limit #f) (output-format 'plain) (output-append #f))
   (match-let 
 
    (
@@ -96,21 +107,47 @@
 
           )
 
-     (with-output-to-file output-file
-       (lambda ()
-         (printf "nmax: ~A~%" nmax)
-         (printf "t min: ~A~%" tmin)
-         (printf "t max: ~A~%" tmax)
-         (printf "mean number of events: ~A~%" (mean nevents))
-         (printf "mean event frequency: ~A~%" mean-event-freq)
-         (printf "mean event interval: ~A~%" mean-event-interval)	 
-         (printf "stdev event interval: ~A~%" stdev-event-interval)
-         (printf "cv event interval: ~A~%" cv-event-interval)
-         (printf "expected mean event rate: ~A~%" mean-event-rate)
-         ))
-    
-     ))
-  )
+     (let (
+           (sexp `((data-file . ,data-file)
+                   (nmax . ,nmax)
+                   (tmin . ,tmin)
+                   (tmax . ,tmax)
+                   (mean-nevents         . ,(mean nevents))
+                   (mean-event-freq      . ,mean-event-freq)
+                   (mean-event-interval  . ,mean-event-interval)
+                   (cv-event-interval    . ,cv-event-interval)
+                   (stdev-event-interval . ,stdev-event-interval)
+                   (mean-event-rate      . ,mean-event-rate)
+                   ))
+           )
+       (case output-format
+         ((plain)
+          (let ((outputf
+                 (lambda ()
+                   (printf "nmax: ~A~%" (alist-ref 'nmax sexp))
+                   (printf "t min: ~A~%" (alist-ref 'tmin sexp))
+                   (printf "t max: ~A~%" (alist-ref 'tmax sexp))
+                   (printf "mean number of events: ~A~%" (alist-ref 'mean-nevents sexp))
+                   (printf "mean event frequency: ~A~%" (alist-ref 'mean-event-freq sexp))
+                   (printf "mean event interval: ~A~%" (alist-ref 'mean-event-interval sexp))	 
+                   (printf "stdev event interval: ~A~%" (alist-ref 'stdev-event-interval sexp))
+                   (printf "cv event interval: ~A~%" (alist-ref 'cv-event-interval sexp))
+                   (printf "expected mean event rate: ~A~%" (alist-ref 'mean-event-rate sexp)))))
+            (if output-append
+                (with-output-to-file output-file outputf #:append)
+                (with-output-to-file output-file outputf))
+            ))
+         ((csv)
+          (let ((outputf
+                 (lambda ()
+                   (let ((vals (cons data-file (map cdr sexp))))
+                     (printf "~A~%" (string-concatenate (intersperse (map ->string vals) ",")))))))
+            (if output-append
+                (with-output-to-file output-file outputf #:append)
+                (with-output-to-file output-file outputf))))
+         )
+       ))
+   ))
 
 
 
@@ -123,11 +160,21 @@
                  (transformer ,(lambda (x) (string->number x)))
                               ))
     
-    (output-suffix "suffix of file containing the output (default is {INPUT-FILENAME}.simstats)"
-                   (value (required FILENAME)
-                          (single-char #\o)
-                          ))
+    (agglomerate "agglomerate statistics from all input files into the given output file"
+                 (value (required FILENAME))
+                 (single-char #\a)
+                 )
 
+    (output-suffix "suffix of file containing the output (default is {INPUT-FILENAME}.simstats)"
+                   (value (required FILENAME))
+                   (single-char #\o)
+                   )
+
+    (output-format "output type (plain, csv)"
+                   (value (required TYPE)
+                          (transformer ,string->symbol))
+                   (single-char #\f)
+                   )
 
     (help  "Print help"
 	    (single-char #\h))
@@ -169,11 +216,22 @@
                             ".simstats"))
          )
 
-    (for-each
-     (lambda (data-filename)
-       (let ((output-filename (pathname-replace-extension data-filename output-suffix)))
-         (event-stats data-filename output-filename nmax-limit: (opt 'nmax))))
-     (opt '@))
+
+    (if (opt 'agglomerate)
+        (for-each
+         (lambda (data-filename)
+           (event-stats data-filename (opt 'agglomerate)
+                        output-format: (or (opt 'output-format) 'plain)
+                        output-append: #t))
+         (opt '@))
+        (for-each
+         (lambda (data-filename)
+           (let ((output-filename (pathname-replace-extension data-filename output-suffix)))
+             (event-stats data-filename output-filename
+                          output-format: (or (opt 'output-format) 'plain))))
+         (opt '@))
+        )
+
     ))
 
 (main opt)

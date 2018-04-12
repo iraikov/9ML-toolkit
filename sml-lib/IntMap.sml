@@ -40,6 +40,10 @@ signature ORD_MAP =
          * Raises LibBase.NotFound if not found.
 	 *)
 
+    val findRemove : 'a map * Key.ord_key -> ('a map * 'a) option
+	(* Removes an item, returning SOME new map and value removed if found, otherwise NONE
+	 *)
+
     val first : 'a map -> 'a option
     val firsti : 'a map -> (Key.ord_key * 'a) option
 	(* return the first item in the map (or NONE if it is empty) *)
@@ -325,6 +329,18 @@ in
             let val (right',v) = remove(right,x)
             in (T'(key,value,left,right'),v) end
           else (delete'(left,right),value)
+
+    fun findRemove (E,x) = NONE
+      | findRemove (set as T{key,left,right,value,...},x) =
+        if key > x then 
+            (case findRemove(left,x) of
+                 SOME(left',v) => SOME(T'(key,value,left',right),v)
+               | NONE  => NONE)
+        else if key < x then
+            (case findRemove(right,x) of
+                 SOME(right',v) => SOME(T'(key,value,left,right'),v)
+               | NONE  => NONE)
+        else SOME(delete'(left,right),value)
 
     fun listItems d = let
 	  fun d2l (E, l) = l

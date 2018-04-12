@@ -15,7 +15,7 @@ You will need to obtain and install the Chicken Scheme
 compiler and programming environment. The latest official release is
 available from the following URL:
 
-http://code.call-cc.org/releases/4.11.0/chicken-4.11.0.tar.gz
+http://code.call-cc.org/releases/4.13.0/chicken-4.13.0.tar.gz
 
 On Unix and Mac OS X there are no additional prerequisites, but on
 Windows, you will need to first install either one of the MinGW or
@@ -29,8 +29,8 @@ above location, then unpack it and change to the directory extracted
 from the archive:
 
 ```
-   tar zxf chicken-4.11.0.tar.gz
-   cd chicken-4.11.0
+   tar zxf chicken-4.13.0.tar.gz
+   cd chicken-4.13.0
 ```
 
 Then, you need to compile and install:
@@ -117,18 +117,28 @@ Where operands are NineML user layer files containing network description.
 
 The following options are recognized: 
 
-* `--platform=PLATFORM`:   simulation platform (one of mlton, chicken)
-* `-m, --method=PLATFORM`:  integration method (one of rkfe, rk3, rk4a, rk4b, rkoz, rkdp)
+* `--platform=PLATFORM`:   simulation platform (one of mlton, mlton/c)
 
 The `9ML-network` program will create an executable named `Sim_{model
 name}` in the current directory, which accepts the following
 arguments:
 
 * `-d, --duration=VALUE`:  simulation duration in milliseconds
-* `--tol=VALUE`:  solver error tolerance
-* `-s, --spikerecord=POPULATION`:  name of population for spike recording
+* `--abstol=VALUE`:  absolute error tolerance of solver
+* `--reltol=VALUE`:  relative error tolerance of solver
+* `--timestep=VALUE`:  global time step of network simulation
+* `--logperiod=VALUE`:  write out spike times and state information every N ms of simulated time
+* `-s, --spikerecord=POPULATION`:  name of population or population set for spike recording
 * `--statesample=VALUE`:  sample size of neurons for state recording
 * `--extsample=VALUE`:  sample size of neurons for external input recording
+* `--prjrecord`:  record projection connectivity edges to files
+* `--cell-randomseeds=SEED1,...,SEEDN`:  random seeds for spike generation per each population
+* `--prj-randomseeds=SEED1,...,SEEDN`:   random seeds for connectivity construction per each projection
+* `--spikeout=PATH`:   path to file name used for spike recording
+* `--stateprefix=PATH`: prefix for file names used for state recording
+* `--eventprefix=PATH`: prefix for file names used for event recording
+* `--extprefix=PATH`: prefix for file name used for external input recording
+* `--prjprefix=PREFIX`: prefix for file name used for printing projections
 * `-v, --verbose`:  prints detailed information about the internal representation of the model during the code generation process
 
 > 9ML-singlecell operand1... [options...] 
@@ -137,14 +147,15 @@ Where operands are NineML user layer files that instantiate a single cell.
 
 The following options are recognized: 
 
-* `--platform=PLATFORM`:   simulation platform (one of mlton, chicken)
+* `--platform=PLATFORM`:   simulation platform (one of mlton, mlton/c)
 
 The `9ML-singlecell` program will create an executable named
 `Sim_{model name}` in the current directory which accepts the
 following arguments:
 
 * `-d, --duration=VALUE`:  simulation duration in milliseconds
-* `--tol=VALUE`:  solver error tolerance timestep milliseconds
+* `--abstol=VALUE`:  absolute error tolerance of solver
+* `--reltol=VALUE`:  relative error tolerance of solver
 * `-v, --verbose`:  prints detailed information about the internal representation of the model during the code generation process
 
 
