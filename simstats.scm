@@ -39,7 +39,7 @@
   (if (> m 0.0) (/ s m) 0.0))
 
 
-(define (event-stats data-file output-file)
+(define (event-stats data-file output-file #!key (nmax-limit #f))
   (match-let 
 
    (
@@ -47,11 +47,17 @@
      (fold
       (lambda (data-file ax)
         (match-let (((data tmin tmax nmax)  ax))
-                   (let ((data1 (filter-map
-                                 (lambda (line)
-                                   (and (not (string-prefix? "#" line))
-                                        (map string->number (string-split  line " "))))
-                                 (read-lines data-file))))
+                   (let ((data1
+                          (filter
+                           (if nmax-limit
+                               (lambda (v) (match-let (((t n) v))
+                                                      (and (<= n nmax-limit) v)))
+                               (lambda (v) v))
+                           (filter-map
+                            (lambda (line)
+                              (and (not (string-prefix? "#" line))
+                                   (map string->number (string-split  line " "))))
+                            (read-lines data-file)))))
                      (let ((tmax1 (fold (lambda (row ax) (max (car row) ax)) tmax data1))
                            (tmin1 (fold (lambda (row ax) (min (car row) ax)) tmin data1))
                            (nmax1 (fold (lambda (row ax) (fold max ax (cdr row))) nmax data1)))
@@ -75,7 +81,6 @@
                                    ns)))
                        (reverse data))
              v))
-
           (event-times-lst (vector->list event-times))
           (event-intervals (map diffs (filter pair? event-times-lst)))
           (all-event-intervals (concatenate event-intervals))
@@ -113,6 +118,11 @@
 (define opt-grammar
   `(
 
+    (nmax "read elements of index no more than nmax"
+          (value (required INDEX)
+                 (transformer ,(lambda (x) (string->number x)))
+                              ))
+    
     (output-suffix "suffix of file containing the output (default is {INPUT-FILENAME}.simstats)"
                    (value (required FILENAME)
                           (single-char #\o)
@@ -162,7 +172,7 @@
     (for-each
      (lambda (data-filename)
        (let ((output-filename (pathname-replace-extension data-filename output-suffix)))
-         (event-stats data-filename output-filename)))
+         (event-stats data-filename output-filename nmax-limit: (opt 'nmax))))
      (opt '@))
     ))
 
