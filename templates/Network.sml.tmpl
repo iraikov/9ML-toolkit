@@ -129,6 +129,11 @@ struct
   fun optApplyF fopt fargs =
     case fopt of SOME f => SOME (fn(x) => f (fargs x)) | NONE => NONE
 
+
+  fun make_spm () : (((real * real) list) IntMap.map) IntMap.map = IntMap.empty
+
+  val union_spm = IntMap.unionWithi (fn(i,am,bm) => IntMap.unionWith (fn(a,b) => ListMergeSort.sort (fn((at,aw: real),(bt,bw: real)) =>
+                                                                                                        Real.>(at,bt)) (a@b)) (am,bm))
                
   fun make_initial_vector (make_real_state,make_bool_state,n,nev,ndsc,nregime,h0,rs) 
                           (i,condfun,initfun,SOME evinitial,dinitial,SOME rinitial,extinitial,extevinitial) =
@@ -609,33 +614,56 @@ struct
                      end)
           end
     in
-        fn (Wmap,t_next) =>
-           fn ((i,fld,input),(nstates,spikes,statelog)) =>
+        fn (t_next) =>
+           fn ((i,fld,input),(spm,nspm,nstates,spikes,statelog)) =>
            let
                val t = state_indep input
                val h = state_h input
                                
                val ext_i     = state_ext input
                val extev_i   = state_extev input
-               val extev_map = case IntMap.find (Wmap, i+n0) of
-                                   SOME spm =>
-                                   (if trace 
-                                    then (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ " external events: ");
-                                          IntMap.appi (fn (port, lst) =>
-                                                          (putStr TextIO.stdOut (" port " ^ (Int.toString port) ^ ": ");
-                                                           List.app (fn(t,v) => putStr TextIO.stdOut ("[" ^ (showReal t) ^ " : " ^
-                                                                                                      (showReal v) ^ "]")) lst;
-                                                           putStrLn TextIO.stdOut "")
-                                                      )
-                                                      spm)
-                                    else ();
-                                    #2(List.foldl
-                                           (fn(port,(index,ax)) =>
-                                               case IntMap.find (spm, port) of
-                                                   SOME lst => (index+1, (index,merge_extevent lst)::ax)
-                                                |  NONE => (index+1, ax))
-                                           (0,[]) {{pop.name}}_ext_ports))
-                                 | NONE => []
+               val (extev_map,spm',nspm') =
+                   case IntMap.findRemove (spm, i+n0) of
+                       SOME (spm',pspm) =>
+                       let
+                           val _ = if trace 
+                                   then (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ " external events: ");
+                                         IntMap.appi (fn (port, lst) =>
+                                                         (putStr TextIO.stdOut (" port " ^ (Int.toString port) ^ ": ");
+                                                          List.app (fn(t,v) => putStr TextIO.stdOut ("[" ^ (showReal t) ^ " : " ^
+                                                                                                     (showReal v) ^ "]")) lst;
+                                                          putStrLn TextIO.stdOut "")
+                                                     )
+                                                     pspm)
+                                   else ()
+                           val (_, extev_map, npspm) = List.foldl
+                                                           (fn(port,(index,ax,npspm)) =>
+                                                               case IntMap.find (pspm, port) of
+                                                                   SOME lst =>
+                                                                   let val (fst,rst) = List.partition (fn((x,w)) => Real.<= (x, t_next)) lst
+                                                                   in
+                                                                       (index+1,
+                                                                        if List.null fst then ax else (index,merge_extevent fst)::ax,
+                                                                        if List.null rst then npspm else IntMap.insert(npspm,port,rst))
+                                                                   end
+                                                                |  NONE => (index+1,ax,npspm))
+                                                           (0,[],case IntMap.find(nspm,i+n0) of NONE => IntMap.empty 
+                                                                                             |  SOME v => v)
+                                                           {{pop.name}}_ext_ports
+                           val _ = if trace 
+                                   then (putStrLn TextIO.stdOut ("extev_map: cell " ^ (Int.toString (i+n0)) ^ " future external events: ");
+                                         IntMap.appi (fn (port, lst) =>
+                                                         (putStr TextIO.stdOut (" port " ^ (Int.toString port) ^ ": ");
+                                                          List.app (fn(t,v) => putStr TextIO.stdOut ("[" ^ (showReal t) ^ " : " ^
+                                                                                                     (showReal v) ^ "]")) lst;
+                                                          putStrLn TextIO.stdOut "")
+                                                     )
+                                                     npspm)
+                                   else ()
+                       in
+                           (extev_map, spm', if IntMap.isEmpty npspm then nspm else IntMap.insert(nspm,i+n0,npspm))
+                       end
+                     | NONE => ([], spm, nspm)
                                                
                val statelog' = if (i<statesample) orelse (i<extsample) orelse (i<evsample) 
                                then ((i+n0,copy_state input))::statelog
@@ -656,7 +684,7 @@ struct
                                 
                val (nstate,spikes',statelog') = recur (i, fld, input', extev_map, spikes, statelog', 0, t_next)
            in 
-               ((i,fld,nstate)::nstates, spikes', statelog')
+               (spm', nspm', (i,fld,nstate)::nstates, spikes', statelog')
            end
     end
 {% endfor %}
@@ -740,7 +768,7 @@ struct
     ]
          
     fun frun (statesample,extsample,evsample) =
-          fn (I,t_next,
+          fn (SPM,t_next,
               (
 {% for pop in dict (group.populations) %}
               {{pop.name}}_state_vector{% if not loop.last %},{% endif %}
@@ -762,14 +790,16 @@ struct
                val {{pop.name}}_run' = {{pop.name}}_run {{pop.name}}_f ({{pop.name}}_rs_vector,{{pop.name}}_rszt_vector) (statesample,extsample,evsample) {{pop.name}}_n0
 
 {% endfor %}
+               val spm  = SPM
+               val nspm = IntMap.empty
 {% for pop in dict (group.populations) %}
-               val ({{pop.name}}_states,{{pop.name}}_spikes,{{pop.name}}_statelog) = 
-                   List.foldl ({{pop.name}}_run' (I,t_next))
-                              ([],[],[]) {{pop.name}}_state_vector
+               val (spm,nspm,{{pop.name}}_states,{{pop.name}}_spikes,{{pop.name}}_statelog) = 
+                   List.foldl ({{pop.name}}_run' t_next)
+                              (spm,nspm,[],[],[]) {{pop.name}}_state_vector
 
 {% endfor %}
              in
-            ((
+            (nspm, (
 {% for pop in dict (group.populations) %}
              {{pop.name}}_states{% if not loop.last %},{% endif %}
 

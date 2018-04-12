@@ -38,6 +38,15 @@
 (define (coefficient-of-variation m s)
   (if (> m 0.0) (/ s m) 0.0))
 
+(define labels
+  '("First event"
+    "Last event"
+    "Mean number of events"
+    "Mean event frequency"
+    "Mean event interval"
+    "Stdev event interval"
+    "CV event interval"
+    "Mean event rate"))
 
 (define (event-stats data-file output-file #!key (output-format 'plain) (output-append #f))
   (match-let 
