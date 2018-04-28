@@ -48,7 +48,6 @@
     "CV event interval"
     "Mean event rate"))
 
-(define (event-stats data-file output-file #!key )
 
 (define (event-stats data-file output-file #!key (nmax-limit #f) (output-format 'plain) (output-append #f))
   (match-let 
