@@ -24,7 +24,7 @@
 
  (needs make matchable datatype (getopt-long 1.8) uri-generic ssax
         sxml-transforms sxpath object-graph format-graph silex (lalr 2.4.2)
-        mathh ersatz random-mtzig (salt "0.23"))
+        mathh ersatz random-mtzig (salt "0.24"))
 
  (author "Ivan Raikov")
 
